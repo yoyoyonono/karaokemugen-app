@@ -7,10 +7,12 @@ import { selectPlaylistContentsMicro, updatePlaylistDuration, updatePlaylistLast
 import { selectUpvotesByPLC } from '../dao/upvote';
 import { DBKara } from '../lib/types/database/kara';
 import { DBPLC } from '../lib/types/database/playlist';
+import { KaraList } from '../lib/types/kara';
 import { getConfig, resolvedPath } from '../lib/utils/config';
 import { fileExists } from '../lib/utils/files';
 import logger, { profile } from '../lib/utils/logger';
 import { emitWS } from '../lib/utils/ws';
+import { PlayingSource } from '../types/player';
 import { CurrentSong } from '../types/playlist';
 import { adminToken } from '../utils/constants';
 import sentry from '../utils/sentry';
@@ -25,16 +27,22 @@ import { getUser } from './user';
 const service = 'KaraEngine';
 
 /** Play a song from the library, different from when playing the current song in the playlist */
-export async function playSingleSong(kid?: string, randomPlaying = false) {
+export async function playSingleSong(
+	kid?: string,
+	playingSource: PlayingSource = 'library',
+	playingSourceUser?: string
+) {
 	try {
 		const kara = await getKara(kid, adminToken);
 		if (!kara) throw { code: 404, msg: 'KID not found' };
-
+		setState({ playingSource, playingSourceUser });
+		/**
 		if (!randomPlaying) {
 			stopAddASongMessage();
 		} else if (randomPlaying && getConfig().Playlist.RandomSongsAfterEndMessage) {
 			initAddASongMessage();
 		}
+		*/
 		logger.debug('Karaoke selected', { service, obj: kara });
 		logger.info(`Playing ${kara.mediafile}`, { service });
 		const songInfos = await getSongInfosForPlayer(kara);
@@ -59,7 +67,6 @@ export async function playSingleSong(kid?: string, randomPlaying = false) {
 		await mpv.play(current);
 		writeStreamFiles('song_name');
 		writeStreamFiles('requester');
-		setState({ singlePlay: !randomPlaying, randomPlaying });
 	} catch (err) {
 		logger.error('Error during song playback', { service, obj: err });
 		emitWS('operatorNotificationError', APIMessage('NOTIFICATION.OPERATOR.ERROR.PLAYER_PLAY', err));
@@ -128,16 +135,31 @@ export async function getSongInfosForPlayer(kara: DBKara | DBPLC): Promise<{ inf
 	};
 }
 
-export async function playRandomSongAfterPlaylist() {
+export async function playRandomSong() {
 	try {
-		const karas = await getKaras({
-			username: adminToken.username,
-			random: 1,
-			blacklist: true,
-		});
+		const state = getState();
+		let karas: KaraList;
+		if (state.afterPlaylistEnded) {
+			initAddASongMessage();
+		}
+		if (state.playingSource === 'library') {
+			karas = await getKaras({
+				username: adminToken.username,
+				random: 1,
+				blacklist: true,
+			});
+		} else if (state.playingSource === 'favorites' && state.playingSourceUser) {
+			karas = await getKaras({
+				username: adminToken.username,
+				random: 1,
+				userFavorites: state.playingSourceUser,
+			});
+		}
 		const kara = karas.content[0];
 		if (kara) {
-			await playSingleSong(kara.kid, true);
+			await playSingleSong(kara.kid, state.playingSource, state.playingSourceUser);
+			state.playingSourceHistory.push(kara.kid);
+			setState({ playingSourceHistory: state.playingSourceHistory });
 		} else {
 			stopPlayer();
 			stopAddASongMessage();
@@ -175,7 +197,6 @@ export async function playCurrentSong(now: boolean) {
 			logger.debug('Karaoke selected', { service, obj: kara });
 			logger.info(`Playing ${kara.mediafile.substring(0, kara.mediafile.length - 4)}`, { service });
 			await mpv.play(kara);
-			setState({ randomPlaying: false });
 			addPlayedKara(kara.kid);
 			await Promise.all([
 				updatePlaylistDuration(kara.plaid),
@@ -187,6 +208,8 @@ export async function playCurrentSong(now: boolean) {
 			updatePlaylistLastEditTime(kara.plaid);
 			emitWS('playlistInfoUpdated', kara.plaid);
 			if (conf.Karaoke.Poll.Enabled && !conf.Karaoke.StreamerMode.Enabled) startPoll();
+			// Reset playingSourceHistory since we're on a playlist
+			setState({ playingSourceHistory: [], playingSourceUser: null, playingSource: 'currentPlaylist' });
 		} catch (err) {
 			logger.error('Error during song playback', { service, obj: err });
 			emitWS('operatorNotificationError', APIMessage('NOTIFICATION.OPERATOR.ERROR.PLAYER_PLAY', err));
@@ -228,13 +251,13 @@ export async function playerEnding() {
 			return;
 		}
 		// When random karas are being played
-		if (state.randomPlaying) {
-			await playRandomSongAfterPlaylist();
+		if (state.playingSource !== 'currentPlaylist') {
+			await playRandomSong();
 			return;
 		}
 
 		// Handle balance
-		if (state.player.mediaType === 'song' && !state.singlePlay && !state.randomPlaying) {
+		if (state.player.mediaType === 'song' && state.playingSource === 'currentPlaylist') {
 			const playlist = await selectPlaylistContentsMicro(state.currentPlaid);
 			const previousSongIndex = playlist.findIndex(plc => plc.flag_playing);
 			if (previousSongIndex >= 0) {
@@ -278,7 +301,8 @@ export async function playerEnding() {
 		// If Outro, load the background.
 		if (state.player.mediaType === 'Outros') {
 			if (getConfig().Playlist.EndOfPlaylistAction === 'random') {
-				await playRandomSongAfterPlaylist();
+				setState({ afterPlaylistEnded: true });
+				await playRandomSong();
 			} else if (getConfig().Playlist.EndOfPlaylistAction === 'repeat') {
 				try {
 					await next();
@@ -327,7 +351,7 @@ export async function playerEnding() {
 			conf.Playlist.Medias.Encores.Enabled &&
 			state.player.currentSong?.pos === pl.karacount - 1 &&
 			!getState().encorePlayed &&
-			!getState().singlePlay
+			getState().playingSource === 'currentPlaylist'
 		) {
 			try {
 				await mpv.playMedia('Encores');
@@ -352,22 +376,22 @@ export async function playerEnding() {
 			state.player.currentSong?.pos === pl.karacount &&
 			state.player.mediaType !== 'stop' &&
 			state.player.mediaType !== 'pause' &&
-			!state.singlePlay
+			state.playingSource === 'currentPlaylist'
 		) {
-			if (conf.Playlist.Medias.Outros.Enabled && !state.randomPlaying) {
+			if (conf.Playlist.Medias.Outros.Enabled && state.playingSource === 'currentPlaylist') {
 				try {
 					await mpv.playMedia('Outros');
 				} catch (err) {
 					logger.error('Unable to play outro file', { service, obj: err });
 					emitWS('operatorNotificationError', APIMessage('NOTIFICATION.OPERATOR.ERROR.PLAYER_PLMEDIA', err));
 					if (conf.Playlist.EndOfPlaylistAction === 'random') {
-						await playRandomSongAfterPlaylist();
+						await playRandomSong();
 					} else {
 						stopPlayer();
 					}
 				}
 			} else if (conf.Playlist.EndOfPlaylistAction === 'random') {
-				await playRandomSongAfterPlaylist();
+				await playRandomSong();
 			} else {
 				await next();
 			}
@@ -381,7 +405,7 @@ export async function playerEnding() {
 			{ service }
 		);
 		if (
-			!state.singlePlay &&
+			state.playingSource === 'currentPlaylist' &&
 			state.counterToJingle >= conf.Playlist.Medias.Jingles.Interval &&
 			conf.Playlist.Medias.Jingles.Enabled
 		) {
@@ -416,10 +440,8 @@ export async function playerEnding() {
 			}
 			return;
 		}
-		if (!state.singlePlay) {
+		if (state.playingSource === 'currentPlaylist') {
 			setState({ counterToSponsor: state.counterToSponsor + 1, counterToJingle: state.counterToJingle + 1 });
-		} else {
-			setState({ singlePlay: false });
 		}
 		if (state.player.playerStatus !== 'stop') {
 			try {

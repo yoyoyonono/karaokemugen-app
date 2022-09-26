@@ -1,6 +1,6 @@
 import { RemoteFailure, RemoteSuccess } from '../lib/types/remote';
 import { BinariesConfig } from './binChecker';
-import { PlayerState } from './player';
+import { PlayerState, PlayingSource } from './player';
 
 export interface Version {
 	number?: string;
@@ -22,7 +22,6 @@ export interface State {
 	stopping: boolean;
 	streamerPause: boolean;
 	pauseInProgress: boolean;
-	randomPlaying: boolean;
 	counterToJingle?: number;
 	counterToSponsor?: number;
 	introPlayed?: boolean;
@@ -53,7 +52,10 @@ export interface State {
 	supportedMedias?: string[];
 	forceDisableAppUpdate?: boolean;
 	noAutoTest?: boolean;
-	singlePlay?: boolean;
+	playingSource: PlayingSource;
+	playingSourceUser?: string;
+	playingSourceHistory?: string[];
+	afterPlaylistEnded?: boolean;
 	version?: Version;
 	frontendPort?: number;
 	binPath?: Partial<BinariesConfig>;

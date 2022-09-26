@@ -32,8 +32,6 @@ let state: State = {
 	defaultLocale: 'en',
 	securityCode: null,
 	noAutoTest: false,
-	singlePlay: false,
-	randomPlaying: false,
 	streamerPause: false,
 	pauseInProgress: false,
 	player: {},
@@ -49,6 +47,8 @@ let state: State = {
 	systemMessages: [],
 	DBReady: false,
 	portable: false,
+	playingSource: 'currentPlaylist',
+	playingSourceHistory: [],
 };
 
 /** Get public state (to send to webapp users) */

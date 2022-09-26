@@ -684,8 +684,12 @@ export async function addKaraToPlaylist(params: AddKaraParams) {
 			checkMediaAndDownload(karas);
 			writeStreamFiles('current_kara_count');
 			writeStreamFiles('time_remaining_in_current_playlist');
-			if (conf.Karaoke.Autoplay && (state.player.playerStatus === 'stop' || state.randomPlaying)) {
-				setState({ randomPlaying: false });
+			if (
+				conf.Karaoke.Autoplay &&
+				state.player.playerStatus === 'stop' &&
+				state.playingSource !== 'currentPlaylist'
+			) {
+				setState({ playingSource: 'currentPlaylist', playingSourceHistory: [], playingSourceUser: null });
 				await setPlaying(PLCsInserted[0].plcid, getState().currentPlaid);
 				await playPlayer(true);
 			}
@@ -1005,7 +1009,10 @@ export async function editPLC(plc_ids: number[], params: PLCEditParams, refresh 
 			// This only occurs to one playlist anyway
 			const pl = pls.find(p => p.plaid === plcs[0].plaid);
 			const playerStatus = getState().player.playerStatus;
-			if (pl.flag_current && playerStatus && playerStatus !== 'stop') playPlayer(true);
+			if (pl.flag_current && playerStatus && playerStatus !== 'stop') {
+				setState({ playingSource: 'currentPlaylist', playingSourceHistory: [], playingSourceUser: null });
+				playPlayer(true);
+			}
 		}
 		if (params.flag_accepted === true) {
 			params.flag_free = true;

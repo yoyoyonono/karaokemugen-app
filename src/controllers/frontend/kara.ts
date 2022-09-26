@@ -147,7 +147,7 @@ export default function karaController(router: SocketIOApp) {
 	router.route('playKara', async (socket: Socket, req: APIData) => {
 		await runChecklist(socket, req);
 		try {
-			return await playSingleSong(req.body.kid);
+			return await playSingleSong(req.body.kid, 'library');
 		} catch (err) {
 			const code = 'SONG_PLAY_ERROR';
 			errMessage(code, err);

@@ -1525,7 +1525,7 @@ class Players {
 	}
 
 	displayAddASong() {
-		if (getState().randomPlaying) {
+		if (getState().afterPlaylistEnded) {
 			try {
 				this.message(i18n.t('ADD_A_SONG_TO_PLAYLIST_SCREEN_MESSAGE'), 1000, 5, 'addASong');
 			} catch (err) {

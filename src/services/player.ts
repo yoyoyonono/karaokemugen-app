@@ -12,7 +12,7 @@ import { emitWS } from '../lib/utils/ws';
 import { BackgroundType } from '../types/backgrounds';
 import { MpvHardwareDecodingOptions } from '../types/mpvIPC';
 import { getState, setState } from '../utils/state';
-import { playCurrentSong } from './karaEngine';
+import { playCurrentSong, playRandomSong, playSingleSong } from './karaEngine';
 import { getCurrentSong, getCurrentSongPLCID, getNextSong, getPreviousSong, setPlaying } from './playlist';
 import { startPoll } from './poll';
 
@@ -31,8 +31,17 @@ export function playerMessage(msg: string, duration: number, align = 4, type = '
 export async function prev() {
 	logger.debug('Going to previous song', { service });
 	try {
-		const kara = await getPreviousSong();
-		await setPlaying(kara.plcid, getState().currentPlaid);
+		const state = getState();
+		if (state.playingSource === 'currentPlaylist') {
+			const kara = await getPreviousSong();
+			await setPlaying(kara.plcid, getState().currentPlaid);
+		} else {
+			const kid = state.playingSourceHistory[state.playingSourceHistory.length - 1];
+			if (!kid) throw 'No song available in history';
+			await playSingleSong(kid, state.playingSource, state.playingSourceUser);
+			state.playingSourceHistory.pop();
+			setState({ playingSourceHistory: state.playingSourceHistory });
+		}
 	} catch (err) {
 		logger.warn('Previous song is not available', { service, obj: err });
 	} finally {
@@ -44,75 +53,80 @@ export async function next() {
 	logger.debug('Going to next song', { service });
 	profile('Next');
 	const conf = getConfig();
-	const currentPlaid = getState().currentPlaid;
+	const state = getState();
+	const currentPlaid = state.currentPlaid;
 	try {
-		// Played songs are set visible once played
-		const curr = await getCurrentSongPLCID();
-		await updatePLCVisible([curr]);
-		updatePlaylistLastEditTime(currentPlaid);
-		emitWS('playlistInfoUpdated', currentPlaid);
-		// Now fetch the next song
-		const song = await getNextSong();
-		if (song) {
-			await setPlaying(song.plcid, currentPlaid);
-			if (conf.Karaoke.ClassicMode) {
-				await stopPlayer();
-			} else if (conf.Karaoke.StreamerMode.Enabled) {
-				setState({ currentRequester: null });
-				const kara = await getCurrentSong();
-				setState({ streamerPause: true });
-				await stopPlayer();
-				if (conf.Karaoke.StreamerMode.PauseDuration > 0 && conf.Karaoke.Poll.Enabled) {
-					switchToPollScreen();
-					const poll = await startPoll();
-					if (!poll) {
-						// False returned means startPoll couldn't start a poll
+		if (state.playingSource === 'currentPlaylist') {
+			// Played songs are set visible once played
+			const curr = await getCurrentSongPLCID();
+			await updatePLCVisible([curr]);
+			updatePlaylistLastEditTime(currentPlaid);
+			emitWS('playlistInfoUpdated', currentPlaid);
+			// Now fetch the next song
+			const song = await getNextSong();
+			if (song) {
+				await setPlaying(song.plcid, currentPlaid);
+				if (conf.Karaoke.ClassicMode) {
+					await stopPlayer();
+				} else if (conf.Karaoke.StreamerMode.Enabled) {
+					setState({ currentRequester: null });
+					const kara = await getCurrentSong();
+					setState({ streamerPause: true });
+					await stopPlayer();
+					if (conf.Karaoke.StreamerMode.PauseDuration > 0 && conf.Karaoke.Poll.Enabled) {
+						switchToPollScreen();
+						const poll = await startPoll();
+						if (!poll) {
+							// False returned means startPoll couldn't start a poll
+							mpv.displaySongInfo(kara.infos, -1, true);
+						}
+					} else {
 						mpv.displaySongInfo(kara.infos, -1, true);
 					}
-				} else {
-					mpv.displaySongInfo(kara.infos, -1, true);
-				}
-				if (conf.Karaoke.StreamerMode.PauseDuration > 0) {
-					await sleep(conf.Karaoke.StreamerMode.PauseDuration * 1000);
-					if (
-						getState().streamerPause &&
-						getState().pauseInProgress &&
-						getConfig().Karaoke.StreamerMode.Enabled &&
-						getState().player.playerStatus === 'stop'
-					) {
-						await playPlayer(true);
+					if (conf.Karaoke.StreamerMode.PauseDuration > 0) {
+						await sleep(conf.Karaoke.StreamerMode.PauseDuration * 1000);
+						if (
+							getState().streamerPause &&
+							getState().pauseInProgress &&
+							getConfig().Karaoke.StreamerMode.Enabled &&
+							getState().player.playerStatus === 'stop'
+						) {
+							await playPlayer(true);
+						}
+						setState({ streamerPause: false, pauseInProgress: false });
 					}
-					setState({ streamerPause: false, pauseInProgress: false });
+				} else {
+					setState({ currentRequester: null });
+					if (getState().player.playerStatus !== 'stop') playPlayer(true);
+				}
+			} else if (conf.Karaoke.StreamerMode.Enabled) {
+				// End of playlist, let's see what to do with our different modes.
+				await stopPlayer(true, true);
+				if (conf.Karaoke.Poll.Enabled) {
+					try {
+						await startPoll();
+						on('songPollResult', () => {
+							// We're not at the end of playlist anymore!
+							getNextSong()
+								.then(kara => setPlaying(kara.plcid, currentPlaid))
+								.catch(() => {});
+						});
+					} catch (err) {
+						// Non-fatal
+					}
+					if (conf.Karaoke.StreamerMode.PauseDuration > 0) {
+						await sleep(conf.Karaoke.StreamerMode.PauseDuration * 1000);
+						if (getConfig().Karaoke.StreamerMode.Enabled && getState().player.playerStatus === 'stop') {
+							await playPlayer(true);
+						}
+					}
 				}
 			} else {
 				setState({ currentRequester: null });
-				if (getState().player.playerStatus !== 'stop') playPlayer(true);
-			}
-		} else if (conf.Karaoke.StreamerMode.Enabled) {
-			// End of playlist, let's see what to do with our different modes.
-			await stopPlayer(true, true);
-			if (conf.Karaoke.Poll.Enabled) {
-				try {
-					await startPoll();
-					on('songPollResult', () => {
-						// We're not at the end of playlist anymore!
-						getNextSong()
-							.then(kara => setPlaying(kara.plcid, currentPlaid))
-							.catch(() => {});
-					});
-				} catch (err) {
-					// Non-fatal
-				}
-				if (conf.Karaoke.StreamerMode.PauseDuration > 0) {
-					await sleep(conf.Karaoke.StreamerMode.PauseDuration * 1000);
-					if (getConfig().Karaoke.StreamerMode.Enabled && getState().player.playerStatus === 'stop') {
-						await playPlayer(true);
-					}
-				}
+				stopPlayer(true, true);
 			}
 		} else {
-			setState({ currentRequester: null });
-			stopPlayer(true, true);
+			await playRandomSong();
 		}
 	} catch (err) {
 		logger.warn('Next song is not available', { service, obj: err });
@@ -152,9 +166,13 @@ export async function playPlayer(now?: boolean) {
 	profile('Play');
 	const state = getState();
 	if (state.player.playerStatus === 'stop' || now) {
-		setState({ singlePlay: false, randomPlaying: false, streamerPause: false });
-		await playCurrentSong(now);
-		stopAddASongMessage();
+		setState({ streamerPause: false });
+		if (state.playingSource === 'currentPlaylist') {
+			await playCurrentSong(now);
+			stopAddASongMessage();
+		} else {
+			await playRandomSong();
+		}
 	} else {
 		await mpv.resume();
 	}
@@ -179,7 +197,7 @@ export async function stopPlayer(now = true, endOfPlaylist = false) {
 			setState({ pauseInProgress: false });
 		}
 		await mpv.stop(stopType);
-		setState({ randomPlaying: false, stopping: false });
+		setState({ stopping: false });
 		stopAddASongMessage();
 		if (!endOfPlaylist && getConfig().Karaoke.ClassicMode && getState().pauseInProgress) {
 			await prepareClassicPauseScreen();
@@ -297,19 +315,15 @@ export async function sendCommand(command: string, options: any): Promise<APIMes
 		if (command === 'play') {
 			await playPlayer();
 		} else if (command === 'stopNow') {
-			setState({ singlePlay: false, randomPlaying: false });
 			await stopPlayer();
 		} else if (command === 'pause') {
 			await pausePlayer();
 		} else if (command === 'stopAfter') {
-			setState({ singlePlay: false, randomPlaying: false });
 			await stopPlayer(false);
 			return APIMessage('STOP_AFTER');
 		} else if (command === 'skip') {
-			setState({ singlePlay: false, randomPlaying: false });
 			await next();
 		} else if (command === 'prev') {
-			setState({ singlePlay: false, randomPlaying: false });
 			await prev();
 		} else if (command === 'toggleFullscreen') {
 			await toggleFullScreenPlayer();

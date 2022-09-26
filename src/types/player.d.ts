@@ -1,6 +1,7 @@
 import { Media } from './medias';
 import { CurrentSong } from './playlist';
 
+export type PlayingSource = 'currentPlaylist' | 'library' | 'favorites' | 'myAnime';
 export interface PlayerState {
 	volume?: number;
 	playing?: boolean;

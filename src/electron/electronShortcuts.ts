@@ -3,7 +3,7 @@ import i18next from 'i18next';
 
 import { getConfig } from '../lib/utils/config';
 import { next, pausePlayer, playPlayer, prev, stopPlayer } from '../services/player';
-import { getState, setState } from '../utils/state';
+import { getState } from '../utils/state';
 
 export async function registerShortcuts() {
 	if (process.platform === 'darwin') {
@@ -18,15 +18,12 @@ export async function registerShortcuts() {
 		getState().player.playerStatus === 'play' ? pausePlayer() : playPlayer().catch(() => {});
 	});
 	globalShortcut.register('MediaNextTrack', () => {
-		setState({ singlePlay: false, randomPlaying: false });
 		next().catch(() => {});
 	});
 	globalShortcut.register('MediaPreviousTrack', () => {
-		setState({ singlePlay: false, randomPlaying: false });
 		prev().catch(() => {});
 	});
 	globalShortcut.register('MediaStop', () => {
-		setState({ singlePlay: false, randomPlaying: false });
 		stopPlayer().catch(() => {});
 	});
 }
