@@ -35,14 +35,10 @@ export async function playSingleSong(
 	try {
 		const kara = await getKara(kid, adminToken);
 		if (!kara) throw { code: 404, msg: 'KID not found' };
-		setState({ playingSource, playingSourceUser });
-		/**
-		if (!randomPlaying) {
-			stopAddASongMessage();
-		} else if (randomPlaying && getConfig().Playlist.RandomSongsAfterEndMessage) {
-			initAddASongMessage();
-		}
-		*/
+		setState({
+			playingSource,
+			playingSourceUser,
+		});
 		logger.debug('Karaoke selected', { service, obj: kara });
 		logger.info(`Playing ${kara.mediafile}`, { service });
 		const songInfos = await getSongInfosForPlayer(kara);
@@ -139,10 +135,11 @@ export async function playRandomSong() {
 	try {
 		const state = getState();
 		let karas: KaraList;
-		if (state.afterPlaylistEnded) {
+		if (state.afterPlaylistEnded && getConfig().Playlist.RandomSongsAfterEndMessage) {
 			initAddASongMessage();
 		}
-		if (state.playingSource === 'library') {
+		// If on current playlist (end of playlist = random) or already in library, we play songs from library
+		if (state.playingSource === 'library' || state.playingSource === 'currentPlaylist') {
 			karas = await getKaras({
 				username: adminToken.username,
 				random: 1,
@@ -178,6 +175,7 @@ export async function playCurrentSong(now: boolean) {
 	if (!getState().player.playing || now) {
 		profile('playCurrentSong');
 		try {
+			stopAddASongMessage();
 			const conf = getConfig();
 			const kara = await getCurrentSong();
 			if (!kara) {
@@ -209,7 +207,12 @@ export async function playCurrentSong(now: boolean) {
 			emitWS('playlistInfoUpdated', kara.plaid);
 			if (conf.Karaoke.Poll.Enabled && !conf.Karaoke.StreamerMode.Enabled) startPoll();
 			// Reset playingSourceHistory since we're on a playlist
-			setState({ playingSourceHistory: [], playingSourceUser: null, playingSource: 'currentPlaylist' });
+			setState({
+				playingSourceHistory: [],
+				playingSourceUser: null,
+				playingSource: 'currentPlaylist',
+				afterPlaylistEnded: false,
+			});
 		} catch (err) {
 			logger.error('Error during song playback', { service, obj: err });
 			emitWS('operatorNotificationError', APIMessage('NOTIFICATION.OPERATOR.ERROR.PLAYER_PLAY', err));
@@ -301,7 +304,12 @@ export async function playerEnding() {
 		// If Outro, load the background.
 		if (state.player.mediaType === 'Outros') {
 			if (getConfig().Playlist.EndOfPlaylistAction === 'random') {
-				setState({ afterPlaylistEnded: true });
+				setState({
+					afterPlaylistEnded: true,
+					playingSource: 'library',
+					playingSourceHistory: [],
+					playingSourceUser: null,
+				});
 				await playRandomSong();
 			} else if (getConfig().Playlist.EndOfPlaylistAction === 'repeat') {
 				try {
@@ -385,12 +393,22 @@ export async function playerEnding() {
 					logger.error('Unable to play outro file', { service, obj: err });
 					emitWS('operatorNotificationError', APIMessage('NOTIFICATION.OPERATOR.ERROR.PLAYER_PLMEDIA', err));
 					if (conf.Playlist.EndOfPlaylistAction === 'random') {
+						setState({
+							playingSource: 'library',
+							playingSourceHistory: [],
+							playingSourceUser: null,
+						});
 						await playRandomSong();
 					} else {
 						stopPlayer();
 					}
 				}
 			} else if (conf.Playlist.EndOfPlaylistAction === 'random') {
+				setState({
+					playingSource: 'library',
+					playingSourceHistory: [],
+					playingSourceUser: null,
+				});
 				await playRandomSong();
 			} else {
 				await next();
