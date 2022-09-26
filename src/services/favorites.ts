@@ -8,10 +8,17 @@ import logger, { profile } from '../lib/utils/logger';
 import { emitWS } from '../lib/utils/ws';
 import { FavExport, FavExportContent } from '../types/favorites';
 import sentry from '../utils/sentry';
+import { setState } from '../utils/state';
 import { getKaras, isAllKaras } from './kara';
+import { playSingleSong } from './karaEngine';
 import { getUser } from './user';
 
 const service = 'Favorites';
+
+export async function playFavorites(kid: string, username: string) {
+	setState({ playingSource: 'favorites', playingSourceHistory: [], playingSourceUser: username });
+	await playSingleSong(kid);
+}
 
 export async function getFavorites(params: KaraParams): Promise<KaraList> {
 	try {

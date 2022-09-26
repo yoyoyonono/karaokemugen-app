@@ -9,12 +9,23 @@ import {
 	exportFavorites,
 	getFavorites,
 	importFavorites,
+	playFavorites,
 	removeFavorites,
 } from '../../services/favorites';
 import { APIMessage, errMessage } from '../common';
 import { runChecklist } from '../middlewares';
 
 export default function favoritesController(router: SocketIOApp) {
+	router.route('playFavorite', async (socket: Socket, req: APIData) => {
+		await runChecklist(socket, req, 'admin', 'closed');
+		try {
+			return await playFavorites(req.body.kid, req.token.username);
+		} catch (err) {
+			const code = 'FAVORITES_PLAY_ERROR';
+			errMessage(code, err);
+			throw { code: err?.code || 500, message: APIMessage(code) };
+		}
+	});
 	router.route('getFavorites', async (socket: Socket, req: APIData) => {
 		await runChecklist(socket, req, 'guest', 'closed');
 		try {
