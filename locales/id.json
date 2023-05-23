@@ -2,6 +2,7 @@
 	"REQUESTED_BY": "Diminta oleh {{name}}",
 	"VOTE_MESSAGE_SCREEN": "Berikan suara untuk lagu selanjutnya!",
 	"MY_PLAYLIST": "Daftar putar saya",
+	"CANCEL": "Membatalkan",
 	"CURRENT_PLAYLIST": "Daftar putar",
 	"PUBLIC_PLAYLIST": "Saran publik",
 	"GO_TO": "Pergi ke $url",
@@ -54,6 +55,7 @@
 	"MENU_HELP_WEBSITE": "&Situs web",
 	"MENU_HELP_DISCORD": "Discord",
 	"MENU_HELP_TWITTER": "&Twitter",
+	"MENU_HELP_MASTODON": "M&astodon",
 	"MENU_HELP_CHANGELOG": "&Catatan Rilis",
 	"MENU_HELP_GITLAB": "&GitLab",
 	"MENU_HELP_GUIDE": "&Petunjuk",
@@ -70,11 +72,11 @@
 	"MENU_OPTIONS": "&Opsi",
 	"MENU_OPTIONS_CHECKFORUPDATES": "&Periksa pembaruan saat aplikasi menyala",
 	"MENU_OPTIONS_OPERATORCONFIG": "&Pengaturan",
-	"MENU_OPTIONS_SYSTEMCONFIG_OSX": "Preferensi sistem…",
+	"MENU_OPTIONS_SYSTEMCONFIG_OSX": "Pengaturan sistem…",
 	"MENU_OPTIONS_CHIBIPLAYER": "Tampilkan Pemutar Chibi",
 	"MENU_OPTIONS_CHIBIPLAYLIST": "Perlihatkan daftar putar terpisah",
 	"MENU_OPTIONS_CHIBIPLAYLIST_LINK": "Salin tautan ke daftar putar terpisah",
-	"MENU_OPTIONS_OPERATORCONFIG_OSX": "Preferensi…",
+	"MENU_OPTIONS_OPERATORCONFIG_OSX": "Pengaturan…",
 	"ERROR": "Galat",
 	"YES": "Ya",
 	"NO": "Tidak",
@@ -90,10 +92,6 @@
 	"REPO_DISABLED": {
 		"TITLE": "Repositori dimatikan",
 		"MESSAGE": "Repositori {{repo}} telah dimatikan karena salah satu foldernya tidak tersedia. Jika salah satu foldernya ada di penyimpanan eksternal, pastikan itu terhubung dan pergi ke Bilah Sistem > Repositori untuk menyalakannya lagi."
-	},
-	"NO_KARAOKE_MODE_ANYMORE": {
-		"TITLE": "Tidak ada lagi mode karaoke!",
-		"MESSAGE": "Baru di versi 4.0:\n\nMode karaoke publik/privat telah menghilang! Panik! Horor! *musik dramatis terdengar*\n\nDaftar putar sekarang bisa memiliki bendera publik dan sekarang dalam waktu yang bersamaan.\n\n- Bendera saat ini berarti daftar putar yang sedang digunakan oleh pemain\n- Bendera publik berarti daftar putarlah yang menerima saran lagu dari pengguna kamu\n\nSingkatnya, gabungkan kedua bendera tersebut di sebuah daftar putar untuk meniru mode privat yang lama dan buat dua daftar putar, masing-masing dengan bendera yang berbeda untuk meniru mode publik yang lama."
 	},
 	"TIPS": {
 		"TITLES": {

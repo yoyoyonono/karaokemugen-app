@@ -1,8 +1,8 @@
 import { io, Socket } from 'socket.io-client';
 
-import { APIData } from '../lib/types/api';
-import { getConfig } from '../lib/utils/config';
-import logger from '../lib/utils/logger';
+import { APIData } from '../lib/types/api.js';
+import { getConfig } from '../lib/utils/config.js';
+import logger, { profile } from '../lib/utils/logger.js';
 
 let socket: Socket;
 
@@ -36,12 +36,16 @@ function connectToKMServer() {
 
 export async function initKMServerCommunication() {
 	try {
+		profile('initKMServerComms');
 		logger.debug('Connecting to KMServer via socket.io', { service });
 		await connectToKMServer();
 		// Hooks?
+		// What Hooks? :)
 	} catch (e) {
 		logger.error('Cannot establish socket connection to KMServer', { service, obj: e });
 		throw e;
+	} finally {
+		profile('initKMServerComms');
 	}
 }
 

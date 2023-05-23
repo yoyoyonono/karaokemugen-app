@@ -27,6 +27,8 @@ updater/
 mpv.log
 karaokemugen.pgdump
 karaokemugen.sql
+sentry.txt
+sha.txt
 
 # kmfrontend
 kmfrontend/node_modules
@@ -51,3 +53,10 @@ postgrator.json
 .env
 .eslintcache
 
+# Flatpak
+.flatpak-builder
+build/export
+*.flatpak
+build/build
+build/km
+repo/

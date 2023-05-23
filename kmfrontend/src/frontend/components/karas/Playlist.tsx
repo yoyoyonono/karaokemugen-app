@@ -28,6 +28,17 @@ import KaraLine from './KaraLine';
 import PlaylistHeader from './PlaylistHeader';
 import TasksEvent from '../../../TasksEvent';
 
+// Virtuoso's resize observer can this error,
+// which is caught by DnD and aborts dragging.
+window.addEventListener('error', e => {
+	if (
+		e.message === 'ResizeObserver loop completed with undelivered notifications.' ||
+		e.message === 'ResizeObserver loop limit exceeded'
+	) {
+		e.stopImmediatePropagation();
+	}
+});
+
 const chunksize = 400;
 let timer: any;
 
@@ -68,7 +79,9 @@ function Playlist(props: IProps) {
 	const [stopUpdate, setStopUpdate] = useState(false);
 	const [data, setData] = useState<KaraList>();
 	const [checkedKaras, setCheckedKaras] = useState(0);
-	const [playing, setPlaying] = useState<number>();
+	const [playing, setPlaying] = useState<number>(
+		getPlaylistInfo(props.side, context)?.content.findIndex(k => k.flag_playing)
+	);
 	const [songsBeforeJingle, setSongsBeforeJingle] = useState<number>();
 	const [songsBeforeSponsor, setSongsBeforeSponsor] = useState<number>();
 	const [goToPlaying, setGotToPlaying] = useState<boolean>();
@@ -106,9 +119,10 @@ function Playlist(props: IProps) {
 			download_status: DownloadedStatus;
 		}[]
 	) => {
+		const playlist = getPlaylistInfo(props.side, context);
 		if (
-			getPlaylistInfo(props.side, context)?.plaid === nonStandardPlaylists.library ||
-			getPlaylistInfo(props.side, context)?.plaid === nonStandardPlaylists.favorites ||
+			playlist?.plaid === nonStandardPlaylists.library ||
+			playlist?.plaid === nonStandardPlaylists.favorites ||
 			(event.length > 0 && event[0].download_status)
 		) {
 			setData(oldData => {
@@ -222,7 +236,7 @@ function Playlist(props: IProps) {
 		return (
 			!is_touch_device() &&
 			props.scope === 'admin' &&
-			!isNonStandardPlaylist(getPlaylistInfo(props.side, context).plaid) &&
+			!isNonStandardPlaylist(getPlaylistInfo(props.side, context)?.plaid) &&
 			searchType !== 'recent' &&
 			searchType !== 'requested' &&
 			!searchValue &&
@@ -238,20 +252,22 @@ function Playlist(props: IProps) {
 		getPlaylistInfo(props.side, context)?.plaid,
 	]);
 
-	const HeightPreservingItem = ({ children, ...props }: PropsWithChildren<ItemProps>) => {
-		const ref = useRef<HTMLDivElement>(null);
-		const [height, setHeight] = useState<string>(null);
-
+	const HeightPreservingItem = ({ children, ...props }: PropsWithChildren<ItemProps<any>>) => {
+		const [size, setSize] = useState(0);
+		const knownSize = props['data-known-size'];
 		useEffect(() => {
-			if (ref.current.firstChild) {
-				const realHeight = (ref.current.firstChild as HTMLDivElement).getBoundingClientRect();
-				setHeight(`${realHeight.height}px`);
-			}
-		}, [props['data-index']]);
-
+			setSize(prevSize => {
+				return knownSize === 0 ? prevSize : knownSize;
+			});
+		}, [knownSize]);
 		return (
-			// the height is necessary to prevent the item container from collapsing, which confuses Virtuoso measurements
-			<div {...props} ref={ref} style={{ height: height || props['data-known-size'] || undefined }}>
+			<div
+				{...props}
+				className="height-preserving-container"
+				//@ts-ignore
+				// check styling in the style tag below
+				style={{ '--child-height': `${size}px` }}
+			>
 				{children}
 			</div>
 		);
@@ -262,7 +278,6 @@ function Playlist(props: IProps) {
 			let content: KaraElement;
 			if (data?.content[index]) {
 				content = data.content[index];
-				if (!playing && content.flag_playing) setPlaying(index);
 				const jingle =
 					typeof songsBeforeJingle === 'number' &&
 					// Are jingles enabled?
@@ -354,6 +369,10 @@ function Playlist(props: IProps) {
 		if (getPlaylistInfo(props.side, context)?.plaid === idPlaylist && !stopUpdate) getPlaylist();
 	};
 
+	const updateLibrary = () => {
+		if (getPlaylistInfo(props.side, context)?.plaid === nonStandardPlaylists.library) getPlaylist();
+	};
+
 	const getPlaylistUrl = (plaidParam?: string) => {
 		const idPlaylist: string = plaidParam ? plaidParam : getPlaylistInfo(props.side, context)?.plaid;
 		let url: string;
@@ -361,6 +380,8 @@ function Playlist(props: IProps) {
 			url = 'getKaras';
 		} else if (idPlaylist === nonStandardPlaylists.favorites) {
 			url = 'getFavorites';
+		} else if (idPlaylist === nonStandardPlaylists.animelist) {
+			url = 'getAnimeList';
 		} else {
 			url = 'getPlaylistContents';
 		}
@@ -495,15 +516,15 @@ function Playlist(props: IProps) {
 
 	const getPlInfosElement = () => {
 		let plInfos = '';
-		if (getPlaylistInfo(props.side, context)?.plaid && data?.infos?.count) {
+		const playlist = getPlaylistInfo(props.side, context);
+		if (playlist?.plaid && data?.infos?.count) {
 			plInfos =
 				data.infos.count +
 				' karas' +
-				(!isNonStandardPlaylist(getPlaylistInfo(props.side, context)?.plaid) &&
-				getPlaylistInfo(props.side, context)?.duration
+				(!isNonStandardPlaylist(playlist?.plaid) && playlist?.duration
 					? ` ~ ${is_touch_device() ? 'dur.' : i18next.t('DETAILS.DURATION')} ` +
-					  secondsTimeSpanToHMS(getPlaylistInfo(props.side, context)?.duration, 'hm') +
-					  ` / ${secondsTimeSpanToHMS(getPlaylistInfo(props.side, context)?.time_left, 'hm')} ${
+					  secondsTimeSpanToHMS(playlist?.duration, 'hm') +
+					  ` / ${secondsTimeSpanToHMS(playlist?.time_left, 'hm')} ${
 							is_touch_device() ? 're.' : i18next.t('DURATION_REMAINING')
 					  } `
 					: '');
@@ -561,7 +582,7 @@ function Playlist(props: IProps) {
 		let checkedKarasNumber = checkedKaras;
 		for (const kara of data.content) {
 			if (!isNonStandardPlaylist(getPlaylistInfo(props.side, context)?.plaid)) {
-				if (kara.plcid === id) {
+				if (kara?.plcid === id) {
 					kara.checked = !kara.checked;
 					if (kara.checked) {
 						checkedKarasNumber++;
@@ -669,39 +690,40 @@ function Playlist(props: IProps) {
 		const idsKaraPlaylist = listKara.map(a => a.plcid);
 		let url = '';
 		let dataApi;
+		const oppositePlaylist = getOppositePlaylistInfo(props.side, context);
 
-		if (!getOppositePlaylistInfo(props.side, context).flag_smart) {
+		if (!oppositePlaylist.flag_smart) {
 			if (!isNonStandardPlaylist(getPlaylistInfo(props.side, context)?.plaid) && !pos) {
 				url = 'copyKaraToPlaylist';
 				dataApi = {
-					plaid: getOppositePlaylistInfo(props.side, context).plaid,
+					plaid: oppositePlaylist.plaid,
 					plc_ids: idsKaraPlaylist,
 				};
 			} else {
 				url = 'addKaraToPlaylist';
 				if (pos) {
 					dataApi = {
-						plaid: getOppositePlaylistInfo(props.side, context).plaid,
+						plaid: oppositePlaylist.plaid,
 						requestedby: context.globalState.auth.data.username,
 						kids: idsKara,
 						pos: pos,
 					};
 				} else {
 					dataApi = {
-						plaid: getOppositePlaylistInfo(props.side, context).plaid,
+						plaid: oppositePlaylist.plaid,
 						requestedby: context.globalState.auth.data.username,
 						kids: idsKara,
 					};
 				}
 			}
-		} else if (getOppositePlaylistInfo(props.side, context).flag_smart) {
+		} else if (oppositePlaylist.flag_smart) {
 			url = 'addCriterias';
 			dataApi = {
 				criterias: idsKara.map(kid => {
-					return { type: 1001, value: kid, plaid: getOppositePlaylistInfo(props.side, context).plaid };
+					return { type: 1001, value: kid, plaid: oppositePlaylist.plaid };
 				}),
 			};
-		} else if (getOppositePlaylistInfo(props.side, context).plaid === nonStandardPlaylists.favorites) {
+		} else if (oppositePlaylist.plaid === nonStandardPlaylists.favorites) {
 			url = 'addFavorites';
 			dataApi = {
 				kids: idsKara,
@@ -734,12 +756,13 @@ function Playlist(props: IProps) {
 			displayMessage('warning', i18next.t('SELECT_KARAS_REQUIRED'));
 			return;
 		}
-		if (getPlaylistInfo(props.side, context)?.plaid === nonStandardPlaylists.favorites) {
+		const playlist = getPlaylistInfo(props.side, context);
+		if (playlist?.plaid === nonStandardPlaylists.favorites) {
 			url = 'deleteFavorites';
 			dataApi = {
 				kids: listKara.map(a => a.kid),
 			};
-		} else if (!getPlaylistInfo(props.side, context)?.flag_smart) {
+		} else if (!playlist?.flag_smart) {
 			const idsKaraPlaylist = listKara.map(a => a.plcid);
 			url = 'deleteKaraFromPlaylist';
 			dataApi = {
@@ -974,12 +997,14 @@ function Playlist(props: IProps) {
 		getSocket().on('publicPlaylistEmptied', publicPlaylistEmptied);
 		getSocket().on('KIDUpdated', KIDUpdated);
 		getSocket().on('playerStatus', updateCounters);
+		getSocket().on('databaseGenerated', updateLibrary);
 		return () => {
 			getSocket().off('favoritesUpdated', favoritesUpdated);
 			getSocket().off('playlistContentsUpdated', playlistContentsUpdatedFromServer);
 			getSocket().off('publicPlaylistEmptied', publicPlaylistEmptied);
 			getSocket().off('KIDUpdated', KIDUpdated);
 			getSocket().off('playerStatus', updateCounters);
+			getSocket().off('databaseGenerated', updateLibrary);
 		};
 	}, [
 		context.globalState.frontendContext.playlistInfoLeft,
@@ -1000,6 +1025,14 @@ function Playlist(props: IProps) {
 	const playlist = getPlaylistInfo(props.side, context);
 	return (
 		<div className="playlist--wrapper">
+			<style>
+				{`
+          .height-preserving-container:empty {
+            min-height: calc(var(--child-height));
+            box-sizing: border-box;
+          }
+      `}
+			</style>
 			{props.scope === 'admin' ? (
 				<PlaylistHeader
 					side={props.side}

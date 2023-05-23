@@ -117,14 +117,12 @@ WHERE pk_id_playlist = $1;
 
 export const sqlgetPlaylistContentsMicro = `
 SELECT pc.fk_kid AS kid,
-	pc.fk_login AS username,
 	pc.pk_id_plcontent AS plcid,
 	(CASE WHEN pl.fk_id_plcontent_playing = pc.pk_id_plcontent
 		THEN TRUE
 		ELSE FALSE
 	  END) AS flag_playing,
 	pc.pos AS pos,
-	pc.fk_id_playlist AS plaid,
 	pc.fk_login AS username,
 	pc.nickname AS nickname,
 	pc.flag_free AS flag_free,
@@ -242,6 +240,7 @@ SELECT ak.pk_kid AS kid,
 	ak.mediafile AS mediafile,
     ak.mediasize AS mediasize,
 	ak.subfile AS subfile,
+	ak.tags AS tags,
 	pc.pos AS pos,
 	(CASE WHEN pl.fk_id_plcontent_playing = pc.pk_id_plcontent
 		THEN TRUE
@@ -589,6 +588,7 @@ export const sqlselectKarasFromCriterias = {
 	INNER JOIN kara k ON k.download_status = '${value}'
 	WHERE c.type = 1006
 	AND   k.pk_kid NOT IN (select fk_kid from playlist_content where fk_id_playlist = $2)
+	AND   fk_id_playlist = $1
 	`,
 };
 

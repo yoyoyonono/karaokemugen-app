@@ -21,7 +21,7 @@ import { GitLogResult, GitStatusResult } from '../../../../src/types/git';
 import { Commit, ModifiedMedia } from '../../../../src/types/repo';
 import { commandBackend, getSocket } from '../../utils/socket';
 import { displayMessage } from '../../utils/tools';
-import { RepositoryMaintainerSettings } from '../../../../src/lib/types/repo';
+import { Repository } from '../../../../src/lib/types/repo';
 
 type CommitWithComment = Commit & { comment: string };
 
@@ -31,14 +31,14 @@ interface PendingPush {
 }
 
 interface Repo {
-	repo: RepositoryMaintainerSettings;
+	repo: Repository;
 	label: string;
 	conflicts: boolean;
 	stashes: GitLogResult;
 }
 
 async function getRepos(): Promise<Repo[]> {
-	const repos: RepositoryMaintainerSettings[] = await commandBackend('getRepos');
+	const repos: Repository[] = await commandBackend('getRepos');
 	return Promise.all(
 		repos
 			.filter(repo => repo.Online && repo.MaintainerMode && repo.Enabled && repo.Git?.URL)
@@ -62,7 +62,7 @@ async function getRepos(): Promise<Repo[]> {
 
 function StashList(props: {
 	stashList: GitLogResult;
-	repo: RepositoryMaintainerSettings;
+	repo: Repository;
 	loading: boolean;
 	setLoading: Dispatch<boolean>;
 	refreshRepo: () => void;
@@ -94,7 +94,7 @@ function StashList(props: {
 			<p>
 				<Trans
 					i18nKey="REPOSITORIES.GIT_STASH"
-					components={{ 1: <a href={props.repo.Git.URL} rel="noreferrer noopener" target="_blank" /> }}
+					components={{ 1: <a href={props.repo.Git.URL} rel="noreferrer noopener" /> }}
 				/>
 			</p>
 			<List
@@ -197,6 +197,8 @@ export default function Git() {
 		await commandBackend('pushCommits', pendingPush);
 		setShowPushModal(false);
 	}, [pendingPush, excludeList]);
+
+	const deselectAllCommits = () => setExcludeList([...Array(pendingPush.commits.commits.length).keys()]);
 
 	const toggleExclude = useCallback(
 		(e: CheckboxChangeEvent) => {
@@ -354,8 +356,9 @@ export default function Git() {
 			</Layout.Content>
 			<Modal
 				title={i18next.t('REPOSITORIES.GIT_CONFIRM_PUSH')}
-				visible={showPushModal}
+				open={showPushModal}
 				onCancel={() => {
+					setExcludeList([]);
 					setShowPushModal(false);
 					setLoading(false);
 					setPendingPush(null);
@@ -364,10 +367,17 @@ export default function Git() {
 				okText={i18next.t('REPOSITORIES.GIT_PUSH')}
 				cancelText={i18next.t('CANCEL')}
 			>
+				<Button
+					type="primary"
+					style={{ marginLeft: '1.7em', marginBottom: '1em' }}
+					onClick={deselectAllCommits}
+				>
+					{i18next.t('REPOSITORIES.DESELECT_ALL_COMMITS')}
+				</Button>
 				<ul>
 					{pendingPush?.commits?.commits?.map((commit, i) => (
 						<li key={commit.message}>
-							<Checkbox defaultChecked={true} name={commit.message} onChange={toggleExclude}>
+							<Checkbox checked={!excludeList.includes(i)} name={commit.message} onChange={toggleExclude}>
 								{typeof commit.comment === 'string' ? (
 									<Input
 										placeholder={i18next.t('REPOSITORIES.GIT_CUSTOM_MESSAGE')}
@@ -416,7 +426,7 @@ export default function Git() {
 					setShowActionsModal(false);
 					setGitStatus(null);
 				}}
-				visible={showActionsModal}
+				open={showActionsModal}
 			>
 				<p>{i18next.t('MODAL.GIT_DANGEROUS.DESCRIPTION')}</p>
 				{gitStatus?.files?.length > 0 ? (

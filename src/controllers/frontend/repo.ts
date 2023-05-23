@@ -1,7 +1,7 @@
 import { Socket } from 'socket.io';
 
-import { APIData } from '../../lib/types/api';
-import { SocketIOApp } from '../../lib/utils/ws';
+import { APIData } from '../../lib/types/api.js';
+import { SocketIOApp } from '../../lib/utils/ws.js';
 import {
 	addRepo,
 	checkGitRepoStatus,
@@ -18,6 +18,7 @@ import {
 	getRepos,
 	listRepoStashes,
 	movingMediaRepo,
+	openMediaFolder,
 	pushCommits,
 	removeRepo,
 	resetRepo,
@@ -26,10 +27,10 @@ import {
 	updateAllRepos,
 	updateGitRepo,
 	uploadMedia,
-} from '../../services/repo';
-import { syncTagsFromRepo } from '../../services/tag';
-import { APIMessage, errMessage } from '../common';
-import { runChecklist } from '../middlewares';
+} from '../../services/repo.js';
+import { syncTagsFromRepo } from '../../services/tag.js';
+import { APIMessage, errMessage } from '../common.js';
+import { runChecklist } from '../middlewares.js';
 
 export default function repoController(router: SocketIOApp) {
 	router.route('getRepos', async (socket: Socket, req: APIData) => {
@@ -146,6 +147,14 @@ export default function repoController(router: SocketIOApp) {
 			const code = 'REPO_COPY_LYRICS_ERROR';
 			errMessage(code, err);
 			throw { code: err?.code || 500, message: APIMessage(code) };
+		}
+	});
+	router.route('openMediaFolder', async (socket: Socket, req: APIData) => {
+		await runChecklist(socket, req, 'admin');
+		try {
+			await openMediaFolder(req.body.name);
+		} catch (err) {
+			throw { code: 500, msg: err };
 		}
 	});
 	router.route('deleteAllRepoMedias', async (socket: Socket, req: APIData) => {

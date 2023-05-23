@@ -1,13 +1,13 @@
 import { pg as yesql } from 'yesql';
 
-import { buildClauses, buildTypeClauses, copyFromData, db, transaction } from '../lib/dao/database';
-import { WhereClause } from '../lib/types/database';
-import { DBKara, DBKaraBase, DBYear, KaraOldData } from '../lib/types/database/kara';
-import { Kara, KaraFileV4, KaraParams } from '../lib/types/kara';
-import { getConfig } from '../lib/utils/config';
-import { getTagTypeName, tagTypes } from '../lib/utils/constants';
-import { now } from '../lib/utils/date';
-import { getState } from '../utils/state';
+import { buildClauses, buildTypeClauses, copyFromData, db, transaction } from '../lib/dao/database.js';
+import { WhereClause } from '../lib/types/database.js';
+import { DBKara, DBKaraBase, DBYear, KaraOldData } from '../lib/types/database/kara.js';
+import { Kara, KaraFileV4, KaraParams } from '../lib/types/kara.js';
+import { getConfig } from '../lib/utils/config.js';
+import { getTagTypeName, tagTypes } from '../lib/utils/constants.js';
+import { now } from '../lib/utils/date.js';
+import { getState } from '../utils/state.js';
 import {
 	sqladdRequested,
 	sqladdViewcount,
@@ -20,7 +20,7 @@ import {
 	sqlinsertKara,
 	sqlselectAllKIDs,
 	sqlTruncateOnlineRequested,
-} from './sql/kara';
+} from './sql/kara.js';
 
 export async function selectYears(): Promise<DBYear[]> {
 	const collectionsClauses = [];
@@ -38,7 +38,7 @@ export async function insertKara(kara: KaraFileV4): Promise<KaraOldData> {
 		yesql(sqlinsertKara)({
 			karafile: kara.meta.karaFile,
 			mediafile: kara.medias[0].filename,
-			subfile: kara.medias[0].lyrics[0]?.filename || null,
+			subfile: kara.medias[0].lyrics?.[0]?.filename || null,
 			titles: kara.data.titles,
 			titles_aliases: JSON.stringify(kara.data.titles_aliases || []),
 			titles_default_language: kara.data.titles_default_language || 'eng',
@@ -169,6 +169,15 @@ export async function selectAllKaras(params: KaraParams): Promise<DBKara[]> {
 		whereClauses += ' AND uf.fk_login = :username_favs';
 		joinClauses.push(' LEFT OUTER JOIN favorites AS uf ON uf.fk_login = :username_favs AND uf.fk_kid = ak.pk_kid ');
 		yesqlPayload.params.username_favs = params.userFavorites;
+	}
+	if (params.userAnimeList) {
+		withCTEs.push(
+			'anime_list_infos AS (SELECT anime_list_ids, anime_list_to_fetch FROM users where users.pk_login = :username_anime_list)'
+		);
+		whereClauses += ` AND ((SELECT anime_list_to_fetch FROM anime_list_infos) = 'myanimelist' AND myanimelist_ids::int[] && (SELECT anime_list_ids FROM anime_list_infos)
+		OR (SELECT anime_list_to_fetch FROM anime_list_infos) = 'anilist' AND anilist_ids::int[] && (SELECT anime_list_ids FROM anime_list_infos)
+		OR (SELECT anime_list_to_fetch FROM anime_list_infos) = 'kitsu' AND kitsu_ids::int[] && (SELECT anime_list_ids FROM anime_list_infos))`;
+		yesqlPayload.params.username_anime_list = params.userAnimeList;
 	}
 	const collectionClauses = [];
 	if (!params.ignoreCollections) {

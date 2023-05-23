@@ -3,17 +3,17 @@ import { createReadStream } from 'fs-extra';
 import { resolve } from 'path';
 import { Stream } from 'stream';
 
-import { OldJWTToken, TokenResponseWithRoles, User } from '../lib/types/user';
-import { resolvedPath } from '../lib/utils/config';
-import { writeStreamToFile } from '../lib/utils/files';
-import HTTP from '../lib/utils/http';
-import logger from '../lib/utils/logger';
-import { emitWS } from '../lib/utils/ws';
-import { SingleToken, Tokens } from '../types/user';
-import sentry from '../utils/sentry';
-import { startSub, stopSub } from '../utils/userPubSub';
-import { convertToRemoteFavorites } from './favorites';
-import { checkPassword, createJwtToken, createUser, editUser, getUser } from './user';
+import { OldJWTToken, TokenResponseWithRoles, User } from '../lib/types/user.js';
+import { resolvedPath } from '../lib/utils/config.js';
+import { writeStreamToFile } from '../lib/utils/files.js';
+import HTTP from '../lib/utils/http.js';
+import logger from '../lib/utils/logger.js';
+import { emitWS } from '../lib/utils/ws.js';
+import { SingleToken, Tokens } from '../types/user.js';
+import sentry from '../utils/sentry.js';
+import { startSub, stopSub } from '../utils/userPubSub.js';
+import { convertToRemoteFavorites } from './favorites.js';
+import { checkPassword, createJwtToken, createUser, editUser, getUser } from './user.js';
 
 const service = 'RemoteUser';
 
@@ -316,5 +316,23 @@ export async function convertToRemoteUser(token: OldJWTToken, password: string, 
 	} catch (err) {
 		if (err.msg !== 'USER_ALREADY_EXISTS_ONLINE' && err?.details?.message?.code !== 'ENOTFOUND') sentry.error(err);
 		throw { msg: err.msg || 'USER_CONVERT_ERROR', details: err };
+	}
+}
+
+export async function refreshAnimeList(username: string, token: string): Promise<void> {
+	try {
+		const instance = username.split('@')[1];
+		await HTTP.post(`https://${instance}/api/myaccount/myanime`, null, {
+			headers: {
+				authorization: token,
+			},
+		});
+	} catch (err) {
+		logger.error(`Unable to refetch animeList for ${username}`, {
+			service,
+			obj: err,
+		});
+		sentry.error(err);
+		throw err;
 	}
 }

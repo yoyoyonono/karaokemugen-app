@@ -5,24 +5,24 @@ import i18next from 'i18next';
 import { resolve } from 'path';
 import { getPortPromise } from 'portfinder';
 
-import { win } from '../electron/electron';
-import { errorStep, initStep } from '../electron/electronLogger';
-import { PathType } from '../lib/types/config';
-import { configureLocale, getConfig, resolvedPath, setConfig } from '../lib/utils/config';
-import { asyncCheckOrMkdir, fileExists } from '../lib/utils/files';
-import logger, { configureLogger } from '../lib/utils/logger';
-import { resetSecurityCode } from '../services/auth';
-import { backgroundTypes } from '../services/backgrounds';
-import { editRepo } from '../services/repo';
-import { Config } from '../types/config';
-import { initConfig } from '../utils/config';
-import { logo } from '../utils/constants';
-import { defaultRepositories } from '../utils/defaultSettings';
-import { removeOldTempFolder } from '../utils/hokutoNoCode';
-import Sentry from '../utils/sentry';
-import { getState, setState } from '../utils/state';
-import { parseArgs, setupFromCommandLineArgs } from './args';
-import { exit, initEngine } from './engine';
+import { win } from '../electron/electron.js';
+import { errorStep, initStep } from '../electron/electronLogger.js';
+import { PathType } from '../lib/types/config.js';
+import { configureLocale, getConfig, resolvedPath, setConfig } from '../lib/utils/config.js';
+import { asyncCheckOrMkdir, fileExists } from '../lib/utils/files.js';
+import logger, { configureLogger, profile } from '../lib/utils/logger.js';
+import { resetSecurityCode } from '../services/auth.js';
+import { backgroundTypes } from '../services/backgrounds.js';
+import { editRepo } from '../services/repo.js';
+import { Config } from '../types/config.js';
+import { initConfig } from '../utils/config.js';
+import { logo } from '../utils/constants.js';
+import { defaultRepositories } from '../utils/defaultSettings.js';
+import { updateKaraMoeRepoConfig } from '../utils/hokutoNoCode.js';
+import Sentry from '../utils/sentry.js';
+import { getState, setState } from '../utils/state.js';
+import { parseArgs, setupFromCommandLineArgs } from './args.js';
+import { exit, initEngine } from './engine.js';
 
 const service = 'Init';
 
@@ -51,8 +51,9 @@ async function getAppCommitSHA(): Promise<string> {
 /** First step of init : locale, config, logger, state... */
 export async function preInit() {
 	const state = getState();
+	await configureLogger(argv.opts().verbose || app?.commandLine.hasSwitch('verbose'), true);
+	profile('preInit');
 	await configureLocale();
-	await configureLogger(state.dataPath, argv.opts().verbose || app?.commandLine.hasSwitch('verbose'), true);
 	resetSecurityCode();
 	setState({ os: process.platform });
 	setupFromCommandLineArgs(argv, app ? app.commandLine : null);
@@ -67,21 +68,21 @@ export async function preInit() {
 	logger.debug(`Locale : ${state.defaultLocale}`, { service });
 	logger.debug(`OS : ${process.platform}`, { service });
 	await initConfig(argv);
-	// Using system temp directory instead of our own.
-	// This is kind of an ugly fix for issue #1252 but since temp is stored in config and not state and we're *always* using the electron runtime, this seems like a good solution.
-	setConfig({ System: { Path: { Temp: app.getPath('temp') } } });
-	removeOldTempFolder();
 	// Set default repositories on First Run only
 	const conf = getConfig();
-	if (conf.App.FirstRun && conf.System.Repositories.length === 0) {
+	if (conf.System.Repositories.length === 0) {
 		setConfig({ System: { Repositories: [...defaultRepositories] } });
+	} else {
+		updateKaraMoeRepoConfig();
 	}
 	// Test if network ports are available
 	await verifyOpenPort(getConfig().System.FrontendPort, getConfig().App.FirstRun);
+	profile('preInit');
 }
 
 /** Initialize folders, paths and start the engine */
 export async function init() {
+	profile('Init');
 	initStep(i18next.t('INIT_INIT'));
 	// Set version number
 	const sha = await getAppCommitSHA();
@@ -94,6 +95,7 @@ export async function init() {
 
 	// Checking paths, create them if needed.
 	await checkPaths(getConfig());
+	profile('copyBackgrounds');
 	// Copy the input.conf file to modify mpv's default behaviour, namely with mouse scroll wheel
 	const tempInput = resolve(resolvedPath('Temp'), 'input.conf');
 	logger.debug(`Copying input.conf to ${tempInput}`, { service });
@@ -106,7 +108,7 @@ export async function init() {
 	// Copy avatar blank.png if it doesn't exist to the avatar path
 	logger.debug(`Copying blank.png to ${resolvedPath('Avatars')}`, { service });
 	await copy(resolve(state.resourcePath, 'assets/blank.png'), resolve(resolvedPath('Avatars'), 'blank.png'));
-
+	profile('copyBackgrounds');
 	// Gentlemen, start your engines.
 	try {
 		await initEngine();
@@ -117,17 +119,21 @@ export async function init() {
 		errorStep(i18next.t('ERROR_UNKNOWN'));
 		if (argv.opts().cli) exit(1);
 	}
+	profile('Init');
 }
 
 /* Checking if application paths exist. * */
 async function checkPaths(config: Config) {
 	try {
+		profile('checkPaths');
+		await remove(resolvedPath('Temp')).catch();
 		await remove(resolvedPath('BundledBackgrounds')).catch();
 		await remove(resolvedPath('Import')).catch();
 		// Checking paths
 		const checks = [];
 		const dataPath = getState().dataPath;
-		checks.push(asyncCheckOrMkdir(resolve(dataPath, 'logs/')));
+		checks.push(asyncCheckOrMkdir(resolvedPath('Temp')));
+		checks.push(asyncCheckOrMkdir(resolvedPath('Logs')));
 		for (const repo of config.System.Repositories) {
 			try {
 				checks.push(asyncCheckOrMkdir(resolve(dataPath, repo.BaseDir, 'karaokes')));
@@ -135,7 +141,18 @@ async function checkPaths(config: Config) {
 				checks.push(asyncCheckOrMkdir(resolve(dataPath, repo.BaseDir, 'tags')));
 				checks.push(asyncCheckOrMkdir(resolve(dataPath, repo.BaseDir, 'hooks')));
 				for (const path of repo.Path.Medias) {
-					await asyncCheckOrMkdir(resolve(dataPath, path));
+					try {
+						const mediaPath = resolve(dataPath, path);
+						await asyncCheckOrMkdir(mediaPath);
+					} catch (err) {
+						logger.warn(`Media path ${path} for ${repo.Name} is not accessible`, { service, obj: err });
+						if (path === repo.Path.Medias[0]) {
+							logger.error(`Primary media path for ${repo.Name} is unreachable, disabling...`, {
+								service,
+							});
+							throw err;
+						}
+					}
 				}
 			} catch (err) {
 				// If there's a problem with these folders, let's disable the repository.
@@ -160,11 +177,14 @@ async function checkPaths(config: Config) {
 	} catch (err) {
 		errorStep(i18next.t('ERROR_INIT_PATHS'));
 		throw err;
+	} finally {
+		profile('checkPaths');
 	}
 }
 
 async function verifyOpenPort(portConfig: number, firstRun: boolean) {
 	try {
+		profile('verifyOpenPort');
 		const port = await getPortPromise({
 			port: portConfig,
 			stopPort: 7331,
@@ -179,5 +199,7 @@ async function verifyOpenPort(portConfig: number, firstRun: boolean) {
 		}
 	} catch (err) {
 		throw new Error('Failed to find a free port to use');
+	} finally {
+		profile('verifyOpenPort');
 	}
 }

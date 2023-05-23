@@ -1,5 +1,5 @@
-import { Media } from './medias';
-import { CurrentSong } from './playlist';
+import { Media } from './medias.js';
+import { CurrentSong } from './playlist.js';
 
 export type PlayingSource = 'currentPlaylist' | 'library' | 'favorites' | 'myAnime';
 export interface PlayerState {
@@ -26,6 +26,7 @@ export interface PlayerState {
 	// Experimental modifiers
 	pitch?: number;
 	speed?: number;
+	blurVideo?: boolean;
 }
 
 export interface mpvStatus {

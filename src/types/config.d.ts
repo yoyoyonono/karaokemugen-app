@@ -1,9 +1,7 @@
-import { PathType } from '../lib/types/config';
-import { RepositoryMaintainerSettings, RepositoryUserSettings } from '../lib/types/repo';
-import { MediaType } from './medias';
-import { MpvHardwareDecodingOptions } from './mpvIPC';
-
-export type Repository = RepositoryUserSettings | RepositoryMaintainerSettings;
+import { PathType } from '../lib/types/config.js';
+import { Repository } from '../lib/types/repo.js';
+import { MediaType } from './medias.js';
+import { MpvHardwareDecodingOptions } from './mpvIPC.js';
 
 export interface Config {
 	App: {
@@ -118,6 +116,7 @@ export interface Config {
 		KeyboardMediaShortcuts?: boolean;
 		Volume?: number;
 		LiveComments?: boolean;
+		BlurVideoOnWarningTag?: boolean;
 	};
 	Playlist: {
 		AllowDuplicates?: boolean;
@@ -194,5 +193,8 @@ export interface Config {
 		Path: {
 			[p in PathType]?: string;
 		};
+	};
+	Maintainer: {
+		ApplyLyricsCleanupOnKaraSave: boolean; // Temporary setting until there's an unified way of defining base rules (media formats, lyrics cleanup)
 	};
 }

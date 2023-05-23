@@ -17,19 +17,24 @@ function SetupPageStats() {
 
 	const updateStats = async () => {
 		if (errorTracking !== undefined && stats !== undefined && userStats !== undefined) {
-			await commandBackend('updateSettings', {
-				setting: {
-					Online: {
-						Stats: stats,
-						ErrorTracking: errorTracking,
+			try {
+				await commandBackend('updateSettings', {
+					setting: {
+						Online: {
+							Stats: stats,
+							ErrorTracking: errorTracking,
+						},
 					},
-				},
-			});
-			const user = context?.globalState.settings.data.user;
-			user.flag_sendstats = userStats;
-			await commandBackend('editMyAccount', user);
-			setError(undefined);
-			navigate('/setup/loading');
+				});
+				const user = context?.globalState.settings.data.user;
+				user.flag_sendstats = userStats;
+				await commandBackend('editMyAccount', user);
+				setError(undefined);
+				navigate('/setup/loading');
+			} catch (err: any) {
+				const error = err?.message ? i18next.t(`ERROR_CODES.${err.message}`) : JSON.stringify(err);
+				setError(error);
+			}
 		}
 	};
 

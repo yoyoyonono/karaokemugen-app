@@ -141,7 +141,9 @@ export default function Background() {
 					showIcon
 					message={
 						<ul>
-							{i18next.t<string[]>('BACKGROUNDS_MGMT.INFO', { returnObjects: true })?.map((info, i) => (
+							{(
+								i18next.t<string>('BACKGROUNDS_MGMT.INFO', { returnObjects: true }) as any as string[]
+							)?.map((info, i) => (
 								<li key={i}>{info}</li>
 							))}
 						</ul>
@@ -157,7 +159,7 @@ export default function Background() {
 				<Table dataSource={bgList?.music} columns={columns} rowKey="file" />
 				<Modal
 					title={i18next.t('BACKGROUNDS_MGMT.NEW')}
-					visible={addModal}
+					open={addModal}
 					onOk={addBg}
 					okText={i18next.t('BACKGROUNDS_MGMT.SAVE')}
 					onCancel={closeModal}

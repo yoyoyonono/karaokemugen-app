@@ -3,23 +3,22 @@ import { promises as fs } from 'fs';
 import i18next from 'i18next';
 import { resolve } from 'path';
 
-import { exit, welcomeToYoukousoKaraokeMugen } from '../components/engine';
-import { init, preInit } from '../components/init';
-import { selectUsers } from '../dao/user';
-import { getConfig, resolvedPath, setConfig } from '../lib/utils/config';
-import logger from '../lib/utils/logger';
-import { testJSON } from '../lib/utils/validators';
-import { emitWS } from '../lib/utils/ws';
-import { importFavorites } from '../services/favorites';
-import { importPlaylist, playlistImported } from '../services/playlist';
-import { addRepo, getRepo } from '../services/repo';
-import { generateAdminPassword } from '../services/user';
-import { MenuLayout } from '../types/electron';
-import { detectKMFileTypes } from '../utils/files';
-import { getState, setState } from '../utils/state';
-import { tip } from '../utils/tips';
-import { emitIPC } from './electronLogger';
-import { createMenu } from './electronMenu';
+import { exit, welcomeToYoukousoKaraokeMugen } from '../components/engine.js';
+import { init, preInit } from '../components/init.js';
+import { selectUsers } from '../dao/user.js';
+import { getConfig, resolvedPath, setConfig } from '../lib/utils/config.js';
+import logger from '../lib/utils/logger.js';
+import { emitWS } from '../lib/utils/ws.js';
+import { importFavorites } from '../services/favorites.js';
+import { importPlaylist, playlistImported } from '../services/playlist.js';
+import { addRepo, getRepo } from '../services/repo.js';
+import { generateAdminPassword } from '../services/user.js';
+import { MenuLayout } from '../types/electron.js';
+import { detectKMFileTypes } from '../utils/files.js';
+import { getState, setState } from '../utils/state.js';
+import { tip } from '../utils/tips.js';
+import { emitIPC } from './electronLogger.js';
+import { createMenu } from './electronMenu.js';
 
 const service = 'Electron';
 
@@ -226,6 +225,7 @@ export async function handleProtocol(args: string[]) {
 
 export async function handleFile(file: string, username?: string, onlineToken?: string) {
 	try {
+		if (!file) return;
 		logger.info(`Received file path ${file}`, { service });
 		if (!getState().ready) return;
 		if (!username) {
@@ -239,11 +239,13 @@ export async function handleFile(file: string, username?: string, onlineToken?: 
 			}
 		}
 		const rawData = await fs.readFile(resolve(file), 'utf-8');
-		if (!testJSON(rawData)) {
+		let data;
+		try {
+			data = JSON.parse(rawData);
+		} catch (err) {
 			logger.debug(`File ${file} is not JSON, ignoring`, { service });
 			return;
 		}
-		const data = JSON.parse(rawData);
 		const KMFileType = detectKMFileTypes(data);
 		const url = `http://localhost:${getConfig().System.FrontendPort}/admin`;
 		switch (KMFileType) {
@@ -293,12 +295,13 @@ async function createWindow() {
 		height: 900,
 		backgroundColor: '#36393f',
 		show: false,
-		icon: resolve(state.resourcePath, 'build/icon.png'),
+		icon: resolve(state.resourcePath, 'build/icon1024.png'),
 		webPreferences: {
 			nodeIntegration: true,
 			contextIsolation: false,
 		},
 	});
+	win.webContents.session.clearCache();
 	// and load the index.html of the app.
 	if (initDone) {
 		win?.loadURL(await welcomeToYoukousoKaraokeMugen());
@@ -311,7 +314,7 @@ async function createWindow() {
 	});
 	win.webContents.setWindowOpenHandler(handler => {
 		openLink(handler.url);
-		return { action: 'allow' };
+		return { action: 'deny' };
 	});
 	win.webContents.on('will-navigate', (event, url) => {
 		event.preventDefault();
@@ -327,7 +330,7 @@ async function createWindow() {
 }
 
 function openLink(url: string) {
-	url.includes('//localhost') ? win?.loadURL(url) : shell.openPath(url);
+	url.includes('//localhost') ? win?.loadURL(url) : shell.openExternal(url);
 }
 
 export function focusWindow() {
@@ -363,7 +366,7 @@ export async function updateChibiPlayerWindow(show: boolean) {
 				nodeIntegration: true,
 				contextIsolation: false,
 			},
-			icon: resolve(state.resourcePath, 'build/icon.png'),
+			icon: resolve(state.resourcePath, 'build/icon1024.png'),
 		});
 		const port = state.frontendPort;
 		chibiPlayerWindow.once('ready-to-show', () => {
@@ -410,7 +413,7 @@ export async function updateChibiPlaylistWindow(show: boolean) {
 				contextIsolation: false,
 			},
 			resizable: true,
-			icon: resolve(state.resourcePath, 'build/icon.png'),
+			icon: resolve(state.resourcePath, 'build/icon1024.png'),
 		});
 		const port = state.frontendPort;
 		chibiPlaylistWindow.once('ready-to-show', () => {
@@ -461,7 +464,7 @@ export async function showAbout() {
 				contextIsolation: false,
 			},
 			resizable: false,
-			icon: resolve(state.resourcePath, 'build/icon.png'),
+			icon: resolve(state.resourcePath, 'build/icon1024.png'),
 			title: i18next.t('ABOUT.TITLE'),
 		});
 		aboutWindow.on('ready-to-show', () => {

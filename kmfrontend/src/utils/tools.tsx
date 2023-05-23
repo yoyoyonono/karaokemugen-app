@@ -87,7 +87,7 @@ export function dotify(obj: any) {
 }
 
 /* format seconds to Hour Minute Second */
-export function secondsTimeSpanToHMS(s: number, format: string) {
+export function secondsTimeSpanToHMS(s: number, format: '24h' | 'dhm' | 'ms' | 'hm' | 'mm:ss') {
 	const d = Math.floor(s / (3600 * 24));
 	if (format === '24h' || format === 'dhm') {
 		s -= d * 3600 * 24;
@@ -126,7 +126,7 @@ const chibis = new Map<TypeOptions, ReactNode>([
 		<picture>
 			<source type="image/webp" srcSet={nanamiCryWebP} />
 			<source type="image/png" srcSet={nanamiCryPNG} />
-			<img src={nanamiCryPNG} alt="Nanami is crying :c" />
+			<img src={nanamiCryPNG} alt="Nanami is crying :c" draggable="false" />
 		</picture>,
 	],
 	[
@@ -134,7 +134,7 @@ const chibis = new Map<TypeOptions, ReactNode>([
 		<picture>
 			<source type="image/webp" srcSet={nanamiThinkWebP} />
 			<source type="image/png" srcSet={nanamiThinkPng} />
-			<img src={nanamiThinkPng} alt="Nanami is confused :/" />
+			<img src={nanamiThinkPng} alt="Nanami is confused :/" draggable="false" />
 		</picture>,
 	],
 	[
@@ -142,7 +142,7 @@ const chibis = new Map<TypeOptions, ReactNode>([
 		<picture>
 			<source type="image/webp" srcSet={nanamiUmuWebP} />
 			<source type="image/png" srcSet={nanamiUmuPng} />
-			<img src={nanamiUmuPng} alt="Nanami is UmU" />
+			<img src={nanamiUmuPng} alt="Nanami is UmU" draggable="false" />
 		</picture>,
 	],
 ]);
@@ -193,8 +193,9 @@ export function callModal(
 }
 
 export const nonStandardPlaylists = {
-	favorites: 'efe3687f-9e0b-49fc-a5cc-89df25a17e94', // -5
-	library: '524de79d-10b2-49dc-90b1-597626d0cee8', // -1
+	favorites: 'efe3687f-9e0b-49fc-a5cc-89df25a17e94',
+	library: '524de79d-10b2-49dc-90b1-597626d0cee8',
+	animelist: 'f3f1d49c-b701-4ac7-8209-cbcaa64c2985',
 };
 
 export function isNonStandardPlaylist(plaid: string) {

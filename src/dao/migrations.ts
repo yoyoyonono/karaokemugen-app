@@ -1,42 +1,31 @@
+import { profile } from 'console';
 import { dialog } from 'electron';
 import i18next from 'i18next';
 import Postgrator from 'postgrator';
 
-import { win } from '../electron/electron';
-import { refreshTags } from '../lib/dao/tag';
-import { setConfig } from '../lib/utils/config';
-import logger from '../lib/utils/logger';
-import { displayInfo } from '../services/player';
-import { editRepo, getRepo } from '../services/repo';
-import { migrateBLWLToSmartPLs } from '../utils/hokutoNoCode';
-import Sentry from '../utils/sentry';
-import { getState } from '../utils/state';
-import { compareKarasChecksum, generateDB } from './database';
+import { win } from '../electron/electron.js';
+import { refreshTags } from '../lib/dao/tag.js';
+import { setConfig } from '../lib/utils/config.js';
+import logger from '../lib/utils/logger.js';
+import { displayInfo } from '../services/player.js';
+import { editRepo, getRepo } from '../services/repo.js';
+import { migrateBLWLToSmartPLs } from '../utils/hokutoNoCode.js';
+import Sentry from '../utils/sentry.js';
+import { getState } from '../utils/state.js';
+import { compareKarasChecksum, generateDB } from './database.js';
 
 const service = 'DBMigration';
 
 export async function postMigrationTasks(migrations: Postgrator.Migration[], didGeneration: boolean) {
+	profile('postMigrationTasks');
 	let doGenerate = false;
 	// Add code here to do stuff when migrations occur
 	for (const migration of migrations) {
 		let breakFromLoop = false;
 		switch (migration.name) {
-			// 4.0 migrations
 			case 'initial':
 				// Initial migration will likely trigger generation anyway.
 				breakFromLoop = true;
-				break;
-			case 'addPlaylistTriggers':
-				await dialog.showMessageBox(win, {
-					type: 'info',
-					title: i18next.t('NO_KARAOKE_MODE_ANYMORE.TITLE'),
-					message: i18next.t('NO_KARAOKE_MODE_ANYMORE.MESSAGE'),
-				});
-				break;
-			// 5.0 migrations
-			case 'addPriorityToTags':
-				if (!didGeneration) doGenerate = true;
-				logger.info('Migration adding priority to tags detected, forcing generation', { service });
 				break;
 			// 6.0 migrations
 			case 'addTitlesToKara':
@@ -92,4 +81,5 @@ export async function postMigrationTasks(migrations: Postgrator.Migration[], did
 		if (breakFromLoop) break;
 	}
 	if (doGenerate) await Promise.all([generateDB(), compareKarasChecksum()]);
+	profile('postMigrationTasks');
 }

@@ -1,6 +1,7 @@
-import { RemoteFailure, RemoteSuccess } from '../lib/types/remote';
-import { BinariesConfig } from './binChecker';
-import { PlayerState, PlayingSource } from './player';
+import { RemoteFailure, RemoteSuccess } from '../lib/types/remote.js';
+import { BinariesConfig } from './binChecker.js';
+import { PlayerState, PlayingSource } from './player.js';
+import { CurrentSong } from './playlist.js';
 
 export interface Version {
 	number?: string;
@@ -118,6 +119,7 @@ export interface PublicState {
 
 export interface PublicPlayerState extends PlayerState {
 	stopping: boolean;
+	currentSong?: CurrentSong;
 	currentRequester: string;
 	currentSessionID: string;
 	defaultLocale: string;

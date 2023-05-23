@@ -3,20 +3,20 @@ import { merge } from 'lodash';
 
 import packageJSON from '../../package.json';
 // KM Imports
-import { getConfig } from '../lib/utils/config';
-import { supportedFiles } from '../lib/utils/constants';
-import { emit } from '../lib/utils/pubsub';
-import { emitWS } from '../lib/utils/ws';
+import { getConfig } from '../lib/utils/config.js';
+import { supportedFiles } from '../lib/utils/constants.js';
+import { emit } from '../lib/utils/pubsub.js';
+import { emitWS } from '../lib/utils/ws.js';
 // Types
-import { PublicPlayerState, PublicState, State } from '../types/state';
+import { PublicPlayerState, PublicState, State } from '../types/state.js';
 
 // Internal settings
 let state: State = {
 	playerNeedsRestart: false,
 	currentRequester: null,
 	stopping: false,
-	counterToJingle: 0,
-	counterToSponsor: 0,
+	counterToJingle: 1,
+	counterToSponsor: 1,
 	introPlayed: false,
 	introSponsorPlayed: false,
 	encorePlayed: false,
@@ -79,6 +79,7 @@ function emitPlayerState(part: Partial<State>) {
 	]);
 	const toEmit: Partial<PublicPlayerState> = { ...part.player };
 	for (const key of [
+		'currentSong',
 		'currentSessionID',
 		'currentRequester',
 		'stopping',
@@ -136,7 +137,7 @@ export function getPublicState(admin: boolean): PublicState {
 /** Set one or more settings in app state */
 export function setState(part: Partial<State>) {
 	// lodash merges must not merge karas info.
-	if (part?.player?.currentSong && part?.player?.currentSong?.kid !== state?.player?.currentSong?.kid) {
+	if (part?.player?.currentSong && part?.player?.currentSong.kid !== state?.player?.currentSong?.kid) {
 		state.player.currentSong = null;
 	}
 	state = merge(state, part);

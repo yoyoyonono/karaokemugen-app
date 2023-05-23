@@ -1,9 +1,12 @@
 // Utils
+import { copyFile } from 'node:fs/promises';
+
 import i18n from 'i18next';
 import { shuffle } from 'lodash';
+import { join } from 'path/posix';
 
-import { APIMessage } from '../controllers/common';
-import { insertKaraToRequests } from '../dao/kara';
+import { APIMessage } from '../controllers/common.js';
+import { insertKaraToRequests } from '../dao/kara.js';
 // DAO
 import {
 	deleteKaraFromPlaylist,
@@ -38,31 +41,33 @@ import {
 	updatePLCRefused,
 	updatePLCVisible,
 	updatePos,
-} from '../dao/playlist';
-import { formatKaraList } from '../lib/services/kara';
-import { PLImportConstraints } from '../lib/services/playlist';
-import { DBKara, DBKaraBase } from '../lib/types/database/kara';
-import { DBPL, DBPLC, DBPLCBase, PLCInsert } from '../lib/types/database/playlist';
-import { PlaylistExport, PLCEditParams } from '../lib/types/playlist';
-import { OldJWTToken, User } from '../lib/types/user';
-import { getConfig } from '../lib/utils/config';
-import { date, now, time as time2 } from '../lib/utils/date';
-import logger, { profile } from '../lib/utils/logger';
-import Task from '../lib/utils/taskManager';
-import { check } from '../lib/utils/validators';
-import { emitWS } from '../lib/utils/ws';
-import { AutoMixParams, AutoMixPlaylistInfo, PlaylistLimit } from '../types/favorites';
-import { AddKaraParams, CurrentSong, Pos, ShuffleMethods } from '../types/playlist';
-import { adminToken } from '../utils/constants';
-import sentry from '../utils/sentry';
-import { getState, setState } from '../utils/state';
-import { writeStreamFiles } from '../utils/streamerFiles';
-import { checkMediaAndDownload } from './download';
-import { getAllFavorites } from './favorites';
-import { getKaras, getKarasMicro } from './kara';
-import { getSongInfosForPlayer } from './karaEngine';
-import { playPlayer } from './player';
-import { getRepos } from './repo';
+} from '../dao/playlist.js';
+import { formatKaraList } from '../lib/services/kara.js';
+import { PLImportConstraints } from '../lib/services/playlist.js';
+import { DBKara, DBKaraBase } from '../lib/types/database/kara.js';
+import { DBPL, DBPLC, DBPLCBase, PLCInsert } from '../lib/types/database/playlist.js';
+import { PlaylistExport, PLCEditParams } from '../lib/types/playlist.js';
+import { OldJWTToken, User } from '../lib/types/user.js';
+import { getConfig, resolvedPathRepos } from '../lib/utils/config.js';
+import { date, now, time as time2 } from '../lib/utils/date.js';
+import { resolveFileInDirs } from '../lib/utils/files.js';
+import logger, { profile } from '../lib/utils/logger.js';
+import { generateM3uFileFromPlaylist } from '../lib/utils/m3u.js';
+import Task from '../lib/utils/taskManager.js';
+import { check } from '../lib/utils/validators.js';
+import { emitWS } from '../lib/utils/ws.js';
+import { AutoMixParams, AutoMixPlaylistInfo, PlaylistLimit } from '../types/favorites.js';
+import { AddKaraParams, CurrentSong, Pos, ShuffleMethods } from '../types/playlist.js';
+import { adminToken } from '../utils/constants.js';
+import sentry from '../utils/sentry.js';
+import { getState, setState } from '../utils/state.js';
+import { writeStreamFiles } from '../utils/streamerFiles.js';
+import { checkMediaAndDownload } from './download.js';
+import { getAllFavorites } from './favorites.js';
+import { getKaras, getKarasMicro } from './kara.js';
+import { getSongInfosForPlayer } from './karaEngine.js';
+import { playPlayer } from './player.js';
+import { getRepos } from './repo.js';
 import {
 	addCriteria,
 	blacklistHook,
@@ -70,13 +75,14 @@ import {
 	updateAllSmartPlaylists,
 	updateSmartPlaylist,
 	whitelistHook,
-} from './smartPlaylist';
-import { getUser, updateSongsLeft } from './user';
+} from './smartPlaylist.js';
+import { getUser, updateSongsLeft } from './user.js';
 
 const service = 'Playlist';
 
 /** Test if basic playlists exist */
 export async function testPlaylists() {
+	profile('testPlaylists');
 	const pls = await getPlaylists(adminToken);
 	const currentPL = pls.find(pl => pl.flag_current);
 	const publicPL = pls.find(pl => pl.flag_public);
@@ -158,6 +164,7 @@ export async function testPlaylists() {
 		});
 		logger.debug('Initial blacklist playlist created', { service });
 	}
+	profile('testPlaylists');
 }
 
 /** Getting position of the currently playing karaoke in a playlist */
@@ -313,6 +320,73 @@ export async function emptyPlaylist(plaid: string): Promise<string> {
 	}
 }
 
+/** Exports all playlist media files to a specified directory */
+export async function exportPlaylistMedia(
+	plaid: string,
+	exportDir: string
+): Promise<Array<DBPLC & { exportSuccessful: boolean }>> {
+	const plMini = await getPlaylistContentsMini(plaid);
+	if (!plMini) throw { code: 404, msg: 'Playlist unknown' };
+	const task = new Task({
+		text: 'EXPORTING_PLAYLIST_MEDIA',
+		total: plMini.length,
+		value: 0,
+	});
+	try {
+		let itemsProcessed = 0;
+		logger.debug(`Exporting media of playlist ${plaid}`, { service });
+		const exportedResult: Array<DBPLC & { exportSuccessful: boolean }> = [];
+		for (const kara of plMini) {
+			try {
+				const karaMediaPath = await resolveFileInDirs(
+					kara.mediafile,
+					resolvedPathRepos('Medias', kara.repository)
+				);
+				const karaLyricsPath = await resolveFileInDirs(
+					kara.subfile,
+					resolvedPathRepos('Lyrics', kara.repository)
+				);
+				// This works as long as filenames are not uuids. After that, the computed filename should be retrieved here
+				// with something like defineFilename() and determineMediaAndLyricsFilenames()
+				logger.debug(`Copying ${karaMediaPath[0]} to ${exportDir}`, { service });
+				task.update({
+					subtext: kara.mediafile,
+				});
+				await copyFile(karaMediaPath[0], join(exportDir, kara.mediafile));
+				if (karaLyricsPath[0]) {
+					// Kara can have no lyrics file
+					await copyFile(karaLyricsPath[0], join(exportDir, kara.subfile));
+					task.update({
+						subtext: kara.subfile,
+					});
+				}
+				exportedResult.push({ ...kara, exportSuccessful: true });
+			} catch (e) {
+				exportedResult.push({ ...kara, exportSuccessful: false });
+			} finally {
+				itemsProcessed += 1;
+				task.update({
+					value: itemsProcessed,
+				});
+			}
+		}
+
+		// Create m3u playlist
+		const playlist = await getPlaylistInfo(plaid);
+		const successfulExports = exportedResult.filter(resultKara => resultKara.exportSuccessful);
+		if (successfulExports.length > 0) await generateM3uFileFromPlaylist(playlist, successfulExports, exportDir);
+
+		return exportedResult;
+	} catch (err) {
+		throw {
+			message: err,
+			data: plaid,
+		};
+	} finally {
+		task.end();
+	}
+}
+
 /** Download all song media files from a playlist */
 async function downloadMediasInPlaylist(plaid: string) {
 	const plcs = await getPlaylistContentsMini(plaid);
@@ -437,7 +511,10 @@ export function getPlaylistContentsMini(plaid: string) {
 /** Get a tiny amount of data from a PLC
  * After Mini-PL, Micro-PL, we need the PL-C format.
  */
-export function getPlaylistContentsMicro(plaid: string) {
+export async function getPlaylistContentsMicro(plaid: string, token: OldJWTToken) {
+	const pl = await getPlaylistInfo(plaid, token);
+	// Playlist isn't visible to user, throw.
+	if (!pl) throw { code: 404 };
 	return selectPlaylistContentsMicro(plaid);
 }
 
@@ -718,7 +795,7 @@ export async function addKaraToPlaylist(params: AddKaraParams) {
 		pl ? (plname = pl.name) : (plname = 'Unknown');
 		throw {
 			code: err?.code,
-			message: errorCode,
+			msg: errorCode,
 			data: {
 				details: err.msg,
 				kara: karas ? karas[0] : null,
@@ -1585,12 +1662,20 @@ export async function createAutoMix(params: AutoMixParams, username: string): Pr
 	// If this doesn't give expected results due to async optimizations (for years and/or karas) we should try using Maps or Sets instead of arrays. Or use .push on each element
 	const uniqueList = new Map<string, DBPLC>();
 
-	let favs: DBKara[] = [];
 	if (params.filters?.usersFavorites) {
 		const users = params.filters.usersFavorites;
-		favs = await getAllFavorites(users);
+		let favs = await getAllFavorites(users);
 		favs = shuffle(favs);
 		favs.forEach(f => uniqueList.set(f.kid, f as any));
+	}
+	if (params.filters?.usersAnimeList) {
+		for (const userlogin of params.filters.usersAnimeList) {
+			const user = await getUser(userlogin);
+			if (user.anime_list_to_fetch) {
+				const karas = await getKaras({ userAnimeList: userlogin });
+				karas.content.forEach(k => uniqueList.set(k.kid, k as any));
+			}
+		}
 	}
 	let karaTags: DBKara[] = [];
 	if (params.filters?.tags) {
@@ -1617,6 +1702,12 @@ export async function createAutoMix(params: AutoMixParams, username: string): Pr
 		}
 		years.forEach(y => uniqueList.set(y.kid, y as any));
 	}
+	// Test if our list has at least one song
+	if (uniqueList.size === 0) {
+		emitWS('operatorNotificationError', APIMessage('NOTIFICATION.OPERATOR.ERROR.AUTOMIX_NO_SONGS_MEET_CRITERIAS'));
+		throw { code: 416 };
+	}
+
 	// Let's balance what we have here.
 
 	let balancedList = shufflePlaylistWithList([...uniqueList.values()], 'balance');
@@ -1651,7 +1742,7 @@ export async function createAutoMix(params: AutoMixParams, username: string): Pr
 		};
 	} catch (err) {
 		logger.error('Failed to create AutoMix', { service, obj: err });
-		if (err?.code === 404) throw err;
+		if (err?.code === 404 || err?.code === 416) throw err;
 		sentry.addErrorInfo('args', JSON.stringify(arguments, null, 2));
 		sentry.error(err);
 		throw err;

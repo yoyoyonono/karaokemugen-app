@@ -1,13 +1,13 @@
-import { getInstanceID, getSettings, saveSetting } from '../lib/dao/database';
-import { APIDataProxied } from '../lib/types/api';
-import { RemoteSettings, RemoteSuccess } from '../lib/types/remote';
-import { getConfig } from '../lib/utils/config';
-import logger from '../lib/utils/logger';
-import { getWS } from '../lib/utils/ws';
-import { configureHost } from '../utils/config';
-import { commandKMServer, getKMServerSocket } from '../utils/kmserver';
-import sentry from '../utils/sentry';
-import { getState, setState } from '../utils/state';
+import { getInstanceID, getSettings, saveSetting } from '../lib/dao/database.js';
+import { APIDataProxied } from '../lib/types/api.js';
+import { RemoteSettings, RemoteSuccess } from '../lib/types/remote.js';
+import { getConfig } from '../lib/utils/config.js';
+import logger, { profile } from '../lib/utils/logger.js';
+import { getWS } from '../lib/utils/ws.js';
+import { configureHost } from '../utils/config.js';
+import { commandKMServer, getKMServerSocket } from '../utils/kmserver.js';
+import sentry from '../utils/sentry.js';
+import { getState, setState } from '../utils/state.js';
 
 const service = 'Remote';
 
@@ -129,6 +129,7 @@ export async function destroyRemote() {
 
 export async function initRemote() {
 	try {
+		profile('initRemote');
 		const data = await startRemote();
 		getKMServerSocket().onAny(proxy);
 		// This will be triggered on reconnection, as the first connect is handled by initKMServerCommunication
@@ -144,5 +145,7 @@ export async function initRemote() {
 		if (err?.message?.code) {
 			setState({ remoteAccess: { err: true, reason: err.message.code } });
 		}
+	} finally {
+		profile('initRemote');
 	}
 }

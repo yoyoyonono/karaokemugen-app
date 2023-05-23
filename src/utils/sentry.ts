@@ -1,10 +1,9 @@
 import * as SentryElectron from '@sentry/electron/main';
 import Transport from 'winston-transport';
 
-import { getConfig } from '../lib/utils/config';
-import SentryLogger from '../lib/utils/sentry';
-import { sentryDSN } from './constants';
-import { getState } from './state';
+import { getConfig } from '../lib/utils/config.js';
+import SentryLogger from '../lib/utils/sentry.js';
+import { getState } from './state.js';
 
 class ElectronSentryLogger extends SentryLogger {
 	// @ts-ignore: Excuse me god. We don't use any of the properties
@@ -18,18 +17,20 @@ class ElectronSentryLogger extends SentryLogger {
 			console.log("Have a nice day, sentries won't fire at you~");
 			return;
 		}
-		if (!process.env.SENTRY_DSN && !sentryDSN) {
+		if (!process.env.SENTRY_DSN) {
 			// No DSN provided, return.
 			return;
 		}
 		const options: any = {
-			dsn: process.env.SENTRY_DSN || sentryDSN,
+			dsn: process.env.SENTRY_DSN,
 			environment: process.env.SENTRY_ENVIRONMENT || 'release',
 			release: getState().version.number,
 			ignoreErrors: [
 				'Maximum call stack size exceeded',
 				'No karaoke found in playlist object',
-				'ENOSPC: no space left on device, write',
+				'no space left on device',
+				'No space left on device',
+				'net::ERR_INTERNET_DISCONNECTED',
 			],
 			beforeSend: (event, _hint) => {
 				// Testing for precise falseness. If errortracking is undefined or if getconfig doesn't return anything, errors are not sent.

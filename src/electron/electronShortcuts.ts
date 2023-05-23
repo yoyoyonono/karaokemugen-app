@@ -1,9 +1,10 @@
 import { dialog, globalShortcut, systemPreferences } from 'electron';
 import i18next from 'i18next';
 
-import { getConfig } from '../lib/utils/config';
-import { next, pausePlayer, playPlayer, prev, stopPlayer } from '../services/player';
-import { getState } from '../utils/state';
+import { getConfig } from '../lib/utils/config.js';
+import { profile } from '../lib/utils/logger.js';
+import { next, pausePlayer, playPlayer, prev, stopPlayer } from '../services/player.js';
+import { getState } from '../utils/state.js';
 
 export async function registerShortcuts() {
 	if (process.platform === 'darwin') {
@@ -14,6 +15,7 @@ export async function registerShortcuts() {
 			});
 		systemPreferences.isTrustedAccessibilityClient(true);
 	}
+	profile('initKeyboardShortcuts');
 	globalShortcut.register('MediaPlayPause', () => {
 		getState().player.playerStatus === 'play' ? pausePlayer() : playPlayer().catch(() => {});
 	});
@@ -26,6 +28,7 @@ export async function registerShortcuts() {
 	globalShortcut.register('MediaStop', () => {
 		stopPlayer().catch(() => {});
 	});
+	profile('initKeyboardShortcuts');
 }
 
 export function unregisterShortcuts() {

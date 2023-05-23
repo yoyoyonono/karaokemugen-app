@@ -11,30 +11,30 @@ import {
 	removeTagInStore,
 	sortKaraStore,
 	sortTagsStore,
-} from '../dao/dataStore';
-import { deleteTag, insertTag, selectAllTags, updateKaraTagsTID, updateTag } from '../dao/tag';
-import { removeTagInKaras } from '../dao/tagfile';
-import { saveSetting } from '../lib/dao/database';
-import { refreshKarasUpdate } from '../lib/dao/kara';
-import { formatKaraV4 } from '../lib/dao/karafile';
-import { convertToDBTag, refreshTags, updateTagSearchVector } from '../lib/dao/tag';
-import { formatTagFile, getDataFromTagFile, removeTagFile, writeTagFile } from '../lib/dao/tagfile';
-import { refreshKarasAfterDBChange } from '../lib/services/karaManagement';
-import { DBKara, DBKaraTag } from '../lib/types/database/kara';
-import { DBTag, DBTagMini } from '../lib/types/database/tag';
-import { Kara, KaraFileV4 } from '../lib/types/kara.d';
-import { Tag, TagFile, TagParams } from '../lib/types/tag';
-import { getConfig, resolvedPathRepos } from '../lib/utils/config';
-import { getTagTypeName, tagTypes } from '../lib/utils/constants';
-import { listAllFiles, resolveFileInDirs, sanitizeFile } from '../lib/utils/files';
-import HTTP from '../lib/utils/http';
-import logger, { profile } from '../lib/utils/logger';
-import Task from '../lib/utils/taskManager';
-import { emitWS } from '../lib/utils/ws';
-import sentry from '../utils/sentry';
-import { getKaras } from './kara';
-import { editKara } from './karaCreation';
-import { getRepo, getRepos } from './repo';
+} from '../dao/dataStore.js';
+import { deleteTag, insertTag, selectAllTags, updateKaraTagsTID, updateTag } from '../dao/tag.js';
+import { removeTagInKaras } from '../dao/tagfile.js';
+import { saveSetting } from '../lib/dao/database.js';
+import { refreshKarasUpdate } from '../lib/dao/kara.js';
+import { formatKaraV4 } from '../lib/dao/karafile.js';
+import { convertToDBTag, refreshTags, updateTagSearchVector } from '../lib/dao/tag.js';
+import { defineTagFilename, getDataFromTagFile, removeTagFile, trimTagData, writeTagFile } from '../lib/dao/tagfile.js';
+import { refreshKarasAfterDBChange } from '../lib/services/karaManagement.js';
+import { DBKara, DBKaraTag } from '../lib/types/database/kara.js';
+import { DBTag } from '../lib/types/database/tag.js';
+import { KaraFileV4 } from '../lib/types/kara.js';
+import { Tag, TagFile, TagParams } from '../lib/types/tag.js';
+import { getConfig, resolvedPathRepos } from '../lib/utils/config.js';
+import { getTagTypeName, tagTypes } from '../lib/utils/constants.js';
+import { listAllFiles, resolveFileInDirs, sanitizeFile } from '../lib/utils/files.js';
+import HTTP from '../lib/utils/http.js';
+import logger, { profile } from '../lib/utils/logger.js';
+import Task from '../lib/utils/taskManager.js';
+import { emitWS } from '../lib/utils/ws.js';
+import sentry from '../utils/sentry.js';
+import { getKaras } from './kara.js';
+import { editKara } from './karaCreation.js';
+import { getRepo, getRepos } from './repo.js';
 
 const service = 'Tag';
 
@@ -67,16 +67,14 @@ export async function addTag(tagObj: Tag, opts = { silent: false, refresh: true 
 		});
 	}
 	try {
+		tagObj = trimTagData(tagObj);
 		if (!tagObj.tid) tagObj.tid = uuidV4();
-		if (!tagObj.tagfile) tagObj.tagfile = `${sanitizeFile(tagObj.name)}.${tagObj.tid.substring(0, 8)}.tag.json`;
+		if (!tagObj.tagfile) tagObj.tagfile = defineTagFilename(tagObj);
 		const tagfile = tagObj.tagfile;
-
 		const promises = [insertTag(tagObj), writeTagFile(tagObj, resolvedPathRepos('Tags', tagObj.repository)[0])];
 		await Promise.all(promises);
 		emitWS('statsRefresh');
-		const tagData = formatTagFile(tagObj).tag;
-		tagData.tagfile = tagfile;
-		const newTagFiles = await resolveFileInDirs(tagObj.tagfile, resolvedPathRepos('Tags', tagObj.repository));
+		const newTagFiles = await resolveFileInDirs(tagfile, resolvedPathRepos('Tags', tagObj.repository));
 		await addTagToStore(newTagFiles[0]);
 		sortTagsStore();
 		saveSetting('baseChecksum', getStoreChecksum());
@@ -85,6 +83,8 @@ export async function addTag(tagObj: Tag, opts = { silent: false, refresh: true 
 			await updateTagSearchVector();
 			refreshTags();
 		}
+		// Re-add tagfile since it's been removed by writeTagFile
+		tagObj.tagfile = tagfile;
 		return tagObj;
 	} catch (err) {
 		sentry.error(err);
@@ -163,21 +163,20 @@ export async function mergeTags(tid1: string, tid2: string) {
 			removeTagInStore(tid1),
 			removeTagInStore(tid2),
 		]);
-		let karas = await getKarasWithTags([tag1, tag2, tagObj as any]);
-		await replaceTagInKaras(tid1, tid2, tagObj, karas);
-		karas = await getKarasWithTags([tagObj as any]);
-		const karasData: Kara[] = [];
-		for (const kara of karas) {
-			const karafile = await resolveFileInDirs(kara.karafile, resolvedPathRepos('Karaokes', kara.repository));
-			await editKaraInStore(karafile[0]);
-			karasData.push(formatKaraV4(kara).data);
+		let karas = await getKarasWithTags([tag1, tag2]);
+		if (karas.length > 0) {
+			await replaceTagInKaras(tid1, tid2, tagObj, karas);
+			karas = await getKarasWithTags([tagObj]);
+			for (const kara of karas) {
+				const karafile = await resolveFileInDirs(kara.karafile, resolvedPathRepos('Karaokes', kara.repository));
+				await editKaraInStore(karafile[0]);
+			}
+			sortKaraStore();
+			saveSetting('baseChecksum', getStoreChecksum());
 		}
-		sortKaraStore();
-		saveSetting('baseChecksum', getStoreChecksum());
 		await refreshTags();
 		return tagObj;
 	} catch (err) {
-		console.log(err);
 		logger.error(`Error merging tag ${tid1} and ${tid2}`, { service, obj: err });
 		sentry.error(err);
 		throw err;
@@ -205,7 +204,8 @@ export async function editTag(
 		if (opts.repoCheck && oldTag.repository !== tagObj.repository) {
 			throw { code: 409, msg: 'Tag repository cannot be modified. Use copy function instead' };
 		}
-		tagObj.tagfile = `${sanitizeFile(tagObj.name)}.${tid.substring(0, 8)}.tag.json`;
+		tagObj = trimTagData(tagObj);
+		tagObj.tagfile = defineTagFilename(tagObj);
 		await updateTag(tagObj);
 		if (opts.writeFile) {
 			// Try to find old tag
@@ -220,8 +220,9 @@ export async function editTag(
 			}
 			// FS stuff
 			const promises = [];
+			const tagfile = tagObj.tagfile;
 			promises.push(writeTagFile(tagObj, oldTagPath));
-			if (oldTag.tagfile !== tagObj.tagfile) {
+			if (oldTag.tagfile !== tagfile) {
 				promises.push(
 					fs.unlink(oldTagFiles[0]).catch(() => {
 						// Non fatal. Can be triggered if the tag file has already been removed.
@@ -229,7 +230,7 @@ export async function editTag(
 				);
 			}
 			await Promise.all(promises);
-			const newTagFiles = await resolveFileInDirs(tagObj.tagfile, resolvedPathRepos('Tags', tagObj.repository));
+			const newTagFiles = await resolveFileInDirs(tagfile, resolvedPathRepos('Tags', tagObj.repository));
 			// If the old and new paths are different, it means we copied it to a new repository
 			if (oldTagFiles[0] && oldTagFiles[0] !== newTagFiles[0]) {
 				await addTagToStore(newTagFiles[0]);
@@ -273,24 +274,18 @@ export async function editTag(
 	}
 }
 
-async function getKarasWithTags(tags: DBTagMini[]): Promise<DBKara[]> {
-	let karasToReturn = [];
-	const karaPromises = [];
+async function getKarasWithTags(tags: DBTag[]): Promise<DBKara[]> {
+	let tagsWithTypes = '';
 	for (const tag of tags) {
 		for (const type of tag.types) {
-			karaPromises.push(
-				getKaras({
-					q: `t:${tag.tid}~${type}`,
-					ignoreCollections: true,
-				})
-			);
+			tagsWithTypes = `${tagsWithTypes},${tag.tid}~${type}`;
 		}
 	}
-	const karas = await Promise.all(karaPromises);
-	for (const karaList of karas) {
-		karasToReturn = [].concat(karasToReturn, karaList.content);
-	}
-	return karasToReturn;
+	const karas = await getKaras({
+		q: `at:${tagsWithTypes}`,
+		ignoreCollections: true,
+	});
+	return karas.content;
 }
 
 export async function removeTag(
@@ -301,7 +296,7 @@ export async function removeTag(
 		deleteFile: true,
 	}
 ) {
-	const tags: DBTagMini[] = [];
+	const tags: DBTag[] = [];
 	for (const tid of tids) {
 		const tag = await getTag(tid);
 		if (tag) tags.push(tag);
@@ -310,7 +305,10 @@ export async function removeTag(
 	if (opt.removeTagInKaras) {
 		karasToRemoveTagIn = await getKarasWithTags(tags);
 	}
-	if (tags.length === 0) throw { code: 404, msg: `Tag ID ${tids.toString()} unknown` };
+	if (tags.length === 0) {
+		logger.error(`These tags are unknown : ${tids.toString()}`, { service });
+		throw { code: 404, msg: 'Tag ID unknown' };
+	}
 	const removes = [];
 	for (const tag of tags) {
 		if (opt.deleteFile) removes.push(removeTagFile(tag.tagfile, tag.repository));
@@ -374,7 +372,7 @@ export async function consolidateTagsInRepo(kara: KaraFileV4) {
 					try {
 						await resolveFileInDirs(tagFile, destPath);
 					} catch {
-						// File doe snot exist, let's write it.
+						// File does not exist, let's write it.
 						copies.push(writeTagFile(tag, destPath[0]));
 					}
 				}

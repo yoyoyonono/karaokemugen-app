@@ -2,6 +2,7 @@ import { QuestionCircleOutlined, UploadOutlined } from '@ant-design/icons';
 import {
 	Button,
 	Checkbox,
+	Collapse,
 	Divider,
 	Form,
 	Input,
@@ -13,9 +14,13 @@ import {
 	Typography,
 	Tooltip,
 	Upload,
+	Alert,
+	FormInstance,
+	Row,
+	Col,
 } from 'antd';
-import { FormInstance } from 'antd/lib/form';
 import { SelectValue } from 'antd/lib/select';
+import { filesize } from 'filesize';
 import i18next from 'i18next';
 import { Component, createRef } from 'react';
 import { v4 as UUIDv4 } from 'uuid';
@@ -32,11 +37,13 @@ import LanguagesList from '../../components/LanguagesList';
 import OpenLyricsFileButton from '../../components/OpenLyricsFileButton';
 
 const { Paragraph } = Typography;
+const { Panel } = Collapse;
 
 interface KaraFormProps {
 	kara: DBKara;
 	save: any;
-	handleCopy: (kid, repo) => void;
+	handleCopy: (kid: string, repo: string) => void;
+	handleDelete: (kid: string) => void;
 }
 
 interface KaraFormState {
@@ -71,7 +78,7 @@ class KaraForm extends Component<KaraFormProps, KaraFormState> {
 			titles: kara?.titles ? kara.titles : {},
 			defaultLanguage: kara?.titles_default_language || null,
 			titlesIsTouched: false,
-			serieSingersRequired: false,
+			serieSingersRequired: kara ? false : true,
 			subfile: kara?.subfile
 				? [
 						{
@@ -105,6 +112,7 @@ class KaraForm extends Component<KaraFormProps, KaraFormState> {
 	componentDidMount() {
 		this.formRef.current.validateFields();
 		this.getParents();
+		this.loadMediaInfo();
 	}
 
 	getParents = async () => {
@@ -120,6 +128,18 @@ class KaraForm extends Component<KaraFormProps, KaraFormState> {
 				});
 				this.setState({ karaSearch });
 			}
+		}
+	};
+
+	loadMediaInfo = async () => {
+		if (this.props.kara?.kid && this.props.kara?.download_status === 'DOWNLOADED') {
+			const mediaInfo: MediaInfo = await commandBackend(
+				'getKaraMediaInfo',
+				{ kid: this.props.kara.kid },
+				false,
+				60000
+			);
+			this.setState({ mediaInfo });
 		}
 	};
 
@@ -197,7 +217,7 @@ class KaraForm extends Component<KaraFormProps, KaraFormState> {
 
 	handleSubmit = values => {
 		this.setState({ errors: [] });
-		if (this.state.mediafileIsTouched && !this.state.mediaInfo?.filename) {
+		if (this.state.mediafileIsTouched && !this.state.mediaInfo?.loudnorm) {
 			message.error(i18next.t('KARA.MEDIA_IN_PROCESS'));
 		} else if (
 			!this.state.defaultLanguage ||
@@ -209,6 +229,10 @@ class KaraForm extends Component<KaraFormProps, KaraFormState> {
 		} else {
 			this.props.save(this.getKaraToSend(values));
 		}
+	};
+
+	handleDelete = e => {
+		this.props.handleDelete(this.props.kara.kid);
 	};
 
 	getKaraToSend = values => {
@@ -271,7 +295,6 @@ class KaraForm extends Component<KaraFormProps, KaraFormState> {
 				titles: this.state.titles,
 				titles_default_language: this.state.defaultLanguage,
 				titles_aliases: kara.titles_aliases?.length > 0 ? kara.titles_aliases : undefined,
-				title: this.state.titles[this.state.defaultLanguage],
 				year: kara.year,
 			},
 			meta: {},
@@ -304,6 +327,7 @@ class KaraForm extends Component<KaraFormProps, KaraFormState> {
 		this.setState({ mediafile: fileList });
 		if (info.file.status === 'uploading') {
 			this.formRef.current.setFieldsValue({ mediafile: null });
+			this.setState({ mediaInfo: null });
 		} else if (info.file.status === 'done') {
 			if (this.isMediaFile(info.file.name)) {
 				this.setState({ mediafileIsTouched: true });
@@ -374,9 +398,6 @@ class KaraForm extends Component<KaraFormProps, KaraFormState> {
 		if (this.timer) clearTimeout(this.timer);
 		this.timer = setTimeout(async () => {
 			const karas = await commandBackend('getKaras', {
-				q: this.formRef.current?.getFieldValue('repository')
-					? `r:${this.formRef.current?.getFieldValue('repository')}`
-					: '',
 				filter: value,
 				size: 50,
 				ignoreCollections: true,
@@ -432,6 +453,7 @@ class KaraForm extends Component<KaraFormProps, KaraFormState> {
 				const oldFormFields = this.formRef.current.getFieldsValue(['mediafile', 'subfile']); // Fields to take over to the applied kara
 				this.formRef.current.resetFields();
 				this.formRef.current.setFieldsValue(oldFormFields); // Re-sets media and lyrics file, if already uploaded
+				this.onChangeSingersSeries();
 			}
 		}
 	};
@@ -509,30 +531,98 @@ class KaraForm extends Component<KaraFormProps, KaraFormState> {
 					}
 					labelCol={{ flex: '0 1 220px' }}
 					wrapperCol={{ span: 12 }}
-					name="mediafile"
-					rules={[
-						{
-							required: true,
-							message: i18next.t('KARA.MEDIA_REQUIRED'),
-						},
-					]}
 				>
-					<Upload
-						headers={{
-							authorization: localStorage.getItem('kmToken'),
-							onlineAuthorization: localStorage.getItem('kmOnlineToken'),
-						}}
-						action="/api/importFile"
-						accept="video/*,audio/*,.mkv"
-						multiple={false}
-						onChange={this.onMediaUploadChange}
-						fileList={this.state.mediafile}
-					>
-						<Button>
-							<UploadOutlined />
-							{i18next.t('KARA.MEDIA_FILE')}
-						</Button>
-					</Upload>
+					<Row gutter={32}>
+						<Col>
+							<Form.Item
+								name="mediafile"
+								rules={[
+									{
+										required: true,
+										message: i18next.t('KARA.MEDIA_REQUIRED'),
+									},
+								]}
+							>
+								<Upload
+									headers={{
+										authorization: localStorage.getItem('kmToken'),
+										onlineAuthorization: localStorage.getItem('kmOnlineToken'),
+									}}
+									action="/api/importFile"
+									accept="video/*,audio/*,.mkv"
+									multiple={false}
+									onChange={this.onMediaUploadChange}
+									fileList={this.state.mediafile}
+								>
+									<Button>
+										<UploadOutlined />
+										{i18next.t('KARA.MEDIA_FILE')}
+									</Button>
+								</Upload>
+							</Form.Item>
+						</Col>
+						<Col flex={'0 1 220px'}>
+							{this.props.kara?.download_status === 'DOWNLOADED' || this.state.mediaInfo?.size ? (
+								<table style={{ borderSpacing: '0 10px' }}>
+									<tbody>
+										<tr>
+											<td style={{ paddingRight: '10px' }}>
+												{i18next.t('KARA.MEDIA_FILE_INFO.FILE_FORMAT')}
+											</td>
+											<td>{this.state.mediaInfo?.fileExtension || '-'}</td>
+										</tr>
+										<tr>
+											<td style={{ paddingRight: '10px' }}>
+												{i18next.t('KARA.MEDIA_FILE_INFO.FILE_SIZE')}
+											</td>
+											<td>
+												{(this.state.mediaInfo?.size && filesize(this.state.mediaInfo?.size)) ||
+													'-'}
+											</td>
+										</tr>
+										<tr>
+											<td style={{ paddingRight: '10px' }}>
+												{i18next.t('KARA.MEDIA_FILE_INFO.OVERALL_BITRATE')}
+											</td>
+											<td>
+												{this.state.mediaInfo?.overallBitrate
+													? `${Math.round(this.state.mediaInfo?.overallBitrate / 100)} kb/s`
+													: '-'}
+											</td>
+										</tr>
+										<tr>
+											<td style={{ paddingRight: '10px' }}>
+												{i18next.t('KARA.MEDIA_FILE_INFO.VIDEO_CODEC')}
+											</td>
+											<td>{this.state.mediaInfo?.videoCodec || '-'}</td>
+										</tr>
+										<tr>
+											<td style={{ paddingRight: '10px' }}>
+												{i18next.t('KARA.MEDIA_FILE_INFO.VIDEO_COLORSPACE')}
+											</td>
+											<td>{this.state.mediaInfo?.videoColorspace || '-'}</td>
+										</tr>
+										<tr>
+											<td style={{ paddingRight: '10px' }}>
+												{i18next.t('KARA.MEDIA_FILE_INFO.VIDEO_RESOLUTION')}
+											</td>
+											<td>
+												{this.state.mediaInfo?.videoResolution
+													? `${this.state.mediaInfo?.videoResolution?.formatted}`
+													: '-'}
+											</td>
+										</tr>
+										<tr>
+											<td style={{ paddingRight: '10px' }}>
+												{i18next.t('KARA.MEDIA_FILE_INFO.AUDIO_CODEC')}
+											</td>
+											<td>{this.state.mediaInfo?.audioCodec || '-'}</td>
+										</tr>
+									</tbody>
+								</table>
+							) : null}
+						</Col>
+					</Row>
 				</Form.Item>
 				<Form.Item
 					label={
@@ -557,6 +647,9 @@ class KaraForm extends Component<KaraFormProps, KaraFormState> {
 							onlineAuthorization: localStorage.getItem('kmOnlineToken'),
 						}}
 						action="/api/importFile"
+						accept={this.context.globalState.settings.data.state?.supportedLyrics
+							.map(e => `.${e}`)
+							.join(',')}
 						multiple={false}
 						onChange={this.onSubUploadChange}
 						fileList={this.state.subfile}
@@ -707,7 +800,7 @@ class KaraForm extends Component<KaraFormProps, KaraFormState> {
 						</span>
 					}
 					labelCol={{ flex: '0 1 220px' }}
-					wrapperCol={{ span: 7 }}
+					wrapperCol={{ span: 14 }}
 					name="franchises"
 				>
 					<EditableTagGroup
@@ -736,7 +829,6 @@ class KaraForm extends Component<KaraFormProps, KaraFormState> {
 					/>
 				</Form.Item>
 				<Form.Item
-					hasFeedback
 					label={
 						<span>
 							{i18next.t('KARA.ORDER')}&nbsp;
@@ -746,7 +838,7 @@ class KaraForm extends Component<KaraFormProps, KaraFormState> {
 						</span>
 					}
 					labelCol={{ flex: '0 1 220px' }}
-					wrapperCol={{ span: 1 }}
+					wrapperCol={{ flex: '0 1 70px' }}
 					name="songorder"
 				>
 					<InputNumber min={0} style={{ width: '100%' }} onPressEnter={this.submitHandler} />
@@ -903,7 +995,14 @@ class KaraForm extends Component<KaraFormProps, KaraFormState> {
 				</Form.Item>
 
 				<Form.Item
-					label={i18next.t('TAG_TYPES.FAMILIES_other')}
+					label={
+						<span>
+							{i18next.t('TAG_TYPES.FAMILIES_other')}&nbsp;
+							<Tooltip title={i18next.t('KARA.FAMILIES_TOOLTIP')}>
+								<QuestionCircleOutlined />
+							</Tooltip>
+						</span>
+					}
 					labelCol={{ flex: '0 1 220px' }}
 					wrapperCol={{ span: 10 }}
 					name="families"
@@ -921,12 +1020,24 @@ class KaraForm extends Component<KaraFormProps, KaraFormState> {
 					wrapperCol={{ span: 10 }}
 					name="platforms"
 				>
-					<EditableTagGroup
-						form={this.formRef.current}
-						tagType={13}
-						checkboxes={true}
-						onChange={tags => this.formRef.current.setFieldsValue({ platforms: tags })}
-					/>
+					<Collapse
+						bordered={false}
+						defaultActiveKey={
+							this.props.kara?.platforms.length > 0 || this.state.parentKara?.platforms.length > 0
+								? ['1']
+								: []
+						}
+					>
+						<Panel header={i18next.t('SHOW-HIDE')} key="1" forceRender={true}>
+							<EditableTagGroup
+								value={this.props.kara?.platforms || this.state.parentKara?.platforms}
+								form={this.formRef.current}
+								tagType={13}
+								checkboxes={true}
+								onChange={tags => this.formRef.current.setFieldsValue({ platforms: tags })}
+							/>
+						</Panel>
+					</Collapse>
 				</Form.Item>
 				<Form.Item
 					label={i18next.t('TAG_TYPES.GENRES_other')}
@@ -1124,9 +1235,9 @@ class KaraForm extends Component<KaraFormProps, KaraFormState> {
 						{i18next.t('SUBMIT')}
 					</Button>
 				</Form.Item>
-				<Divider />
 				{this.state.repositoriesValue && this.props.kara?.repository ? (
 					<>
+						<Divider orientation="left">{i18next.t('KARA.COPY_SONG')}</Divider>
 						<Form.Item
 							hasFeedback
 							label={i18next.t('KARA.REPOSITORY')}
@@ -1151,6 +1262,20 @@ class KaraForm extends Component<KaraFormProps, KaraFormState> {
 								onClick={() => this.props.handleCopy(this.props.kara?.kid, this.state.repoToCopySong)}
 							>
 								{i18next.t('KARA.COPY_SONG')}
+							</Button>
+						</Form.Item>
+
+						<Divider orientation="left">{i18next.t('KARA.DELETE_KARA')}</Divider>
+						<Form.Item wrapperCol={{ span: 8, offset: 3 }} style={{ textAlign: 'center' }}>
+							<Alert
+								style={{ textAlign: 'left', marginBottom: '20px' }}
+								message={i18next.t('WARNING')}
+								description={i18next.t('CONFIRM_SURE')}
+								type="warning"
+							/>
+
+							<Button type="primary" danger onClick={this.handleDelete}>
+								{i18next.t('KARA.DELETE_KARA')}
 							</Button>
 						</Form.Item>
 					</>

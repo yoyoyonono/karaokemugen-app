@@ -2,27 +2,27 @@ import i18next from 'i18next';
 import { sample } from 'lodash';
 import { resolve } from 'path';
 
-import { APIMessage } from '../controllers/common';
-import { selectPlaylistContentsMicro, updatePlaylistDuration, updatePlaylistLastEditTime } from '../dao/playlist';
-import { selectUpvotesByPLC } from '../dao/upvote';
-import { DBKara } from '../lib/types/database/kara';
-import { DBPLC } from '../lib/types/database/playlist';
-import { KaraList } from '../lib/types/kara';
-import { getConfig, resolvedPath } from '../lib/utils/config';
-import { fileExists } from '../lib/utils/files';
-import logger, { profile } from '../lib/utils/logger';
-import { emitWS } from '../lib/utils/ws';
-import { PlayingSource } from '../types/player';
-import { CurrentSong } from '../types/playlist';
-import { adminToken } from '../utils/constants';
-import sentry from '../utils/sentry';
-import { getState, setState } from '../utils/state';
-import { writeStreamFiles } from '../utils/streamerFiles';
-import { addPlayedKara, getKara, getKaras, getSongSeriesSingers, getSongTitle, getSongVersion } from './kara';
-import { initAddASongMessage, mpv, next, restartPlayer, stopAddASongMessage, stopPlayer } from './player';
-import { getCurrentSong, getPlaylistInfo, shufflePlaylist, updateUserQuotas } from './playlist';
-import { startPoll } from './poll';
-import { getUser } from './user';
+import { APIMessage } from '../controllers/common.js';
+import { selectPlaylistContentsMicro, updatePlaylistDuration, updatePlaylistLastEditTime } from '../dao/playlist.js';
+import { selectUpvotesByPLC } from '../dao/upvote.js';
+import { DBKara } from '../lib/types/database/kara.js';
+import { DBPLC } from '../lib/types/database/playlist.js';
+import { KaraList } from '../lib/types/kara.js';
+import { getConfig, resolvedPath } from '../lib/utils/config.js';
+import { fileExists } from '../lib/utils/files.js';
+import logger, { profile } from '../lib/utils/logger.js';
+import { emitWS } from '../lib/utils/ws.js';
+import { PlayingSource } from '../types/player.js';
+import { CurrentSong } from '../types/playlist.js';
+import { adminToken } from '../utils/constants.js';
+import sentry from '../utils/sentry.js';
+import { getState, setState } from '../utils/state.js';
+import { writeStreamFiles } from '../utils/streamerFiles.js';
+import { addPlayedKara, getKara, getKaras, getSongSeriesSingers, getSongTitle, getSongVersion } from './kara.js';
+import { initAddASongMessage, mpv, next, restartPlayer, stopAddASongMessage, stopPlayer } from './player.js';
+import { getCurrentSong, getPlaylistInfo, shufflePlaylist, updateUserQuotas } from './playlist.js';
+import { startPoll } from './poll.js';
+import { getUser } from './user.js';
 
 const service = 'KaraEngine';
 
@@ -181,13 +181,13 @@ export async function playCurrentSong(now: boolean) {
 			if (!kara) {
 				throw 'No song selected';
 			}
-			if (kara.pos === 1) {
+			if (getState().player.playerStatus === 'stop') {
 				if (conf.Karaoke.AutoBalance) {
 					await shufflePlaylist(getState().currentPlaid, 'balance');
 				}
 				// Testing if intro hasn't been played already and if we have at least one intro available
 				if (conf.Playlist.Medias.Intros.Enabled && !getState().introPlayed) {
-					setState({ introPlayed: true });
+					setState({ introPlayed: true, counterToJingle: 1 });
 					await mpv.playMedia('Intros');
 					return;
 				}
@@ -195,14 +195,11 @@ export async function playCurrentSong(now: boolean) {
 			logger.debug('Karaoke selected', { service, obj: kara });
 			logger.info(`Playing ${kara.mediafile.substring(0, kara.mediafile.length - 4)}`, { service });
 			await mpv.play(kara);
-			addPlayedKara(kara.kid);
-			await Promise.all([
-				updatePlaylistDuration(kara.plaid),
-				updateUserQuotas(kara),
-				writeStreamFiles('time_remaining_in_current_playlist'),
-				writeStreamFiles('song_name'),
-				writeStreamFiles('requester'),
-			]);
+			updateUserQuotas(kara);
+			writeStreamFiles('time_remaining_in_current_playlist');
+			writeStreamFiles('song_name');
+			writeStreamFiles('requester');
+			await updatePlaylistDuration(kara.plaid);
 			updatePlaylistLastEditTime(kara.plaid);
 			emitWS('playlistInfoUpdated', kara.plaid);
 			if (conf.Karaoke.Poll.Enabled && !conf.Karaoke.StreamerMode.Enabled) startPoll();
@@ -280,11 +277,17 @@ export async function playerEnding() {
 				}
 			}
 		}
+
+		// Add song to played (history) table
+		if (state.player.mediaType === 'song') {
+			addPlayedKara(state.player.currentSong?.kid);
+		}
 		// If we just played an intro, play a sponsor.
 		if (state.player.mediaType === 'Intros') {
 			setState({ introPlayed: true });
 			if (conf.Playlist.Medias.Sponsors.Enabled) {
 				try {
+					setState({ counterToSponsor: 1 });
 					await mpv.playMedia('Sponsors');
 				} catch (err) {
 					logger.warn('Skipping sponsors due to error, playing current song', {
@@ -326,7 +329,6 @@ export async function playerEnding() {
 		// If Sponsor after intro, just play currently selected song.
 		if (state.player.mediaType === 'Sponsors' && !state.introSponsorPlayed && state.introPlayed) {
 			try {
-				// If it's played just after an intro, play next song. If not, proceed as usual
 				setState({ introPlayed: true, introSponsorPlayed: true });
 				await playCurrentSong(true);
 			} catch (err) {

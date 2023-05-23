@@ -2,13 +2,13 @@
 import internet from 'internet-available';
 import { xml2js } from 'xml-js';
 
-import HTTP from '../lib/utils/http';
+import HTTP from '../lib/utils/http.js';
 // KM Imports
-import logger from '../lib/utils/logger';
+import logger from '../lib/utils/logger.js';
 // Types
-import { Feed } from '../types/feeds';
-import { SystemMessage } from '../types/state';
-import { getState, setState } from '../utils/state';
+import { Feed } from '../types/feeds.js';
+import { SystemMessage } from '../types/state.js';
+import { getState, setState } from '../utils/state.js';
 
 const service = 'Feeds';
 
@@ -19,7 +19,7 @@ const feeds = [
 	},
 	{
 		name: 'git_app',
-		url: 'https://gitlab.com/karaokemugen/karaokemugen-app/-/tags?format=atom&sort=updated_desc',
+		url: 'https://gitlab.com/karaokemugen/code/karaokemugen-app/-/tags?format=atom&sort=updated_desc',
 	},
 	{
 		name: 'mastodon',

@@ -1,10 +1,10 @@
 import { dialog, shell } from 'electron';
 import { autoUpdater } from 'electron-updater';
 
-import logger from '../../lib/utils/logger';
-import { getState } from '../../utils/state';
-import { handleFile, win } from '../electron';
-import { setManualUpdate } from '../electronAutoUpdate';
+import logger from '../../lib/utils/logger.js';
+import { getState } from '../../utils/state.js';
+import { handleFile, win } from '../electron.js';
+import { setManualUpdate } from '../electronAutoUpdate.js';
 
 export const urls = {
 	operatorOptions: () => openURL('/admin/options'),
@@ -17,20 +17,21 @@ export const urls = {
 	download: () => openURL('/system/karas/download'),
 	karas: () => openURL('/system/karas'),
 	database: () => openURL('/system/db'),
-	helpGuide: () => shell.openPath('https://docs.karaokes.moe/user-guide/getting-started/'),
-	website: () => shell.openPath('https://karaokes.moe'),
-	twitter: () => shell.openPath('https://twitter.com/KaraokeMugen'),
-	discord: () => shell.openPath('https://karaokes.moe/discord'),
-	forum: () => shell.openPath('https://discourse.karaokes.moe'),
-	gitlab: () => shell.openPath('https://gitlab.com/karaokemugen/karaokemugen-app'),
-	changelog: () => shell.openPath('https://gitlab.com/karaokemugen/karaokemugen-app/-/releases'),
-	contribDoc: () => shell.openPath('https://docs.karaokes.moe/contrib-guide/base/'),
-	sendKaraoke: () => shell.openPath('https://kara.moe/base/import'),
-	reportBug: () => shell.openPath('https://discourse.karaokes.moe/c/help/8'),
-	translations: () => shell.openPath('https://hosted.weblate.org/projects/karaoke-mugen/'),
+	helpGuide: () => shell.openExternal('https://docs.karaokes.moe/user-guide/getting-started/'),
+	website: () => shell.openExternal('https://karaokes.moe'),
+	twitter: () => shell.openExternal('https://twitter.com/KaraokeMugen'),
+	mastodon: () => shell.openExternal('https://shelter.moe/@KaraokeMugen'),
+	discord: () => shell.openExternal('https://karaokes.moe/discord'),
+	forum: () => shell.openExternal('https://discourse.karaokes.moe'),
+	gitlab: () => shell.openExternal('https://gitlab.com/karaokemugen/code/karaokemugen-app'),
+	changelog: () => shell.openExternal('https://gitlab.com/karaokemugen/code/karaokemugen-app/-/releases'),
+	contribDoc: () => shell.openExternal('https://docs.karaokes.moe/contrib-guide/base/'),
+	sendKaraoke: () => shell.openExternal('https://kara.moe/base/import'),
+	reportBug: () => shell.openExternal('https://discourse.karaokes.moe/c/help/8'),
+	translations: () => shell.openExternal('https://hosted.weblate.org/projects/karaoke-mugen/'),
 	donations: {
-		fr: () => shell.openPath('https://mugen.karaokes.moe/donations.html'),
-		en: () => shell.openPath('https://mugen.karaokes.moe/en/donations.html'),
+		fr: () => shell.openExternal('https://mugen.karaokes.moe/donations.html'),
+		en: () => shell.openExternal('https://mugen.karaokes.moe/en/donations.html'),
 	},
 };
 

@@ -30,6 +30,7 @@ interface TagsFormProps {
 	save: (tag: Tag) => void;
 	handleCopy: (tid, repo) => void;
 	mergeAction: (tid1: string, tid2: string) => void;
+	deleteAction: (tid: string) => void;
 }
 
 interface TagsFormState {
@@ -44,8 +45,8 @@ interface TagsFormState {
 
 const myanimelistUrlRegexp = /myanimelist.net\/anime\/(\d+)/;
 const anilistUrlRegexp = /anilist.co\/anime\/(\d+)/;
-const kitsuUrlRegexp = /kitsu.io\/anime\/([a-zA-Z-]+)/;
-const validExternalAnimeIdRegexp = /^[1-9]|\d\d+$/; // strictly positive
+const kitsuUrlRegexp = /kitsu.io\/anime\/([a-zA-Z0-9-&]+)/;
+const validExternalAnimeIdRegexp = /^(?:[1-9]|\d\d+)$/; // strictly positive
 
 class TagForm extends Component<TagsFormProps, TagsFormState> {
 	formRef = createRef<FormInstance>();
@@ -61,7 +62,8 @@ class TagForm extends Component<TagsFormProps, TagsFormState> {
 			mergeSelection: '',
 			repositoriesValue: null,
 			repoToCopySong: null,
-			displayDescription: this.props.tag?.description ? true : false,
+			displayDescription:
+				this.props.tag?.description && Object.keys(this.props.tag?.description).length > 0 ? true : false,
 		};
 	}
 
@@ -108,6 +110,10 @@ class TagForm extends Component<TagsFormProps, TagsFormState> {
 		this.props.mergeAction(this.props.tag.tid, this.state.mergeSelection);
 	};
 
+	handleTagDelete = e => {
+		this.props.deleteAction(this.props.tag.tid);
+	};
+
 	mergeCascaderOption = () => {
 		const options = Object.keys(tagTypes).map(type => {
 			const typeID: any = tagTypes[type].type;
@@ -135,12 +141,13 @@ class TagForm extends Component<TagsFormProps, TagsFormState> {
 		return path.some(option => option.label.toLowerCase().indexOf(inputValue.toLowerCase()) > -1);
 	};
 
+	/** We're returning at (any tag) here instead of just t (all tags) for the filter */
 	buildTagFilter = () => {
 		const tagArray = [];
 		for (const type of this.props.tag.types) {
 			tagArray.push(`${this.props.tag.tid}~${type}`);
 		}
-		return `t:${tagArray.join(',')}`;
+		return `at:${tagArray.join(',')}`;
 	};
 
 	render() {
@@ -433,7 +440,21 @@ class TagForm extends Component<TagsFormProps, TagsFormState> {
 				)}
 				{this.props.tag ? (
 					<>
-						<Divider />
+						<Divider orientation="left">{i18next.t('TAGS.DELETE_TAG')}</Divider>
+						<Form.Item wrapperCol={{ span: 8, offset: 3 }} style={{ textAlign: 'center' }}>
+							<Alert
+								style={{ textAlign: 'left', marginBottom: '20px' }}
+								message={i18next.t('WARNING')}
+								description={i18next.t('TAGS.DELETE_TAG_MESSAGE')}
+								type="warning"
+							/>
+
+							<Button type="primary" danger onClick={this.handleTagDelete}>
+								{i18next.t('TAGS.DELETE_TAG')}
+							</Button>
+						</Form.Item>
+
+						<Divider orientation="left">{i18next.t('TAGS.MERGE_TAGS')}</Divider>
 						<Form.Item
 							label={
 								<span>
@@ -467,7 +488,7 @@ class TagForm extends Component<TagsFormProps, TagsFormState> {
 						</Form.Item>
 					</>
 				) : null}
-				<Divider />
+				<Divider orientation="left">{i18next.t('TAGS.COPY_TAG')}</Divider>
 				{this.state.repositoriesValue && this.props.tag?.repository ? (
 					<>
 						<Form.Item
@@ -538,7 +559,7 @@ class TagForm extends Component<TagsFormProps, TagsFormState> {
 		if (res == null) {
 			return event.target.value;
 		}
-		fetch(`https://kitsu.io/api/edge/anime?fields[anime]=id&filter[slug]=${res[1]}`)
+		fetch(`https://kitsu.io/api/edge/anime?fields[anime]=id&filter[slug]=${encodeURIComponent(res[1])}`)
 			.then(res => res.json())
 			.then(json => {
 				if (json?.data == null || json.data[0]?.id == null) {

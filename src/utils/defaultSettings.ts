@@ -4,8 +4,9 @@
 // you can change the default settings by using config.yml to bypass the default values.
 import { app } from 'electron';
 
-import { bools, hostnameRegexp } from '../lib/utils/constants';
-import { Config, Repository } from '../types/config';
+import { Repository } from '../lib/types/repo.js';
+import { bools, hostnameRegexp } from '../lib/utils/constants.js';
+import { Config } from '../types/config.js';
 
 export const dbConfig = {
 	bundledPostgresBinary: true,
@@ -127,6 +128,7 @@ export const defaults: Config = {
 		KeyboardMediaShortcuts: true,
 		Volume: 100,
 		LiveComments: false,
+		BlurVideoOnWarningTag: false,
 	},
 	Playlist: {
 		AllowDuplicates: false,
@@ -184,7 +186,7 @@ export const defaults: Config = {
 				Windows: 'app\\bin\\postgres\\bin\\',
 			},
 			patch: {
-				Linux: '/usr/bin/patch',
+				Linux: 'app/bin/patch',
 				OSX: app?.isPackaged ? 'Karaoke Mugen.app/Contents/app/bin/patch' : 'app/bin/patch',
 				Windows: 'app\\bin\\patch.exe',
 			},
@@ -204,12 +206,12 @@ export const defaults: Config = {
 			Bin: 'bin',
 			DB: 'db',
 			Import: 'import',
-			Temp: 'temp',
 			Previews: 'previews',
 			SessionExports: 'sessionExports',
 			StreamFiles: 'streamFiles',
 		},
 	},
+	Maintainer: { ApplyLyricsCleanupOnKaraSave: false },
 };
 
 const horizontalPosArray = ['Left', 'Right', 'Center'];
@@ -299,10 +301,10 @@ export const configConstraints = {
 	'System.MediaPath.Intros': { arrayOneItemValidator: true },
 	'System.MediaPath.Sponsors': { arrayOneItemValidator: true },
 	'System.MediaPath.Outros': { arrayOneItemValidator: true },
-	'System.Path.Temp': { presence: true },
 	'System.Path.Previews': { presence: true },
 	'System.Path.Import': { presence: true },
 	'System.Repositories': { repositoriesValidator: true },
+	'Maintainer.ApplyLyricsCleanupOnKaraSave': { inclusion: bools },
 };
 
 export const defaultRepositories: Repository[] = [

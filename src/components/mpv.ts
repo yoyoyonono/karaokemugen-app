@@ -10,37 +10,39 @@ import semver from 'semver';
 import { graphics } from 'systeminformation';
 import { setTimeout as sleep } from 'timers/promises';
 
-import { errorStep } from '../electron/electronLogger';
-import { getConfig, resolvedPath, resolvedPathRepos, setConfig } from '../lib/utils/config';
-import { getAvatarResolution } from '../lib/utils/ffmpeg';
-import { fileExists, replaceExt, resolveFileInDirs } from '../lib/utils/files';
-import { playerEnding } from '../services/karaEngine';
-import { next, prev } from '../services/player';
-import { notificationNextSong } from '../services/playlist';
-import { getSingleMedia } from '../services/playlistMedias';
-import { endPoll } from '../services/poll';
-import { MediaType } from '../types/medias';
-import { MpvCommand } from '../types/mpvIPC';
-import { MpvOptions, PlayerState } from '../types/player';
-import { CurrentSong } from '../types/playlist';
-import { initializationCatchphrases, mpvRegex, requiredMPVVersion } from '../utils/constants';
-import { setDiscordActivity } from '../utils/discordRPC';
-import MpvIPC from '../utils/mpvIPC';
-import sentry from '../utils/sentry';
-import { getState, setState } from '../utils/state';
-import { exit } from './engine';
+import { errorStep } from '../electron/electronLogger.js';
+import { getConfig, resolvedPath, resolvedPathRepos, setConfig } from '../lib/utils/config.js';
+import { getAvatarResolution } from '../lib/utils/ffmpeg.js';
+import { fileExists, replaceExt, resolveFileInDirs } from '../lib/utils/files.js';
+import { playerEnding } from '../services/karaEngine.js';
+import { next, prev } from '../services/player.js';
+import { notificationNextSong } from '../services/playlist.js';
+import { getSingleMedia } from '../services/playlistMedias.js';
+import { endPoll } from '../services/poll.js';
+import { MediaType } from '../types/medias.js';
+import { MpvCommand } from '../types/mpvIPC.js';
+import { MpvOptions, PlayerState } from '../types/player.js';
+import { CurrentSong } from '../types/playlist.js';
+import { initializationCatchphrases, mpvRegex, requiredMPVVersion } from '../utils/constants.js';
+import { setDiscordActivity } from '../utils/discordRPC.js';
+import MpvIPC from '../utils/mpvIPC.js';
+import sentry from '../utils/sentry.js';
+import { getState, setState } from '../utils/state.js';
+import { exit, isShutdownInProgress } from './engine.js';
 import Timeout = NodeJS.Timeout;
-import { DBKaraTag } from '../lib/types/database/kara';
-import { supportedFiles } from '../lib/utils/constants';
-import { date } from '../lib/utils/date';
-import HTTP from '../lib/utils/http';
-import { convert1LangTo2B } from '../lib/utils/langs';
-import logger, { profile } from '../lib/utils/logger';
-import { getBackgroundAndMusic } from '../services/backgrounds';
-import { getSongSeriesSingers, getSongTitle } from '../services/kara';
-import { getTagNameInLanguage } from '../services/tag';
-import { BackgroundType } from '../types/backgrounds';
-import { editSetting } from '../utils/config';
+import { APIMessage } from '../lib/services/frontend.js';
+import { DBKaraTag } from '../lib/types/database/kara.js';
+import { supportedFiles } from '../lib/utils/constants.js';
+import { date, time } from '../lib/utils/date.js';
+import HTTP, { fixedEncodeURIComponent } from '../lib/utils/http.js';
+import { convert1LangTo2B } from '../lib/utils/langs.js';
+import logger, { profile } from '../lib/utils/logger.js';
+import { emitWS } from '../lib/utils/ws.js';
+import { getBackgroundAndMusic } from '../services/backgrounds.js';
+import { getSongSeriesSingers, getSongTitle } from '../services/kara.js';
+import { getTagNameInLanguage } from '../services/tag.js';
+import { BackgroundType } from '../types/backgrounds.js';
+import { editSetting } from '../utils/config.js';
 
 type PlayerType = 'main' | 'monitor';
 
@@ -49,7 +51,7 @@ const service = 'mpv';
 const playerState: PlayerState = {
 	volume: 100,
 	playing: false,
-	playerStatus: 'stop',
+	playerStatus: null,
 	_playing: false, // internal delay flag
 	timeposition: 0,
 	mute: false,
@@ -73,12 +75,12 @@ const playerState: PlayerState = {
 async function resolveMediaURL(file: string, repo: string): Promise<string> {
 	const conf = getConfig();
 	let up = false;
-	let mediaFile = `${conf.Online.MediasHost}/${encodeURIComponent(file)}`;
+	let mediaFile = `${conf.Online.MediasHost}/${fixedEncodeURIComponent(file)}`;
 	// We test if the MediasHost allows us to reach a file. If not we try the song's repository.
 	if (conf.Online.MediasHost) {
 		if (await HTTP.head(mediaFile)) up = true;
 	} else {
-		mediaFile = `https://${repo}/downloads/medias/${encodeURIComponent(file)}`;
+		mediaFile = `https://${repo}/downloads/medias/${fixedEncodeURIComponent(file)}`;
 		if (await HTTP.head(mediaFile)) up = true;
 	}
 	if (up) {
@@ -111,15 +113,16 @@ function releaseLock() {
 
 function needsLock() {
 	return (
-		target: any,
+		_target: any,
 		_propertyKey: string,
 		descriptor: TypedPropertyDescriptor<(...params: any[]) => Promise<any>>
 	) => {
 		const originFunc = descriptor.value;
-		descriptor.value = async (...params) => {
+		descriptor.value = async function descriptorFunc(...params) {
 			await acquireLock();
-			return originFunc.call(target, ...params).then(releaseLock);
+			return originFunc.apply(this, params).then(releaseLock);
 		};
+		return descriptor;
 	};
 }
 
@@ -246,6 +249,10 @@ class MessageManager {
 			this.timeouts.delete(type);
 		}
 		this.tick();
+	}
+
+	removeMessages(types: string[]) {
+		types.forEach(e => this.removeMessage(e));
 	}
 
 	getText() {
@@ -381,11 +388,12 @@ class Player {
 		const conf = getConfig();
 		const state = getState();
 		const today = date();
+		const now = time().replaceAll(':', '.');
 
 		const mpvArgs = [
 			'--keep-open=always',
 			'--osd-level=0',
-			`--log-file=${resolve(state.dataPath, 'logs/', `mpv.${today}.log`)}`,
+			`--log-file=${resolve(resolvedPath('Logs'), `mpv.${today}.${now}.log`)}`,
 			`--hwdec=${conf.Player.HardwareDecoding}`,
 			`--volume=${+conf.Player.Volume}`,
 			'--no-config',
@@ -489,7 +497,13 @@ class Player {
 		return [state.binPath.mpv, socket, mpvArgs];
 	}
 
-	private debounceTimePosition(position: number) {
+	private debounceTimePosition(position: number | undefined) {
+		// position can be undefined when the video starts
+		// position can be negative, or equal to -0
+		if (position == null || position <= 0) {
+			position = 0;
+		}
+
 		// Returns the position in seconds in the current song
 		if (playerState.mediaType === 'song' && playerState.currentSong?.duration) {
 			playerState.timeposition = position;
@@ -550,11 +564,13 @@ class Player {
 					playerState[status.name] = status.data;
 				}
 				if (status.name === 'fullscreen') {
-					const FullScreen = !!status.data;
-					editSetting({ Player: { FullScreen } });
-					if (FullScreen) {
+					const fullScreen = !!status.data;
+					editSetting({ Player: { FullScreen: fullScreen } });
+					if (fullScreen) {
+						logger.info('Player going to full screen', { service });
 						this.control.messages.addMessage('fsTip', `{\\an7\\i1\\fs20}${i18n.t('FULLSCREEN_TIP')}`, 3000);
 					} else {
+						logger.info('Player going to windowed mode', { service });
 						this.control.messages.removeMessage('fsTip');
 					}
 				}
@@ -630,6 +646,7 @@ class Player {
 		if (!this.configuration) {
 			await this.init();
 		}
+		if (isShutdownInProgress()) return;
 		this.bindEvents();
 		await retry(
 			async () => {
@@ -782,7 +799,7 @@ class Players {
 				for (const player in this.players) {
 					if (!this.players[player].isRunning) {
 						logger.info(`Restarting ${player} player`, { service });
-						loads.push(this.players[player].recreate(null, true));
+						loads.push(this.players[player as PlayerType].recreate(null, true));
 					}
 				}
 			} else {
@@ -797,9 +814,10 @@ class Players {
 		}
 	}
 
-	async exec(cmd: string | MpvCommand, args: any[] = [], onlyOn?: PlayerType, ignoreLock = false) {
+	async exec(cmd: string | MpvCommand, args: any[] = [], onlyOn?: PlayerType, ignoreLock = false, shutdown = false) {
 		try {
 			const mpv = typeof cmd === 'object';
+			if (!shutdown && isShutdownInProgress()) return;
 			// ensureRunning returns -1 if the player does not exist (eg. disabled monitor)
 			// ensureRunning isn't needed on non-mpv commands
 			if (mpv && (await this.ensureRunning(onlyOn, ignoreLock)) === -1) return;
@@ -847,7 +865,7 @@ class Players {
 	progressBarTimeout: NodeJS.Timeout;
 
 	/** Progress bar on pause screens inbetween songs */
-	private tickProgressBar(nextTick: number, ticked: number, DI: string) {
+	private tickProgressBar(nextTick: number, ticked: number, position: string) {
 		// 10 ticks
 		if (ticked <= 10 && getState().streamerPause && getState().pauseInProgress) {
 			if (this.progressBarTimeout) clearTimeout(this.progressBarTimeout);
@@ -858,16 +876,16 @@ class Players {
 			for (const _nothing of Array(10 - ticked)) {
 				progressBar += '□';
 			}
-			this.messages.addMessage('DI', `${DI}\\N\\N{\\fscx70\\fscy70\\fsp-3}${progressBar}`, 'infinite');
+			this.messages.addMessage('pauseScreen', `${position}{\\fscx70\\fscy70\\fsp-3}${progressBar}`, 'infinite');
 			this.progressBarTimeout = setTimeout(() => {
-				this.tickProgressBar(nextTick, ticked + 1, DI);
+				this.tickProgressBar(nextTick, ticked + 1, position);
 			}, nextTick);
 		}
 	}
 
-	private progressBar(duration: number, DI: string) {
+	private progressBar(duration: number, position: string) {
 		// * 1000 / 10
-		this.tickProgressBar(Math.round(duration * 100), 1, DI);
+		this.tickProgressBar(Math.round(duration * 100), 1, position);
 	}
 
 	private async loadBackground(type: BackgroundType) {
@@ -879,8 +897,8 @@ class Players {
 		try {
 			playerState.mediaType = type as MediaType;
 			playerState.playerStatus = 'stop';
-			playerState.currentSong = undefined;
-			playerState.currentMedia = undefined;
+			playerState.currentSong = null;
+			playerState.currentMedia = null;
 			playerState._playing = false;
 			playerState.playing = false;
 			emitPlayerState();
@@ -967,7 +985,7 @@ class Players {
 		if (this.players.main.isRunning || this.players.monitor?.isRunning) {
 			// needed to wait for lock release
 			// eslint-disable-next-line no-return-await
-			return this.exec('destroy').catch(err => {
+			return this.exec('destroy', undefined, undefined, true, true).catch(err => {
 				// Non fatal. Idiots sometimes close mpv instead of KM, this avoids an uncaught exception.
 				logger.warn('Failed to quit mpv', { service, obj: err });
 			});
@@ -988,7 +1006,7 @@ class Players {
 				this.players.monitor = new Player({ monitor: true }, this);
 			} else {
 				// Monitor needs to be destroyed
-				await this.exec('destroy', [null], 'monitor', true).catch(() => {
+				await this.exec('destroy', [null], 'monitor', true, true).catch(() => {
 					// Non-fatal, it probably means it's destroyed.
 				});
 				delete this.players.monitor;
@@ -1050,6 +1068,10 @@ class Players {
 						})
 						.catch(error => {
 							mediaFile = '';
+							emitWS(
+								'operatorNotificationError',
+								APIMessage('NOTIFICATION.OPERATOR.ERROR.PLAYER_NO_ONLINE_MEDIA')
+							);
 							throw new Error(
 								`No media source for ${song.mediafile} (tried in ${resolvedPathRepos(
 									'Medias',
@@ -1061,6 +1083,7 @@ class Players {
 		];
 		await Promise.all<Promise<any>>(loadPromises);
 		logger.debug(`Loading media: ${mediaFile}${subFile ? ` with ${subFile}` : ''}`, { service });
+		const config = getConfig();
 		if (subFile) {
 			options['sub-file'] = subFile;
 			options.sid = '1';
@@ -1079,12 +1102,20 @@ class Players {
 			options['image-display-duration'] = 'inf';
 			options.vid = '1';
 		}
+		if (config.Player.BlurVideoOnWarningTag === true || playerState.blurVideo === true) {
+			// Set blur if enabled in settings and kara has warning
+			// Or reset if blur currently enabled and new kara plays
+			await this.setBlur(config.Player.BlurVideoOnWarningTag && song.warnings.length > 0);
+		}
 		// Load all those files into mpv and let's go!
 		try {
 			playerState.currentSong = song;
 			playerState.mediaType = 'song';
 			playerState.currentMedia = null;
-			if (this.messages) this.messages.removeMessage('poll');
+			if (this.messages) {
+				this.messages.removeMessages(['poll', 'pauseScreen']);
+				this.displaySongInfo(song.infos, -1, false, song.warnings);
+			}
 			await retry(() => this.exec({ command: ['loadfile', mediaFile, 'replace', options] }), {
 				retries: 3,
 				onFailedAttempt: error => {
@@ -1103,7 +1134,6 @@ class Players {
 			playerState.nextSongNotifSent = false;
 			playerState.playing = true;
 			playerState._playing = true;
-			playerState.currentMedia = undefined;
 			playerState.playerStatus = 'play';
 			emitPlayerState();
 			setDiscordActivity('song', {
@@ -1167,7 +1197,7 @@ class Players {
 					: conf.Playlist.Medias[mediaType].Message
 					? this.message(conf.Playlist.Medias[mediaType].Message, -1, 5, 'DI')
 					: this.messages.removeMessage('DI');
-				this.messages.removeMessage('poll');
+				this.messages.removeMessages(['poll', 'pauseScreen']);
 				emitPlayerState();
 				return playerState;
 			} catch (err) {
@@ -1200,11 +1230,11 @@ class Players {
 		playerState['eof-reached'] = true;
 		playerState.playerStatus = 'stop';
 		await this.loadBackground(type);
+		this.messages.clearMessages();
 		logger.debug('Stop DI', { service });
 		this.displayInfo();
 		emitPlayerState();
 		setDiscordActivity('idle');
-		this.messages.removeMessage('poll');
 		return playerState;
 	}
 
@@ -1317,6 +1347,25 @@ class Players {
 		}
 	}
 
+	async setBlurPercentage(blurPercentage: number) {
+		try {
+			await this.exec({
+				command: ['set_property', 'vf', blurPercentage > 0 ? `gblur=sigma=${blurPercentage}:steps=3` : ''],
+			});
+			playerState.blurVideo = blurPercentage > 0;
+			emitPlayerState();
+			return playerState;
+		} catch (err) {
+			logger.error('Unable to set blur', { service, obj: err });
+			sentry.error(err);
+			throw err;
+		}
+	}
+
+	async setBlur(enabled: boolean) {
+		this.setBlurPercentage(enabled ? 90 : 0);
+	}
+
 	async setVolume(volume: number): Promise<PlayerState> {
 		try {
 			await this.exec({ command: ['set_property', 'volume', volume] });
@@ -1373,12 +1422,9 @@ class Players {
 		}
 	}
 
-	async toggleFullscreen(): Promise<boolean> {
+	async toggleFullscreen(): Promise<void> {
 		try {
 			await this.exec({ command: ['set_property', 'fullscreen', !playerState.fullscreen] });
-			playerState.fullscreen = !playerState.fullscreen;
-			emitPlayerState();
-			return playerState.fullscreen;
 		} catch (err) {
 			logger.error('Unable to toggle fullscreen', { service, obj: err });
 			sentry.error(err);
@@ -1451,30 +1497,30 @@ class Players {
 
 	async displaySongInfo(infos: string, duration = -1, nextSong = false, warnings?: DBKaraTag[]) {
 		try {
+			const nextSongString = nextSong ? `${i18n.t('NEXT_SONG')}\\N\\N` : '';
+			const position = nextSong ? '{\\an5}' : '{\\an1}';
 			let warningString = '';
-			let nextSongString = '';
-			let position = '';
+			if (warnings?.length > 0) {
+				const langs = [
+					getConfig().Player.Display.SongInfoLanguage,
+					convert1LangTo2B(getState().defaultLocale),
+					'eng',
+				];
+				const warningArr = warnings.map(t => {
+					return getTagNameInLanguage(t, langs);
+				});
+				warningString = `{\\fscx80}{\\fscy80}{\\b1}{\\c&H0808E8&}⚠ WARNING: ${warningArr.join(
+					', '
+				)} ⚠{\\b0}\\N{\\c&HFFFFFF&}`;
+			}
 			if (getConfig().Player.Display.SongInfo) {
-				if (warnings?.length > 0) {
-					const langs = [
-						getConfig().Player.Display.SongInfoLanguage,
-						convert1LangTo2B(getState().defaultLocale),
-						'eng',
-					];
-					const warningArr = warnings.map(t => {
-						return getTagNameInLanguage(t, langs);
-					});
-					warningString = `{\\fscx80}{\\fscy80}{\\b1}{\\c&H0808E8&}⚠ WARNING: ${warningArr.join(
-						', '
-					)} ⚠{\\b0}\\N{\\c&HFFFFFF&}`;
-				}
-				nextSongString = nextSong ? `${i18n.t('NEXT_SONG')}\\N\\N` : '';
-				position = nextSong ? '{\\an5}' : '{\\an1}';
 				this.messages.addMessage(
 					'DI',
 					position + warningString + nextSongString + infos,
 					duration === -1 ? 'infinite' : duration
 				);
+			} else {
+				this.messages.removeMessage('DI'); // not sure if this is needed
 			}
 			if (nextSong) {
 				playerState.mediaType = 'pause';
@@ -1490,10 +1536,7 @@ class Players {
 					getState().pauseInProgress &&
 					getConfig().Karaoke.StreamerMode.PauseDuration > 0
 				) {
-					this.progressBar(
-						getConfig().Karaoke.StreamerMode.PauseDuration,
-						position + warningString + nextSongString + infos
-					);
+					this.progressBar(getConfig().Karaoke.StreamerMode.PauseDuration, position);
 				}
 			}
 		} catch (err) {
@@ -1553,7 +1596,7 @@ class Players {
 async function getMpvLog() {
 	try {
 		const today = date();
-		const logFile = resolve(getState().dataPath, 'logs/', `mpv.${today}.log`);
+		const logFile = resolve(resolvedPath('Logs'), `mpv.${today}.log`);
 		const logData = await fs.readFile(logFile, 'utf-8');
 		return logData.split('\n').slice(-100);
 	} catch (err) {

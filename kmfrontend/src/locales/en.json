@@ -3,9 +3,12 @@
 	"YES": "Yes",
 	"NO": "No",
 	"AND": "and",
+	"UNKNOWN": "Unknown",
 	"SEARCH": "Search",
 	"SUBMIT": "Save",
 	"CANCEL": "Cancel",
+	"WARNING": "Warning!",
+	"SHOW-HIDE": "Show/Hide",
 	"NOT_FOUND_PAGE": {
 		"404": "Lost in Karaoke Mugen?",
 		"404_2": "Do not panic, we can help you.",
@@ -31,6 +34,8 @@
 	"SPEED_UP": "Play faster",
 	"SPEED_RESET": "Reset to normal speed",
 	"SPEED_DOWN": "Play slower",
+	"BLURVIDEO_BLUR": "Blur video",
+	"BLURVIDEO_UNBLUR": "Unblur video",
 	"PITCH_UP": "Higher pitch",
 	"PITCH_RESET": "Reset pitch",
 	"PITCH_DOWN": "Lower pitch",
@@ -47,7 +52,8 @@
 	"VOLUME_LEVEL": "Set volume",
 	"PLAYLISTS": {
 		"LIBRARY": "Library",
-		"FAVORITES": "Favorites"
+		"FAVORITES": "Favorites",
+		"ANIME_LIST": "My animes"
 	},
 	"WEBAPPMODE_CLOSED_MESSAGE": "The interface is closed, please wait.",
 	"INLINE_TAG": {
@@ -74,6 +80,7 @@
 		"DELETE": "Delete playlist",
 		"EDIT": "Edit playlist",
 		"EXPORT": "Export playlist",
+		"EXPORT_MEDIA": "Export all playlist medias",
 		"ADD": "Add new playlist",
 		"AUTOMIX": "Create an automix",
 		"IMPORT": "Import playlist",
@@ -157,7 +164,7 @@
 				"7": "that are",
 				"8": "written by",
 				"9": "of the group",
-				"10": "from the family",
+				"10": "contains",
 				"11": "that originated from",
 				"12": "attached to the genre",
 				"13": "attached to the platform",
@@ -201,7 +208,8 @@
 		"GET_LUCKY": "Get lucky",
 		"REQUESTED_KARAOKES": "Requested songs",
 		"NEW_KARAOKES": "New songs",
-		"KARA_VERSIONS": "This song is available in {{length}} versions, choose the one you want and add it to the playlist or your favorites."
+		"KARA_VERSIONS": "This song is available in {{length}} versions, choose the one you want and add it to the playlist or your favorites.",
+		"ANIME_LIST": "My animes"
 	},
 	"ADMIN_MESSAGE": {
 		"ESSENTIAL_MESSAGE": "Important message",
@@ -219,8 +227,10 @@
 		"NAME": "Playlist name",
 		"NAME_PLACEHOLDER": "Auto-generated name",
 		"CRITERIA": "Mix criteria",
-		"FAVOURITES": "Favourites of",
-		"FAVOURITES_OF": "{{name}}'s favourites",
+		"ANIMELISTS": "Animelists of",
+		"ANIMELISTS_OF": "{{name}}'s animelist",
+		"FAVOURITES": "Favorites of",
+		"FAVOURITES_OF": "{{name}}'s favorites",
 		"LIMIT": "Limit the list to…",
 		"LIMIT_TYPE": {
 			"DURATION": "Duration",
@@ -324,6 +334,8 @@
 		"STATS_KARAS": "Karaokes",
 		"STATS_SERIES": "Series",
 		"STATS_TAGS": "Tags",
+		"STATS_USAGETIME": "Usage time",
+		"STATS_PLAYTIME": "Play time",
 		"BASE_UPDATE": "Database update",
 		"MASTODON_UPDATE": "Karaoke Mugen News",
 		"APP_UPDATE": "New version",
@@ -340,12 +352,14 @@
 		"PLAYER": {
 			"LABEL": "Player",
 			"WINDOW_SETTINGS": "Window",
+			"SCREEN_SETTINGS": "Screen",
 			"DISPLAY_SETTINGS": "Display",
 			"ALWAYS_ON_TOP": "Always on top",
 			"ALWAYS_ON_TOP_TOOLTIP": "If checked, the player window will always be above the others on the screen",
 			"FULLSCREEN": "Fullscreen",
 			"FULLSCREEN_TOOLTIP": "Hit F on a fullscreen player to reduce it to windowed mode.",
 			"VIDEO_SIZE": "Video size",
+			"VIDEO_SIZE_TOOLTIP": "Size of the player window : {{value}}. Any change will trigger a player restart after the current song ends if one is playing.",
 			"VIDEO_POSITION_X": "Video position (X)",
 			"VIDEO_POSITION_X_TOOLTIP": "Where the player window will be located on screen at startup",
 			"LEFT": "Left",
@@ -379,7 +393,9 @@
 			"DISPLAY_SONGINFO": "Display song information",
 			"DISPLAY_SONGINFO_TOOLTIP": "Information (title, series/singer, etc.) are displayed at the beginning and end of a song, as well as during pause screens in Stream/Classic modes. Disable to hide these, for blind tests for example.",
 			"LIVE_COMMENTS": "Live comments",
-			"LIVE_COMMENTS_TOOLTIP": "The messages of your chat will be displayed on the player (be careful, configure properly your AutoMod)."
+			"LIVE_COMMENTS_TOOLTIP": "The messages of your chat will be displayed on the player (be careful, configure properly your AutoMod).",
+			"BLUR_VIDEO_ON_WARNING_TAG": "Blur videos with warning tags",
+			"BLUR_VIDEO_ON_WARNING_TAG_TOOLTIP": "Apply blur filter to videos with a warning tag that are potentially unsafe. This could cause stutters on less powerful computers."
 		},
 		"KARAOKE": {
 			"LABEL": "Karaoke",
@@ -522,11 +538,22 @@
 		"Preparations are ongoing!"
 	],
 	"JINGLE_TIME": "Jingle time!",
-	"JINGLE_TAGLINES": ["We'll be right back!"],
+	"JINGLE_TAGLINES": [
+		"We'll be right back!"
+	],
 	"INTRO_TIME": "Playlist intro",
-	"INTRO_TAGLINES": ["Let's go!", "Starting…", "Initialization…", "Prepare your mic!", "*clears throat*"],
+	"INTRO_TAGLINES": [
+		"Let's go!",
+		"Starting…",
+		"Initialization…",
+		"Prepare your mic!",
+		"*clears throat*"
+	],
 	"OUTRO_TIME": "Playlist ending",
-	"OUTRO_TAGLINES": ["The End :(", "Thanks everyone!"],
+	"OUTRO_TAGLINES": [
+		"The End :(",
+		"Thanks everyone!"
+	],
 	"ENCORES_TIME": "Encore! Encore!",
 	"ENCORES_TAGLINES": [
 		"Well, it's not because I like you or anything…",
@@ -534,11 +561,21 @@
 		"Last song, let's give it our all!"
 	],
 	"SPONSOR_TIME": "COMMERCIAL TIME!",
-	"SPONSOR_TAGLINES": ["Kono bangumi wa…", "And thanks for the money."],
+	"SPONSOR_TAGLINES": [
+		"Kono bangumi wa…",
+		"And thanks for the money."
+	],
 	"PAUSE_TIME": "Pause",
-	"PAUSE_TAGLINES": ["Take a break!", "Time to drink!", "We'll be right back!"],
+	"PAUSE_TAGLINES": [
+		"Take a break!",
+		"Time to drink!",
+		"We'll be right back!"
+	],
 	"POLL_TIME": "Vote",
-	"POLL_TAGLINES": ["Vote! Vote!", "The choice is yours."],
+	"POLL_TAGLINES": [
+		"Vote! Vote!",
+		"The choice is yours."
+	],
 	"QUOTA_AVAILABLE": "You can add songs again now!",
 	"SERIE_NAME_MODE": "Series language mode",
 	"SERIE_NAME_MODE_TOOLTIP": "Changes the way series names are displayed on the song list. Might be ignored by user preferences",
@@ -600,7 +637,13 @@
 			"DESCRIPTION": "This playlist contains songs from repositories you do not have yet locally.",
 			"DOWNLOAD_THEM": "Do you want to add them now?"
 		},
-		"PLAY_CURRENT_MODAL": "Warning : the current playlist '{{playlist}}' isn't displayed on screen. That's the playlist going to be played. Are you sure you want to start playing?",
+		"PLAY_CURRENT_MODAL": {
+			"TITLE": "Warning!",
+			"DESCRIPTION": "The current playlist '<1>{{playlist}}</1>' isn't displayed on screen.",
+			"DESC_OUTCOME": "If you proceed, Karaoke Mugen will play song <1>{{song}}</1>.",
+			"CHANGE_TO_DISPLAYED_AND_PLAY": "Change current playlist to <1>{{displayedPlaylistName}}</1> and play",
+			"PLAY_ANYWAY": "Play anyway"
+		},
 		"PROFILE_MODAL": {
 			"ONLINE_CONVERT": "Convert to online account",
 			"ONLINE_DELETE": "Disable online account",
@@ -619,15 +662,26 @@
 			"FLAG_PUBLIC": "Share your profile",
 			"FLAG_DISPLAYFAVORITES": "Share your favorites",
 			"SOCIAL_NETWORKS": {
-				"TWITTER": "Twitter",
+				"TWITTER": "Twitter",				
 				"TWITTER_PLACEHOLDER": "@KaraokeMugen",
+				"MASTODON": "Mastodon",
+				"MASTODON_PLACEHOLDER": "KaraokeMugen@shelter.moe",
 				"TWITCH": "Twitch",
 				"TWITCH_PLACEHOLDER": "KaraokeLive",
 				"INSTAGRAM": "Instagram",
 				"INSTAGRAM_PLACEHOLDER": "karaokemugen",
 				"DISCORD": "Discord",
-				"DISCORD_PLACEHOLDER": "Karak#1423"
-			}
+				"DISCORD_PLACEHOLDER": "Karak#1423",
+				"MYANIMELIST": "MyAnimeList",
+				"MYANIMELIST_PLACEHOLDER": "karaokemugen",
+				"ANILIST": "AniList",
+				"ANILIST_PLACEHOLDER": "karaokemugen",
+				"KITSU": "Kitsu",
+				"KITSU_PLACEHOLDER": "karaokemugen"
+			},
+			"ANIME_LIST_TO_FETCH": "Anime list to fetch",
+			"REFRESH_ANIME_LIST": "Refresh anime list",
+			"CHOOSE_ANIME_LIST": "Choose an anime list"
 		},
 		"SHUFFLE_MODAL": {
 			"TITLE": "Shuffle playlist",
@@ -664,7 +718,8 @@
 			"CANNOT_PUBLIC": "You cannot have no public playlist, edit the one you want to set as the new public playlist.",
 			"CANNOT_SMART": "You cannot remove smart flag from a playlist.",
 			"CANNOT_BLACKLIST": "You cannot have no blacklist, edit the one you want to set as the new blacklist.",
-			"CANNOT_WHITELIST": "You cannot have no whitelist, edit the one you want to set as the new whitelist."
+			"CANNOT_WHITELIST": "You cannot have no whitelist, edit the one you want to set as the new whitelist.",
+			"NAME_MANDATORY": "Name of the playlist is mandatory"
 		},
 		"CROP_AVATAR_MODAL": {
 			"TITLE": "Crop your avatar",
@@ -706,10 +761,6 @@
 			"DELETE": "Abort all pending downloads",
 			"CONTINUE": "Resume all downloads"
 		},
-		"DELETE_PLAYLIST_ERROR_CURRENT": "Unable to delete a current playlist. Make another playlist current first.",
-		"DELETE_PLAYLIST_ERROR_PUBLIC": "Unable to delete a public playlist. Make another playlist public first.",
-		"DELETE_PLAYLIST_ERROR_WHITELIST": "Unable to delete a whitelist. Make another playlist a whitelist first.",
-		"DELETE_PLAYLIST_ERROR_BLACKLIST": "Unable to delete a blacklist. Make another playlist a blacklist first.",
 		"DELETE_PLAYLIST_MODAL": {
 			"TITLE": "Delete {{playlist}} forever?",
 			"IMPOSSIBLE": "You cannot delete the only playlist.",
@@ -718,6 +769,12 @@
 			"DELETE_PUBLIC": "This list is defined as public, change the public playlist for another to delete this one.",
 			"DELETE_CURRENT": "This list is defined as current , change the current playlist for another to delete this one.",
 			"DELETE_CURRENT_PUBLIC": "This list is defined as current and public, change the current and public playlist for another to delete this one."
+		},
+		"EXPORT_PLAYLIST_MEDIA": {
+			"START": "Media files are being exported…",
+			"DONE": "Playlist media files have been exported",
+			"DONE_PARTIALLY": "Playlist media files have been exported, although these could not be saved:",
+			"NOT_ALL_MEDIA_DOWNLOADED": "Not all medias are available locally. Please make sure to download all videos before exporting the playlist"
 		},
 		"STATS_MODAL": {
 			"TITLE": "Use my favorites and karaokes requests for stats",
@@ -793,10 +850,12 @@
 				"DOWNLOAD": "Song download error",
 				"SHORTENER": "Error when enabling URL shortener",
 				"PLAYER_PLAY": "Unable to play song",
+				"PLAYER_NO_ONLINE_MEDIA": "Media cannot be read from online sources. Check your internet connection.",
 				"PLAYER_RANDOM_SONG_AFTER_PLAYLIST": "Unable to select a random song to play after playlist ends",
 				"PLAYER_PLMEDIA": "Unable to play playlist media",
 				"PLAYER_CLASSIC_PAUSE_SCREEN": "Unable to prepare pause screen",
 				"PLAYLIST_FREE_ORPHANED_SONGS": "Unable to free orphaned songs",
+				"AUTOMIX_NO_SONGS_MEET_CRITERIAS": "No songs met the criterias selected for this AutoMix",
 				"POLL_ALREADY_STARTED": "A poll is already in progress",
 				"POLL_PUBLIC_PL_EMPTY": "Unable to start poll: public playlist is empty",
 				"POLL_NOT_ENOUGH_SONGS": "Unable to start poll: not enough songs available"
@@ -837,6 +896,15 @@
 		"MEDIA_FILE_TOOLTIP": "Supported file formats: {{formats}}",
 		"MEDIA_REQUIRED": "Media file is mandatory",
 		"MEDIA_IN_PROCESS": "The media file is being integrated, please wait for the notification of successful processing.",
+		"MEDIA_FILE_INFO": {
+			"OVERALL_BITRATE": "Overall bitrate",
+			"FILE_SIZE": "File size",
+			"FILE_FORMAT": "File format",
+			"VIDEO_CODEC": "Video codec",
+			"VIDEO_RESOLUTION": "Resolution",
+			"VIDEO_COLORSPACE": "Colorspace",
+			"AUDIO_CODEC": "Audio codec"
+		},
 		"LYRICS_FILE": "Lyrics file",
 		"LYRICS_FILE_TOOLTIP": "Supported file formats: {{formats}}",
 		"LYRICS_FILE_OPEN": "Open file",
@@ -858,6 +926,7 @@
 		"LANGUAGES_REQUIRED": "Please choose a language",
 		"YEAR": "Broadcast year",
 		"YEAR_TOOLTIP": "Year when the series was broadcasted or the video was produced",
+		"FAMILIES_TOOLTIP": "Defines what kind of content the video has.",
 		"SINGERGROUPS_TOOLTIP": "If the singers belong to a music band, put them in here. The band will be displayed in the player and song lists instead of individual singers.",
 		"SONGWRITERS_TOOLTIP": "Composers, Arrangers and Lyricists.",
 		"CREATORS_TOOLTIP": "Entity that created the series. Can be animation studio, movie studio, or game studio.",
@@ -924,6 +993,8 @@
 		"DELETE_KARA_TITLE": "You're going to remove the {{count}} displayed karaokes, are you sure?",
 		"DELETE_MEDIA_TOOLTIP": "Delete the karaoke media",
 		"UPLOAD_MEDIA_TOOLTIP": "Re-upload karaoke media",
+		"SHOW_LYRICS_IN_FOLDER": "Show lyrics in folder",
+		"SHOW_MEDIA_IN_FOLDER": "Show media in folder",
 		"PLAY_KARAOKE": "Play karaoke",
 		"MISSING_DOWNLOAD_TOOLTIP": "This karaoke is not downloaded, you will need Internet in order to play it. You can make it work offline by downloading the media.",
 		"IN_PROGRESS_DOWNLOAD_TOOLTIP": "Download in progress",
@@ -1011,7 +1082,7 @@
 		"CONFIRM_UPDATE": "Confirm update"
 	},
 	"TAGS": {
-		"NAME": "Original name",
+		"NAME": "Internal name",
 		"NAME_REQUIRED": "Please enter a name",
 		"NAME_TOOLTIP": "This is the internal name used to reference the tags in Karaoke Mugen's database",
 		"SHORT_NAME": "Short name",
@@ -1030,6 +1101,7 @@
 		"I18N_DELETE": "Remove name",
 		"I18N_SELECT": "Add a language",
 		"ROMANIZATION_WARNING": "This title/tag contains a non-Latin alphabet language. You must add the language “Latin Alphabet (Romanization)” in addition.",
+		"MERGE_TAGS": "Merge tags",
 		"MERGE_WITH": "Merge with",
 		"MERGE_WITH_TOOLTIP": "Merge the current tag with another one",
 		"MERGE_WITH_SELECT": "Select a tag",
@@ -1037,6 +1109,7 @@
 		"MERGE_ABOUT": "About Merging process",
 		"MERGE_ABOUT_MESSAGE": "Resulting tags will have the current Name and Short name. Types, Aliases and Translations will be merged and the resulting tags will contain all the information from source and destination tags.",
 		"TAG_DELETED_CONFIRM": "Confirm tag deletion",
+		"DELETE_TAG": "Delete tag",
 		"DELETE_TAG_CONFIRM": "Delete tag",
 		"DELETE_TAG_MESSAGE": "This will remove the tag as well as in any song in your database!",
 		"LANG_ERROR": "A tag must have at least one translated name.",
@@ -1052,11 +1125,11 @@
 		"ADD_DESCRIPTION": "Add a description",
 		"KARAOKES_WITH_TAGS": "Karaokes with this tag",
 		"MAL_ID": "MAL ID/URL",
-		"MAL_ID_TOOLTIP": "If this is an anime, please indicate its id on myanimelist.net",
+		"MAL_ID_TOOLTIP": "If this is an anime, please indicate its id/url on myanimelist.net",
 		"ANILIST_ID": "Anilist ID/URL",
-		"ANILIST_ID_TOOLTIP": "If this is an anime, please indicate its id on anilist.co",
+		"ANILIST_ID_TOOLTIP": "If this is an anime, please indicate its id/url on anilist.co",
 		"KITSU_ID": "Kitsu ID/URL",
-		"KITSU_ID_TOOLTIP": "If this is an anime, please indicate its id on kitsu.io",
+		"KITSU_ID_TOOLTIP": "If this is an anime, please indicate its url on kitsu.io",
 		"NOT_MAL_URL_ERROR": "This is a myanimelist url",
 		"NOT_ANILIST_URL_ERROR": "This is a anilist url",
 		"NOT_KITSU_URL_ERROR": "This is a kitsu url",
@@ -1084,8 +1157,8 @@
 		"SONGWRITERS_other": "Songwriters",
 		"GROUPS_one": "Group",
 		"GROUPS_other": "Groups",
-		"FAMILIES_one": "Family",
-		"FAMILIES_other": "Families",
+		"FAMILIES_one": "Video Content",
+		"FAMILIES_other": "Video Contents",
 		"ORIGINS_one": "Origin",
 		"ORIGINS_other": "Origins",
 		"GENRES_one": "Genre",
@@ -1196,7 +1269,6 @@
 		"MOVING_MEDIA": "Destination where to move medias",
 		"MOVING_MEDIA_BUTTON": "Move medias…",
 		"MOVING_MEDIA_PANEL": "Move medias",
-		"WARNING": "Warning!",
 		"MOVING_MEDIA_ABOUT_MESSAGE": "All repository media files will be moved to the new folder. If your repository has several media folders, all files of all folders will be moved into the same target folder. If there are duplicate files, they'll be savagely overwritten.",
 		"COMPARE_LYRICS": "Update lyrics between two repositories",
 		"CHOOSE_REPOSITORY": "Choose a repository",
@@ -1208,6 +1280,7 @@
 		"SYNCHRONIZE_ABOUT_MESSAGE": "This will allow you to synchronize tags files from one repository to another. Select a repository to synchronize tags with (it will be the destination repository for the copy of the tags)",
 		"SYNCHRONIZE_BUTTON": "Synchronize",
 		"FREE_SPACE": "Free space",
+		"OPEN_MEDIA_FOLDER": "Open media folder",
 		"DELETE_OLD_MEDIAS": "Delete medias unused since 1 month",
 		"DELETE_ALL_MEDIAS": "Delete all medias",
 		"STORAGE_INFO": "There is multiple ways to manage space used by your repositories:",
@@ -1245,7 +1318,8 @@
 		"GIT_STASH": "You have stashes to apply, those are created automatically when a merge conflict occurs. You can try to restore them or delete them. You should check the <1>Git repository</1> online to see changes that might have caused the conflict.",
 		"GIT_UNSTASH": "Apply",
 		"GIT_DELETE": "Delete",
-		"GIT_CUSTOM_MESSAGE": "Custom message"
+		"GIT_CUSTOM_MESSAGE": "Custom message",
+		"DESELECT_ALL_COMMITS": "Deselect all commits"
 	},
 	"COLLECTIONS": {
 		"NAME": "Collection name",
@@ -1316,6 +1390,8 @@
 		"PREPARING_CHANGES": "Preparing changes",
 		"REFRESHING_DATA": "Refreshing data…",
 		"UPLOADING_FTP": "Uploading to the FTP…",
+		"EXPORTING_PLAYLIST_MEDIA": "Exporting media from playlist…",
+		"IMPORTING_PLAYLIST": "Importing playlist…",
 		"DUMMY_TASK": "No ongoing tasks"
 	},
 	"ERROR_CODES": {
@@ -1484,7 +1560,13 @@
 		"COLLECTIONS_GET_ERROR": "Error fetching collections",
 		"UPLOADED_MEDIA_ERROR": "Error when uploading media",
 		"REPOSITORY_UNREACHABLE": "Repository unreachable. Did you misspell its name?",
-		"CANNOT_INSTALL_REPO_AT_WINDOWS_ROOT_DRIVE": "Repository cannot be installed at the root of a Windows drive."
+		"CANNOT_INSTALL_REPO_AT_WINDOWS_ROOT_DRIVE": "Repository cannot be installed at the root of a Windows drive.",
+		"REFRESH_ANIME_LIST_ERROR": "Error refreshing anime list",
+		"ANIME_LIST_VIEW_ERROR": "Error getting anime list",
+		"DELETE_PLAYLIST_ERROR_CURRENT": "Unable to delete a current playlist. Make another playlist current first.",
+		"DELETE_PLAYLIST_ERROR_PUBLIC": "Unable to delete a public playlist. Make another playlist public first.",
+		"DELETE_PLAYLIST_ERROR_WHITELIST": "Unable to delete a whitelist. Make another playlist a whitelist first.",
+		"DELETE_PLAYLIST_ERROR_BLACKLIST": "Unable to delete a blacklist. Make another playlist a blacklist first."
 	},
 	"SUCCESS_CODES": {
 		"DOWNLOADS_QUEUED": "Added {{data}} downloads to the queue",
@@ -1543,6 +1625,7 @@
 		},
 		"SYSTEM_PREFERENCES": {
 			"TITLE": "System preferences",
+			"TITLEMAC": "System settings",
 			"DESCRIPTION": "Application-related settings only"
 		},
 		"CONFIGURATION": {
@@ -1671,7 +1754,8 @@
 			"INFO": "Informations",
 			"DEBUG": "Debug"
 		},
-		"SHOW_DETAILS": "Show details"
+		"SHOW_DETAILS": "Show details",
+		"SELECT_LOG": "Select log in file manager"
 	},
 	"CHIBI": {
 		"FOCUS": "Go back to Karaoke Mugen",
@@ -1771,6 +1855,7 @@
 			"URL": "Website: ",
 			"SOCIAL_NETWORKS": {
 				"TWITTER": "Twitter: ",
+				"MASTODON": "Mastodon: ",
 				"TWITCH": "Twitch: ",
 				"INSTAGRAM": "Instagram: ",
 				"DISCORD": "Discord: "
@@ -1781,8 +1866,8 @@
 	},
 	"ABOUT": {
 		"DESCRIPTION": "A karaoke player and a party organizer, between friends or in public. MIT-licensed.",
-		"CONTRIBUTORS": "The karaokes were created by awesome people, like <contrib/> for example.",
-		"DONATORS": "Thanks to <donators/> for their donations to Karaoke Mugen"
+		"CONTRIBUTORS": "The karaokes were created by awesome people, like <1>{{contributors}}</1> for example.",
+		"DONATORS": "Thanks to <1>{{donators}}</1> for their donations to Karaoke Mugen"
 	},
 	"COLLECTIONS_MIGRATION": {
 		"TITLE": "Introducing collections!",

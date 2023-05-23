@@ -1,6 +1,6 @@
 import { addBreadcrumb } from '@sentry/react';
 import i18next from 'i18next';
-import { io, Socket } from 'socket.io-client';
+import { io, ManagerOptions, Socket, SocketOptions } from 'socket.io-client';
 
 import { displayMessage, eventEmitter } from './tools';
 
@@ -9,18 +9,21 @@ let proxy: boolean;
 let authorization;
 let onlineAuthorization;
 
+const ioOpts: Partial<ManagerOptions & SocketOptions> = {
+	transports: ['websocket'],
+	upgrade: false,
+	closeOnBeforeunload: false,
+};
+
 if (document.querySelector<HTMLMetaElement>('meta[name="target"]').content === 'NO-REMOTE') {
 	if (process.env.NODE_ENV === 'development') {
-		socket = io(`http://${window.location.hostname}:1337`, { transports: ['websocket'], upgrade: false });
+		socket = io(`http://${window.location.hostname}:1337`, ioOpts);
 	} else {
-		socket = io({ transports: ['websocket'], upgrade: false });
+		socket = io(ioOpts);
 	}
 	proxy = false;
 } else {
-	socket = io(`/${document.querySelector<HTMLMetaElement>('meta[name="target"]').content}`, {
-		transports: ['websocket'],
-		upgrade: false,
-	});
+	socket = io(`/${document.querySelector<HTMLMetaElement>('meta[name="target"]').content}`, ioOpts);
 	proxy = true;
 }
 
@@ -47,7 +50,10 @@ export function commandBackend(name: string, body?: any, loading = false, timeou
 				message: `${name} timeout`,
 				data: bodyWithoutpwd,
 			});
-			reject(new Error('commandBackend timeout'));
+			const error = new Error();
+			error.message = `${name} timeout`;
+			error.name = 'commandBackend timeout';
+			reject(error);
 		}, timeout);
 		socket.emit(
 			name,
@@ -81,9 +87,12 @@ export function commandBackend(name: string, body?: any, loading = false, timeou
 				) {
 					displayMessage('success', i18next.t(`SUCCESS_CODES.${data.code}`, { data: data.data }));
 				} else if (err && data?.message?.code && typeof data.data !== 'object') {
-					displayMessage('error', i18next.t(`ERROR_CODES.${data.message.code}`, { data: data.data }));
+					displayMessage(
+						data.code?.toString().startsWith('4') ? 'warning' : 'error',
+						i18next.t(`ERROR_CODES.${data.message.code}`, { data: data.data })
+					);
 				}
-				err ? reject(new Error(JSON.stringify(data))) : resolve(data);
+				err ? reject(new Error(data?.message?.code ? data.message.code : JSON.stringify(data))) : resolve(data);
 			}
 		);
 	});

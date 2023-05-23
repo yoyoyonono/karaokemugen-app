@@ -44,7 +44,7 @@ export const tagTypes: Readonly<{ [key: string]: tagType }> = {
 	LANGS: {
 		icon: 'globe',
 		type: 5,
-		color: 'green',
+		color: 'black',
 		karajson: 'langs',
 	},
 	SINGERS: {
@@ -149,6 +149,11 @@ export const YEARS = {
 export const FAVORITES = {
 	icon: 'star',
 	type: 1001,
+};
+
+export const ANIMELISTS = {
+	icon: 'star',
+	type: 1002,
 };
 
 export function getTagTypeName(type: number): string {

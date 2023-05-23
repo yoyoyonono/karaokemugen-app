@@ -28,7 +28,7 @@ function UsersModal(props: IProps) {
 	const getUserDetails = async (user: User) => {
 		if (userDetails?.login === user.login) {
 			setUserDetails(undefined);
-		} else if (user.type !== 2) {
+		} else if (user.type < 2) {
 			try {
 				const response = await commandBackend('getUser', { username: user.login });
 				setUserDetails(response);
@@ -97,7 +97,7 @@ function UsersModal(props: IProps) {
 										{userDetails?.url ? (
 											<div>
 												<i className="fas fa-fw fa-link" />
-												<a href={userDetails.url} rel="noreferrer noopener" target="_blank">
+												<a href={userDetails.url} rel="noreferrer noopener">
 													{userDetails.url}
 												</a>
 											</div>
@@ -129,9 +129,21 @@ function UsersModal(props: IProps) {
 												<a
 													href={`https://twitter.com/${userDetails.social_networks.twitter}`}
 													rel="noreferrer noopener"
-													target="_blank"
 												>
 													{userDetails.social_networks.twitter}
+												</a>
+											</div>
+										) : null}
+										{userDetails?.social_networks.mastodon ? (
+											<div>
+												<i className="fab fa-fw fa-mastodon" />
+												<a
+													href={`https://${
+														userDetails.social_networks.mastodon.split('@')[1]
+													}/@${userDetails.social_networks.mastodon.split('@')[0]}`}
+													rel="noreferrer noopener"
+												>
+													{userDetails.social_networks.mastodon}
 												</a>
 											</div>
 										) : null}
@@ -141,7 +153,6 @@ function UsersModal(props: IProps) {
 												<a
 													href={`https://instagram.com/${userDetails.social_networks.instagram}`}
 													rel="noreferrer noopener"
-													target="_blank"
 												>
 													{userDetails.social_networks.instagram}
 												</a>
@@ -153,7 +164,6 @@ function UsersModal(props: IProps) {
 												<a
 													href={`https://twitch.tv/${userDetails.social_networks.twitch}`}
 													rel="noreferrer noopener"
-													target="_blank"
 												>
 													{userDetails.social_networks.twitch}
 												</a>

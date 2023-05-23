@@ -4,58 +4,67 @@ import { execa } from 'execa';
 import i18next from 'i18next';
 import internetAvailable from 'internet-available';
 
-import { compareKarasChecksum, generateDB, getStats, initDBSystem } from '../dao/database';
-import { baseChecksum } from '../dao/dataStore';
-import { postMigrationTasks } from '../dao/migrations';
-import { markAllMigrationsFrontendAsDone } from '../dao/migrationsFrontend';
-import { applyMenu, closeAllWindows, handleFile, handleProtocol, postInit } from '../electron/electron';
-import { initAutoUpdate } from '../electron/electronAutoUpdate';
-import { errorStep, initStep } from '../electron/electronLogger';
-import { registerShortcuts, unregisterShortcuts } from '../electron/electronShortcuts';
-import { closeDB, getSettings, saveSetting, vacuum } from '../lib/dao/database';
-import { initHooks } from '../lib/dao/hook';
-import { generateDatabase as generateKaraBase } from '../lib/services/generation';
+import { compareKarasChecksum, generateDB, getStats, initDBSystem } from '../dao/database.js';
+import { baseChecksum } from '../dao/dataStore.js';
+import { postMigrationTasks } from '../dao/migrations.js';
+import { markAllMigrationsFrontendAsDone } from '../dao/migrationsFrontend.js';
+import { applyMenu, closeAllWindows, handleFile, handleProtocol, postInit } from '../electron/electron.js';
+import { initAutoUpdate } from '../electron/electronAutoUpdate.js';
+import { errorStep, initStep } from '../electron/electronLogger.js';
+import { registerShortcuts, unregisterShortcuts } from '../electron/electronShortcuts.js';
+import { closeDB, getSettings, saveSetting, vacuum } from '../lib/dao/database.js';
+import { initHooks } from '../lib/dao/hook.js';
+import { generateDatabase as generateKaraBase } from '../lib/services/generation.js';
 // Utils
-import { getConfig, setConfig } from '../lib/utils/config';
-import { duration } from '../lib/utils/date';
-import logger, { archiveOldLogs, enableWSLogging, profile } from '../lib/utils/logger';
-import { createImagePreviews } from '../lib/utils/previews';
-import { initDownloader, wipeDownloadQueue, wipeDownloads } from '../services/download';
-import { updateAllMedias } from '../services/downloadMedias';
-import { getKaras, initFetchPopularSongs } from '../services/kara';
-import { initPlayer, quitmpv } from '../services/player';
-import { initPlaylistSystem } from '../services/playlist';
-import { buildAllMediasList, updatePlaylistMedias } from '../services/playlistMedias';
-import { initRemote } from '../services/remote';
-import { checkDownloadStatus, updateAllRepos } from '../services/repo';
-import { initSession } from '../services/session';
-import { initStats } from '../services/stats';
-import { generateAdminPassword, initUserSystem } from '../services/user';
-import { initDiscordRPC } from '../utils/discordRPC';
-import { initKMServerCommunication } from '../utils/kmserver';
-import { checkPG, dumpPG, restorePG, stopPG } from '../utils/postgresql';
-import sentry from '../utils/sentry';
-import { getState, setState } from '../utils/state';
-import { writeStreamFiles } from '../utils/streamerFiles';
-import { getTwitchClient, initTwitch, stopTwitch } from '../utils/twitch';
-import { subRemoteUsers } from '../utils/userPubSub';
-import initFrontend from './frontend';
+import { getConfig, setConfig } from '../lib/utils/config.js';
+import { duration } from '../lib/utils/date.js';
+import logger, { archiveOldLogs, enableWSLogging, profile } from '../lib/utils/logger.js';
+import { createImagePreviews } from '../lib/utils/previews.js';
+import { initDownloader, wipeDownloadQueue, wipeDownloads } from '../services/download.js';
+import { updateAllMedias } from '../services/downloadMedias.js';
+import { getKaras, initFetchPopularSongs } from '../services/kara.js';
+import { initPlayer, quitmpv } from '../services/player.js';
+import { initPlaylistSystem } from '../services/playlist.js';
+import { buildAllMediasList, updatePlaylistMedias } from '../services/playlistMedias.js';
+import { initRemote } from '../services/remote.js';
+import { checkDownloadStatus, updateAllRepos } from '../services/repo.js';
+import { initSession } from '../services/session.js';
+import { initStats } from '../services/stats.js';
+import { generateAdminPassword, initUserSystem } from '../services/user.js';
+import { initDiscordRPC } from '../utils/discordRPC.js';
+import { initKMServerCommunication } from '../utils/kmserver.js';
+import { checkPG, dumpPG, restorePG, stopPG } from '../utils/postgresql.js';
+import sentry from '../utils/sentry.js';
+import { getState, setState } from '../utils/state.js';
+import { writeStreamFiles } from '../utils/streamerFiles.js';
+import { getTwitchClient, initTwitch, stopTwitch } from '../utils/twitch.js';
+import { subRemoteUsers } from '../utils/userPubSub.js';
+import initFrontend from './frontend.js';
 
 let shutdownInProgress = false;
+let usageTime = 0;
+let usageTimeInterval;
 
 const service = 'Engine';
 
+export function isShutdownInProgress() {
+	return shutdownInProgress;
+}
+
 export async function initEngine() {
-	profile('Init');
+	profile('InitEngine');
 	const conf = getConfig();
 	const state = getState();
 	if (conf.Karaoke.Poll.Enabled) setState({ songPoll: true });
 	const internet = await (async () => {
 		try {
+			profile('InternetCheck');
 			await internetAvailable();
 			return true;
 		} catch (err) {
 			return false;
+		} finally {
+			profile('InternetCheck');
 		}
 	})();
 	if (state.opt.validate) {
@@ -164,13 +173,13 @@ export async function initEngine() {
 		}
 		try {
 			if (conf.Player.KeyboardMediaShortcuts) registerShortcuts();
-			initStep(i18next.t('INIT_PLAYLIST_AND_PLAYER'));
-			const initPromises = [initPlaylistSystem(), initDownloader(), initSession()];
+			initPlaylistSystem();
+			initDownloader();
+			initSession();
 			if (conf.Karaoke.StreamerMode.Twitch.Enabled) initTwitch();
 			if (!conf.App.FirstRun && !state.isTest && !state.opt.noPlayer) {
-				initPromises.push(initPlayer());
+				initPlayer();
 			}
-			await Promise.all(initPromises);
 			if (conf.Online.Stats === true) initStats(false);
 			initStep(i18next.t('INIT_LAST'), true);
 			enableWSLogging(state.opt.debug ? 'debug' : 'info');
@@ -217,13 +226,14 @@ export async function initEngine() {
 			postInit();
 			initHooks();
 			archiveOldLogs();
+			initUsageTimer();
 			logger.info(`Karaoke Mugen is ${ready}`, { service });
 		} catch (err) {
 			logger.error('Karaoke Mugen IS NOT READY', { service, obj: err });
 			sentry.error(err);
 			if (state.isTest) process.exit(1000);
 		} finally {
-			profile('Init');
+			profile('InitEngine');
 		}
 	}
 }
@@ -243,13 +253,14 @@ export async function updateBase(internet: boolean) {
 			ignoreCollections: true,
 		}),
 		'single'
-	);
+	).catch(() => {}); // Non-fatal
 }
 
 export async function exit(rc = 0, update = false) {
 	if (shutdownInProgress) return;
 	logger.info('Shutdown in progress', { service });
 	shutdownInProgress = true;
+	clearInterval(usageTimeInterval);
 	closeAllWindows();
 	wipeDownloadQueue();
 	try {
@@ -267,7 +278,7 @@ export async function exit(rc = 0, update = false) {
 		!getState().opt.dumpDB &&
 		!getState().opt.restoreDB
 	)
-		await dumpPG().catch();
+		await dumpPG().catch(() => {});
 	try {
 		await closeDB();
 	} catch (err) {
@@ -310,6 +321,7 @@ export function shutdown() {
 
 async function preFlightCheck(): Promise<boolean> {
 	const state = getState();
+	profile('preFlightCheck');
 	let doGenerate = false;
 	if (!state.opt.noBaseCheck) {
 		const filesChanged = await compareKarasChecksum();
@@ -322,7 +334,6 @@ async function preFlightCheck(): Promise<boolean> {
 	}
 	const settings = await getSettings();
 	if (!doGenerate && !settings.lastGeneration) {
-		setConfig({ App: { FirstRun: true } });
 		logger.info('Unable to tell when last generation occured: database generation triggered', { service });
 		doGenerate = true;
 	}
@@ -342,13 +353,13 @@ async function preFlightCheck(): Promise<boolean> {
 	logger.info(`Songs played : ${stats?.played}`, { service });
 	// Run this in the background
 	vacuum();
+	profile('preFlightCheck');
 	return doGenerate;
 }
 
 async function runTests() {
-	const options = ['-n', 'loader=ts-node/esm', '--require', 'test/util/hooks.ts', '--timeout', '60000', 'test/*.ts'];
 	try {
-		const ret = await execa('mocha', options, {
+		const ret = await execa('mocha', {
 			cwd: getState().appPath,
 		});
 		console.log(ret.stdout);
@@ -356,17 +367,20 @@ async function runTests() {
 	} catch (err) {
 		console.log('TESTS FAILED : ');
 		console.log(err.stdout);
+		console.error(err.stderr);
 		process.exit(1000);
 	}
 }
 
 async function checkIfAppHasBeenUpdated() {
+	profile('updateCheck');
 	const settings = await getSettings();
 	if (settings.appVersion !== getState().version.number) {
 		// We check if appVersion exists so we don't trigger the appHasBeenUpdated new state if it didn't exist before (new installs, or migration from when this function didn't exist)
 		await saveSetting('appVersion', getState().version.number);
 		if (settings.appVersion) setState({ appHasBeenUpdated: true });
 	}
+	profile('updateCheck');
 }
 
 /** Set admin password on first run, and open browser on welcome page.
@@ -376,6 +390,7 @@ async function checkIfAppHasBeenUpdated() {
  * Sugata katachi mo juunin toiro dakara hikareau no /
  */
 export async function welcomeToYoukousoKaraokeMugen(): Promise<string> {
+	profile('welcome');
 	const conf = getConfig();
 	const state = getState();
 	let url = `http://localhost:${state.frontendPort}/welcome`;
@@ -383,6 +398,20 @@ export async function welcomeToYoukousoKaraokeMugen(): Promise<string> {
 		const adminPassword = await generateAdminPassword();
 		url = `http://localhost:${conf.System.FrontendPort}/setup?admpwd=${adminPassword}`;
 	}
-	if (!state.opt.noBrowser && !state.isTest && state.opt.cli) shell.openPath(url);
+	if (!state.opt.noBrowser && !state.isTest && state.opt.cli) shell.openExternal(url);
+	profile('welcome');
 	return url;
+}
+
+async function initUsageTimer() {
+	const settings = await getSettings();
+	usageTime = +settings.usageTime || 0;
+	usageTimeInterval = setInterval(updateUsageTimer, 60000);
+	updateUsageTimer();
+}
+
+/** This is called every minute */
+async function updateUsageTimer() {
+	usageTime += 60;
+	await saveSetting('usageTime', `${usageTime}`);
 }

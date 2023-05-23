@@ -3,11 +3,10 @@ import { promises as fs } from 'fs';
 import { basename } from 'path';
 import prettyBytes from 'pretty-bytes';
 
-import { RepositoryMaintainerSettings } from '../lib/types/repo';
-import logger from '../lib/utils/logger';
-import Task from '../lib/utils/taskManager';
-import { getRepo } from '../services/repo';
-import { Repository } from '../types/config';
+import { Repository } from '../lib/types/repo.js';
+import logger from '../lib/utils/logger.js';
+import Task from '../lib/utils/taskManager.js';
+import { getRepo } from '../services/repo.js';
 
 const service = 'FTP';
 
@@ -83,9 +82,7 @@ export default class FTP {
 		});
 		this.client.trackProgress(info => {
 			task.update({
-				subtext: `${this.opts.repoName}: ${info.name} - ${prettyBytes(info.bytes)} / ${prettyBytes(
-					stat.size
-				)}}`,
+				subtext: `${this.opts.repoName}: ${info.name} - ${prettyBytes(info.bytes)} / ${prettyBytes(stat.size)}`,
 				total: stat.size,
 				value: info.bytes,
 			});
@@ -107,7 +104,7 @@ export default class FTP {
 		return this.client.close();
 	}
 
-	private validateFTPSettings(repo: Repository): repo is RepositoryMaintainerSettings {
+	private validateFTPSettings(repo: Repository) {
 		if ('FTP' in repo) {
 			const ftp = repo.FTP;
 			if (!ftp.Host || !ftp.Password || !ftp.Username) throw 'Invalid settings in FTP configuration';

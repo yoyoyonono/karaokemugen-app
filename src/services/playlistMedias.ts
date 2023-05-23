@@ -5,15 +5,16 @@ import { basename, resolve } from 'path';
 import prettyBytes from 'pretty-bytes';
 import { createClient, FileStat } from 'webdav';
 
-import { getConfig } from '../lib/utils/config';
-import { downloadFiles } from '../lib/utils/downloader';
-import { asyncCheckOrMkdir, isMediaFile } from '../lib/utils/files';
-import logger from '../lib/utils/logger';
-import Task from '../lib/utils/taskManager';
-import { Config } from '../types/config';
-import { Media, MediaType } from '../types/medias';
-import { editSetting, resolvedMediaPath } from '../utils/config';
-import { playlistMediasURL } from '../utils/constants';
+import { getConfig } from '../lib/utils/config.js';
+import { downloadFiles } from '../lib/utils/downloader.js';
+import { asyncCheckOrMkdir, isMediaFile } from '../lib/utils/files.js';
+import { fixedEncodeURIComponent } from '../lib/utils/http.js';
+import logger from '../lib/utils/logger.js';
+import Task from '../lib/utils/taskManager.js';
+import { Config } from '../types/config.js';
+import { Media, MediaType } from '../types/medias.js';
+import { editSetting, resolvedMediaPath } from '../utils/config.js';
+import { playlistMediasURL } from '../utils/constants.js';
 
 const service = 'PlaylistMedias';
 
@@ -154,7 +155,7 @@ async function downloadMedias(files: File[], dir: string, type: MediaType, task:
 	const list = files.map(file => {
 		return {
 			filename: resolve(dir, file.basename),
-			url: `${playlistMediasURL}/${type}/${encodeURIComponent(file.basename)}`,
+			url: `${playlistMediasURL}/${type}/${fixedEncodeURIComponent(file.basename)}`,
 			size: file.size,
 		};
 	});

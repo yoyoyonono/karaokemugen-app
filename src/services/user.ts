@@ -2,14 +2,14 @@ import { compare, genSalt, hash } from 'bcryptjs';
 import { createHash } from 'crypto';
 import { promises as fs } from 'fs';
 import { copy } from 'fs-extra';
-import { decode, encode } from 'jwt-simple';
+import { sign, verify } from 'jsonwebtoken';
 import { deburr, merge, sample } from 'lodash';
 import { resolve } from 'path';
 import randomstring from 'randomstring';
 import slugify from 'slug';
 import { v4 as uuidV4 } from 'uuid';
 
-import { selectSongCountForUser, selectSongTimeSpentForUser } from '../dao/playlist';
+import { selectSongCountForUser, selectSongTimeSpentForUser } from '../dao/playlist.js';
 import {
 	deleteTempUsers,
 	deleteUser,
@@ -19,21 +19,21 @@ import {
 	updateUser,
 	updateUserLastLogin,
 	updateUserPassword,
-} from '../dao/user';
-import { DBUser } from '../lib/types/database/user';
-import { User, UserParams } from '../lib/types/user';
-import { getConfig, resolvedPath, setConfig } from '../lib/utils/config';
-import { asciiRegexp, imageFileTypes } from '../lib/utils/constants';
-import { detectFileType, fileExists } from '../lib/utils/files';
-import logger from '../lib/utils/logger';
-import { emitWS } from '../lib/utils/ws';
-import { Config } from '../types/config';
-import { UserOpts } from '../types/user';
-import { defaultGuestNames } from '../utils/constants';
-import sentry from '../utils/sentry';
-import { getState } from '../utils/state';
-import { stopSub } from '../utils/userPubSub';
-import { createRemoteUser, editRemoteUser, getUsersFetched } from './userOnline';
+} from '../dao/user.js';
+import { DBUser } from '../lib/types/database/user.js';
+import { OldJWTToken, User, UserParams } from '../lib/types/user.js';
+import { getConfig, resolvedPath, setConfig } from '../lib/utils/config.js';
+import { asciiRegexp, imageFileTypes } from '../lib/utils/constants.js';
+import { detectFileType, fileExists } from '../lib/utils/files.js';
+import logger, { profile } from '../lib/utils/logger.js';
+import { emitWS } from '../lib/utils/ws.js';
+import { Config } from '../types/config.js';
+import { UserOpts } from '../types/user.js';
+import { defaultGuestNames } from '../utils/constants.js';
+import sentry from '../utils/sentry.js';
+import { getState } from '../utils/state.js';
+import { stopSub } from '../utils/userPubSub.js';
+import { createRemoteUser, editRemoteUser, getUsersFetched } from './userOnline.js';
 
 const service = 'User';
 
@@ -49,14 +49,13 @@ export async function getAvailableGuest() {
 /** Create JSON Web Token from timestamp, JWT Secret, role and username */
 export function createJwtToken(username: string, role: string, config?: Config): string {
 	const conf = config || getConfig();
-	const timestamp = new Date().getTime();
-	return encode({ username, iat: timestamp, role }, conf.App.JwtSecret, 'HS256');
+	return sign({ username, role }, conf.App.JwtSecret);
 }
 
 /** Decode token to see if it matches */
-export function decodeJwtToken(token: string, config?: Config) {
+export function decodeJwtToken(token: string, config?: Config): OldJWTToken {
 	const conf = config || getConfig();
-	return decode(token, conf.App.JwtSecret, false, 'HS256');
+	return verify(token, conf.App.JwtSecret) as any;
 }
 
 /** To avoid flooding database UPDATEs, only update login time every 5 minute for a user */
@@ -217,17 +216,6 @@ export async function hashPasswordbcrypt(password: string): Promise<string> {
 
 /** Check if password matches or if user type is 2 (guest) and password in database is empty. */
 export async function checkPassword(user: User, password: string): Promise<boolean> {
-	// First we test if password needs to be updated to new hash
-	// Remove this in KM 7.0
-	const hashedPasswordSHA = hashPassword(password);
-	const hashedPasswordbcrypt = await hashPasswordbcrypt(password);
-
-	if (user.password === hashedPasswordSHA) {
-		// Needs update to bcrypt hashed password
-		await updateUserPassword(user.login, hashedPasswordbcrypt);
-		user.password = hashedPasswordbcrypt;
-	}
-
 	if ((await compare(password, user.password)) || (user.type === 2 && !user.password)) {
 		return true;
 	}
@@ -271,6 +259,7 @@ export async function createUser(
 	if (opts.admin) user.type = 0;
 	if (user.type === 2) {
 		user.flag_sendstats = true;
+		user.language = null;
 	}
 	if (user.type === undefined) user.type = 1;
 
@@ -477,6 +466,7 @@ async function createDefaultGuests() {
 /** Initializing user auth module */
 export async function initUserSystem() {
 	// Check if a admin user exists just in case. If not create it with a random password.
+	profile('initUserSystem');
 	let users = await getUsers();
 	if (!users.find(u => u.login === 'admin')) {
 		await createUser(
@@ -543,6 +533,7 @@ export async function initUserSystem() {
 		.sort((a, b) => (a.last_login_at < b.last_login_at ? 1 : -1));
 	logger.debug('Admin users', { service, obj: JSON.stringify(adminUsers) });
 	sentry.setUser(adminUsers[0]?.login || 'admin');
+	profile('initUserSystem');
 }
 
 /** Performs defaults checks and creations for avatars/guests. This is done synchronously here because these are linked, but userChecks is called asynchronously to speed up init process */

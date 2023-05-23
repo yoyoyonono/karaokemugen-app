@@ -34,9 +34,22 @@ function TagEdit() {
 		}
 	};
 
+	const handleTagDelete = async (tid: string) => {
+		try {
+			await commandBackend('deleteTag', { tids: [tid] }, true);
+			navigate('/system/tags/');
+		} catch (e) {
+			// already display
+		}
+	};
+
 	const handleTagMerge = async (tid1: string, tid2: string) => {
-		await commandBackend('mergeTags', { tid1, tid2 }, true, 300000);
-		navigate('/system/tags/');
+		try {
+			await commandBackend('mergeTags', { tid1, tid2 }, true, 300000);
+			navigate('/system/tags/');
+		} catch (e) {
+			// already display
+		}
 	};
 
 	const loadTag = async () => {
@@ -77,6 +90,7 @@ function TagEdit() {
 						tags={tags}
 						save={tid ? saveUpdate : saveNew}
 						mergeAction={handleTagMerge}
+						deleteAction={handleTagDelete}
 						handleCopy={handleCopy}
 					/>
 				)}

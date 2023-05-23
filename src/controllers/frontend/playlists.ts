@@ -1,9 +1,9 @@
 import { Socket } from 'socket.io';
 
-import { APIData } from '../../lib/types/api';
-import { bools } from '../../lib/utils/constants';
-import { check } from '../../lib/utils/validators';
-import { SocketIOApp } from '../../lib/utils/ws';
+import { APIData } from '../../lib/types/api.js';
+import { bools } from '../../lib/utils/constants.js';
+import { check } from '../../lib/utils/validators.js';
+import { SocketIOApp } from '../../lib/utils/ws.js';
 import {
 	addKaraToPlaylist,
 	copyKaraToPlaylist,
@@ -13,6 +13,7 @@ import {
 	editPLC,
 	emptyPlaylist,
 	exportPlaylist,
+	exportPlaylistMedia,
 	findPlaying,
 	getKaraFromPlaylist,
 	getPlaylistContents,
@@ -24,10 +25,10 @@ import {
 	removeKaraFromPlaylist,
 	removePlaylist,
 	shufflePlaylist,
-} from '../../services/playlist';
-import { vote } from '../../services/upvote';
-import { APIMessage, errMessage } from '../common';
-import { runChecklist } from '../middlewares';
+} from '../../services/playlist.js';
+import { vote } from '../../services/upvote.js';
+import { APIMessage, errMessage } from '../common.js';
+import { runChecklist } from '../middlewares.js';
 
 export default function playlistsController(router: SocketIOApp) {
 	router.route('createAutomix', async (socket: Socket, req: APIData) => {
@@ -128,7 +129,7 @@ export default function playlistsController(router: SocketIOApp) {
 		} catch (err) {
 			const code = 'PL_DELETE_ERROR';
 			errMessage(code, err);
-			throw { code: err?.code || 500, message: APIMessage(code) };
+			throw { code: err?.code || 500, message: APIMessage(err?.msg || code) };
 		}
 	});
 	router.route('emptyPlaylist', async (socket: Socket, req: APIData) => {
@@ -138,6 +139,17 @@ export default function playlistsController(router: SocketIOApp) {
 			return await emptyPlaylist(req.body?.plaid);
 		} catch (err) {
 			const code = 'PL_EMPTY_ERROR';
+			errMessage(code, err);
+			throw { code: err?.code || 500, message: APIMessage(code) };
+		}
+	});
+	router.route('exportPlaylistMedia', async (socket: Socket, req: APIData) => {
+		await runChecklist(socket, req);
+		// Export all playlist kara medias to a local directory
+		try {
+			return await exportPlaylistMedia(req.body?.plaid, req.body?.exportDir);
+		} catch (err) {
+			const code = 'PL_EXPORT_MEDIA_ERROR';
 			errMessage(code, err);
 			throw { code: err?.code || 500, message: APIMessage(code) };
 		}
@@ -174,7 +186,7 @@ export default function playlistsController(router: SocketIOApp) {
 	router.route('getPlaylistContentsMicro', async (socket: Socket, req: APIData) => {
 		await runChecklist(socket, req, 'guest', 'limited');
 		try {
-			return await getPlaylistContentsMicro(req.body?.plaid);
+			return await getPlaylistContentsMicro(req.body?.plaid, req.token);
 		} catch (err) {
 			const code = 'PL_VIEW_SONGS_ERROR';
 			errMessage(code, err);

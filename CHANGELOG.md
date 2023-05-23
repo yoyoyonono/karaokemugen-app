@@ -1,4 +1,201 @@
-# v7.0.x - xx/10/2022
+# v7.1.x - xx/05/2023
+
+Most of the work on this release has already been backported in 7.0.x versions. Refer to these for more details.
+
+Below are changes from 7.0.46 to 7.1.0 :
+
+## New features
+
+-   You can now open a song's media file from the song list in system panel (#1454)
+-   Display year and duration of song in version selector in public interface (#1448)
+-   Prevent app from starting up if it detects an older database version (#1427)
+-   Added Mastodon link (#1421)
+-   Added a "Deselect all" button when trying to push new changes to a repository (#1412)
+-   Added option to automatically apply blur on karaokes with a warning tag (#1408)
+-   Added a progress bar to database migrations (#1399)
+-   Added play and usage time on welcome screen in the stats box (#1396)
+-   Added button to open file explorer on database folder (#1393)
+-   Added quiz mode (#755)
+
+## Improvements
+
+-   Changed tag type color for language in version selector of public interface to make it more visible (#1450)
+-   Removed collections in version selector of public interface (#1449)
+-   Removed group in version selector of public interface (#1447)
+-   Renamed "Families" to "Video Contents" in tag types (#1446)
+-   Restricted interface now allows search in library (#1367)
+
+## Fixes
+
+-   Fixed clicking on account after having clicked on website on welcome screen (#1378)
+-   Fixed downloading inbox songs with # in their names (#1443)
+-   Fixed display bug on "Player screen" option (#1441)
+-   Fixed bug on lyrics cleanup on kara edit (#1440)
+-   Fixed media downloads that shouldn't happen in local repositories (#1436)
+-   Fixed karaoke list on tag edit form when tag has multiple types (#1409)
+-   Fixed time in play bar (#1405)
+-   Fixed modal that says you're not playing the current playlist (#1403)
+-   Fixed error display when creating a playlist fails (#1402)
+-   Fixed some filter error (#1398)
+-   Fixed user edit JSON error (#1397)
+-   Fixed kara form submission without series or singer (#1395)
+-   Fixed JWT implementation (#1391)
+-   Fixed playlist selector on operator interface when in low resolution (#1388)
+-   Fixed frontend connection on a fresh reinstall (#1387)
+-   Fixed some operator interface issues with selected karaokes (#1386)
+-   Fixed some alignment problems in public interface (#1380)
+-   Fixed scroll in public and login pages (#1379)
+-   Fixed slider for video size in options (#1375 #1368)
+-   Fixed intro and sponsor lines at the start of playlists not marked in operator view (#1372)
+-   Fixed audio time set to negative when seeking to 0:00 (#1371)
+-   Fixed public interface always in french (#1366)
+
+## Misc
+
+-   Changed `moduleResolution` to `node16` in typescript to be more ESM-compliant (#1452)
+-   Removed Sentry DSN from codebase (#1434)
+-   Switched from iso-ounctires-languages to i18n-iso-countries (#1420)
+-   Removed temp path from config file (#1374)
+
+# v7.0.46 - 08/01/2023
+
+## Improvements
+
+-   Updated Spanish translation
+
+## Fixes
+
+-   Fixed default repositories being wiped when migrating from 6.x versions
+-   Fixed .deb icon for Linux releases
+-   Fixed the way tag types are represented in tag files.
+-   Fixed "too many files open" bug when integrating lots of tags or karaokes after an update
+-   Fixed merging tags
+-   Fixed getKara SQL bug with empty tag filters
+-   Fixed generation in case i18n is missing from tags
+-   Fixed z-index of tag popup
+-   Fixed flatpak release (a bit)
+
+# v7.0.43 - 01/01/2023
+
+Happy new year everyone!
+
+## New features
+
+-   Added support for aarch64 architecture for Linux users (experimental, not for Flatpak yet)
+-   Added Flatpak for Linux users! Karaoke Mugen can thus now easily be installed on a Steam Deck!
+-   Number of upvotes is now displayed in library
+-   Videos with warnings (R18/Spoiler/Epilepsy) can now be blurred automatically (or manually by the operator). Thanks @TheMio !
+-   Added upvote button in the karaoke details page
+-   When exporting medias from a playlist, a .m3u file is now also created for use in any video player.
+-   Songs are now considered "played" (for stats) only when the song ended properly. Previously it was considered "played" as soona s the song started.
+-   Database migrations can take some time and now have a progressbar on the init page.
+-   Added "Open folder" button in the system panel's storage page
+-   Added play/usage time in status page on welcome screen
+
+## Improvements
+
+-   Changed wording on the warning modal when hitting play and current playlist isn't displayed on screen
+-   Kara form now checks for supported lyrics formats
+-   The create playlist modal now tells you what's wrong when there's an error creating a playlist
+-   Exported playlists are now labelled with an ISO date (YYYY-MM-DD)
+-   Upgraded backend dependencies
+-   Upgraded frontend dependencies
+-   Restricted interface now allows searching in the library
+-   Updated Spanish translation
+-   Removed empty lyrics lines
+-   Refactored code of pause message
+-   mpv logs now have a complete timestamp and not just the date since it doesn't append to existing logs
+-   Song parents can be from other repositories. Use at your own risk.
+-   An error is displayed if automix contains no songs on creation
+
+## Fixes
+
+-   Fixed missing songs smart playlist criteria
+-   Fixed repository basedir creation if not present
+-   Fixed song filters when no words have been input
+-   Fixed strict mode when generating. Now should error out properly on media change
+-   Fixed no playlist selector on low resolution operator panel
+-   Fixed kara form requirements not working anymore (serie/singer mandatory)
+-   Fixed karaoke list in tag edit form when tag has multiple types
+-   Fixed slider for mpv window size
+-   Fixed scroll in public/login pages
+-   Fixed video preview when there's a song change in public interface
+-   Fixed missing poll message in i18n
+-   Fixed mini playlist query
+-   Fixed DisplaySongInfo not being correctly removed from screen sometimes
+-   Fixed display of action buttons in playlist (public interface)
+-   Fixed remove and upvote buttons in karaoke detail page (with a specific song version)
+-   Fixed conflict between socket.io and will-navigate preventing destruction of the universe and everything (it made the app go crazy)
+-   Fixed kitsu slug detection
+
+## Misc
+
+-   Added @red5h4d0w to contributors
+-   Switched from jwt-simple to jsonwebtoken package
+-   Removed migration screens from 4.5 and 5.0 versions
+
+# v7.0.38 - 27/11/2022
+
+## Fixes
+
+-   Fixed kara.moe auto-update for people with installs before 7.0
+-   Fixed opening external links in Linux
+-   Fixed file browser in Linux
+-   Fixed current song not being properly updated when you stop then play again.
+-   Fixed fullscreen option for player not being consistent
+-   Fixed drag & drop of songs in playlsit not always working right
+-   Various fixes for future Flatpak release
+
+## Misc
+
+-   Upgraded frontend and backend dependencies
+-   Removed temporary folder from config as we now use ~/KaraokeMugen/temp
+-   Replaced mouse wheel up/down on player. It now changes volume again like before.
+
+# v7.0.37 - 22/11/2022
+
+## Fixes
+
+-   Fixed filesystem available file detection
+-   Fixed video size tooltip in option
+-   Fixed video size and position needing restarts
+-   Fixed jingles bar refresh on the playlist in operator panel
+-   Fixed intro and sponsor bars at the beginning of the playlist
+-   Fixed negative time displayed when rewinding audio files
+
+# v7.0.36 - 19/11/2022
+
+## New features
+
+-   There is now a delete button on karaoke and tag forms in system panel
+-   Export medias and subs from a playlist into a local directory (so you can use them with another player like VLC)
+
+## Improvements
+
+-   Search engine now takes song order into account, so you can search for "ED1" or "ED 1" to get the first ending of a song
+-   Once generation is finished, library is refresh in operator view
+-   In karaoke form, open Create Tag modal on enter only if autocomplete return 0 element
+
+## Fixes
+
+-   Fixed select log file method
+-   Fixed guests accounts' language being incorrectly set to french
+-   Moved temp directory back into data directory to make it work with the future flatpak release
+-   Locked player commands during shutdown
+-   Increased timeout for getStats on welcome page so it displays correctly
+-   Fixed some Sentry errors
+-   Changed tooltip for Anilist to be more obvious
+-   Fixed progressbar on operator interface
+-   Fixed kara info crash if no series or singer
+-   Fixed the display monitor list
+-   Fixed player state on startup
+-   Fixed error when playing an online song that isn't available/internet is disabled.
+
+## Misc
+
+-   Upgraded backend dependencies
+
+# v7.0.34 - 09/11/2022
 
 This is a major release. A lot of bugfixes have been backported in 6.x versions so don't worry if you've seen some of them.
 
@@ -12,7 +209,6 @@ This is a major release. A lot of bugfixes have been backported in 6.x versions 
 -   Customize your session's splash page with a message your users can see before logging in (#1259)
 -   Customize the "Go to https://xxxx.kara.moe" message on the player (#1256)
 -   AutoMixes have been improved : you can now add criterias (like you would do for a smart playlist) to generate the playlist of your dreams (#1270)
--   Quiz time! You can now create a quiz from a playlist, select what to hide and let your guests guess which song is which! Complete with many options, score system and nifty other features! (#755)
 -   Link your profile with your Anilist/MyAnimeList/Kitsu profile! Once linked, Karaoke Mugen will create a special list "My Anime Songs" with songs from anime you've seen! This should help you populate your favorites or selecting songs during a karaoke session. (#1258)
 -   The video player now makes use of your mouse's previous/next buttons to go to change songs if you've focused the player with your mouse (#1305)
 -   New "franchise" tag type to allow searching/blacklisting songs by entire franchises instead of series (#1290)
@@ -27,12 +223,15 @@ This is a major release. A lot of bugfixes have been backported in 6.x versions 
 -   A new language type (Romanization) has been added to allow non-japanese titles/series names to have a proper romanization too.
 -   Database updates and other background tasks are now displayed on the operator screen so you know if something's going on! (#1239 and #1225)
 -   Added support for .SRT subtitle files (#1213)
+-   Added support for .KBP subtitle import. They'll be converted into ASS format on submission (#1347)
 -   Karaoke Mugen is now also available on :
     -   M1/M2 Macs (as a native application) (#824 #499)
     -   As an .AppImage for Linux
 
 ## Improvements
 
+-   Additional information is displayed in the Status box on the welcome screen (#1342)
+-   In the Event Log window, you can now click a button to open the log in your system's file explorer (#1343)
 -   Stream Mode and Classic Mode are now exclusive and it's more obvious on the config page. (#1302)
 -   A sample karaoke name is displayed in the Edit Profile window to show you what your linguistic preferences will do.
 -   "Delete this karaoke" menu item (and other dangerous actions) are now more easily visible in pop-up menus on system panel (#1298)
@@ -46,9 +245,21 @@ This is a major release. A lot of bugfixes have been backported in 6.x versions 
 -   mpv errors now have an accompanying log (#1229)
     -   Also, mpv logs now have a date in their filenames!
 -   "Update repositories" button is now on the repositories screen.
+-   Git/FTP Information is not mandatory anymore in repository edit form (#1330)
+-   All fields from karaokes and tags are now trimmed upons ubmission (#1339)
 
 ## Fixes
 
+-   Fixed progression toast missing from add/delete tag in karaoke (#1341)
+-   Fixed avatar modal being too big on mobile (#1346)
+-   Fixed permission checks in getPlaylistContentMicro route (#1337)
+-   Fixed language preference select box on profile modale in some configurations (#1338)
+-   Fixed creating new repository (#1327)
+-   Fixed medias sync/update not properly removing songs from disabled collections (#1324 #1306)
+-   Fixed circular dependencies in karaoke updates (#1320)
+-   Fixed inbox download feedback for maintainers (#1316)
+-   Fixed About page list of donators (#1310)
+-   Fixed removing kara.moe repository creating a new local repo (#1309)
 -   Fixed welcome page being too big on small screens (#1164)
 -   Fixed + button not greyed out when a song is already present in the destination playlist (#1198)
 -   After editing a tag, clicking on new tag doesn't pre-fill the new tag with your previously edited tag (that wasn't a feature, yeah) (#1299)
@@ -77,7 +288,7 @@ This is a major release. A lot of bugfixes have been backported in 6.x versions 
 
 ## Misc. changes
 
--   Updated Electron to version 20.
+-   Updated Electron to version 21.
 -   Removed the player progress bar in the dock/taskbar. It was redundant with mpv's own progressbar.
 -   Deprecated a variety of code that shouldn't be used anymore (#1247)
 -   Some data types have been reworked to allow better type-checking of our code (#822)
@@ -152,6 +363,12 @@ Us? Releasing a new version before a major event like Japan Expo? Perish the tho
 -   Fixed state emission errors from backend to frontend
 -   Fixed base zip download if basedir isn't emptied properly
 
+## Misc
+
+-   Upgraded backend and frontend dependencies
+-   Added logs to track issues with smart playlist creation
+-   Removed HTTP breadcrumbs in Sentry reports if they're about socket.io
+
 # v6.1.10 - 19/06/2022
 
 ## Changes
@@ -166,7 +383,10 @@ Us? Releasing a new version before a major event like Japan Expo? Perish the tho
 -   Added an example song in profile page so the user can see what his linguistic preferences will do (#1180)
 -   Optimized users initialization a bit
 -   Added language to user if null on login
+-   Fixed users hitting play with no song to play throwing errors
+-   Fixed trouble with input boxes on options page
 -   Added link to current playlist on public welcome page
+-   Fixed setup loading when updating repos is in progress
 
 ## Fixes
 
@@ -920,7 +1140,7 @@ This will allow you to better filter out (or in) different song versions like "A
 
 Karaoke Mugen can now expose itself via Karaoke Mugen Server to allow other people on other networks to access your karaoke. Perfect for remote sessions at anime events or over Discord our Twitch.
 
-![Remote Access control box](https://gitlab.com/karaokemugen/karaokemugen-app/uploads/f769ef18debdb7e4d55abb9b3df91f77/Capture_d_écran_du_2020-12-31_00-08-25.png)
+![Remote Access control box](https://gitlab.com/karaokemugen/code/karaokemugen-app/uploads/f769ef18debdb7e4d55abb9b3df91f77/Capture_d_écran_du_2020-12-31_00-08-25.png)
 
 It can be enabled in Settings -> Karaoke. It will generate a token kept by Karaoke Mugen for you. It will allow your room URL (https://XXXX.kara.moe) to be always the same after restarting the app.
 
@@ -935,19 +1155,19 @@ A brand new public interface is available with Karaoke Mugen 5.0. Our goal was t
 -   The current song lyrics are available on the home page
     -   The current line is highlighted in yellow
 
-![Lyrics Box](https://gitlab.com/karaokemugen/karaokemugen-app/uploads/49f8517028bc3550e72631a7370fb154/Peek_31-12-2020_00-07.gif)
+![Lyrics Box](https://gitlab.com/karaokemugen/code/karaokemugen-app/uploads/49f8517028bc3550e72631a7370fb154/Peek_31-12-2020_00-07.gif)
 
 -   The top progress bar has been replaced by a new bottom bar
 
-![Bottom bar](https://gitlab.com/karaokemugen/karaokemugen-app/uploads/43a3b9e5a235e9c3789b1efef43cc7d2/image.png)
+![Bottom bar](https://gitlab.com/karaokemugen/code/karaokemugen-app/uploads/43a3b9e5a235e9c3789b1efef43cc7d2/image.png)
 
 -   Homepage is now featuring a "now playing" box
 
-![Player Box](https://gitlab.com/karaokemugen/karaokemugen-app/uploads/8cc3b9e6d90d1bb9c6b2b16468c2962f/Capture_d_écran_2020-11-11_à_22.00.58.png)
+![Player Box](https://gitlab.com/karaokemugen/code/karaokemugen-app/uploads/8cc3b9e6d90d1bb9c6b2b16468c2962f/Capture_d_écran_2020-11-11_à_22.00.58.png)
 
 -   You can now explore tags by category
 
-![Tags List](https://gitlab.com/karaokemugen/karaokemugen-app/uploads/e9696536c20526808ada84b13520c085/Capture_d_écran_2020-11-11_à_21.57.50.png)
+![Tags List](https://gitlab.com/karaokemugen/code/karaokemugen-app/uploads/e9696536c20526808ada84b13520c085/Capture_d_écran_2020-11-11_à_21.57.50.png)
 
 -   Popular songs are now fetched from your configured repositories instead of checking on your local database. You can disable this (#872)
 
@@ -975,7 +1195,7 @@ You can now more easily **export your sessions data** as .csv, it will contain s
 
 ### Chibi player (#725)
 
-![Chibi player](https://gitlab.com/karaokemugen/karaokemugen-app/uploads/b6a4a7488db7456fadc30a37a15b18fb/Capture_d_%C3%A9cran_2020-12-04_%C3%A0_22.13.15.png)
+![Chibi player](https://gitlab.com/karaokemugen/code/karaokemugen-app/uploads/b6a4a7488db7456fadc30a37a15b18fb/Capture_d_%C3%A9cran_2020-12-04_%C3%A0_22.13.15.png)
 
 **Chibi player** is a compact window designed to have easy controls over the Karaoke Mugen player, it can be set to be always on top of other windows.
 
@@ -1502,7 +1722,8 @@ This is a minor release containing fixes AND new features.
 
 ## Fixes
 
--   Fix karaoke stopping after intro if sponsors are disabled or non-existant (f6e09d84)
+-   Fixed
+-   Fixed karaoke stopping after intro if sponsors are disabled or non-existant (f6e09d84)
 -   Importing favorites is now fixed (650ce09a)
 -   Reworked playlist reordering so it takes into account songs not available in database anymore (5798d60b)
 -   When tags or songs have disappeared from database but are still in the app's blacklist criterias, they are now completely removed from output but still kept in database. (b8d32f04 and e62f0fe4)

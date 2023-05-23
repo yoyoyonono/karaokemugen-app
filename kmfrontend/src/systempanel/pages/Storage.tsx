@@ -1,4 +1,4 @@
-import { ClearOutlined, DeleteOutlined } from '@ant-design/icons';
+import { ClearOutlined, DeleteOutlined, FolderOpenOutlined } from '@ant-design/icons';
 import { Alert, Button, Layout, Table } from 'antd';
 import Title from '../components/Title';
 import i18next from 'i18next';
@@ -26,11 +26,24 @@ class Storage extends Component<unknown, StorageState> {
 			res
 				.filter(repo => repo.Online)
 				.map(async repo => {
-					const freeSpace = await commandBackend('getRepoFreeSpace', { repoName: repo.Name }, false, 300000);
-					return { name: repo.Name, freeSpace: prettyBytes(freeSpace) };
+					const freeSpace: number | null = await commandBackend(
+						'getRepoFreeSpace',
+						{ repoName: repo.Name },
+						false,
+						300000
+					);
+					return { name: repo.Name, freeSpace: freeSpace == null ? 'N/A' : prettyBytes(freeSpace) };
 				})
 		);
 		this.setState({ repositories });
+	};
+
+	openMediaFolder = async (name: string) => {
+		try {
+			await commandBackend('openMediaFolder', { name }, true, 300000);
+		} catch (e) {
+			// already display
+		}
 	};
 
 	deleteOldRepoMedias = async (name: string) => {
@@ -83,6 +96,15 @@ class Storage extends Component<unknown, StorageState> {
 			title: i18next.t('REPOSITORIES.FREE_SPACE'),
 			dataIndex: 'freeSpace',
 			key: 'freeSpace',
+		},
+		{
+			key: 'openFolder',
+			align: 'center' as const,
+			render: (text_, record) => (
+				<Button type="primary" icon={<FolderOpenOutlined />} onClick={() => this.openMediaFolder(record.name)}>
+					{i18next.t('REPOSITORIES.OPEN_MEDIA_FOLDER')}
+				</Button>
+			),
 		},
 		{
 			key: 'deleteOldRepoMedias',

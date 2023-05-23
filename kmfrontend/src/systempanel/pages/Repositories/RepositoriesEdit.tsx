@@ -1,18 +1,13 @@
-import { Layout } from 'antd';
+import { Layout, Modal } from 'antd';
 import Title from '../../components/Title';
-import Modal from 'antd/lib/modal/Modal';
 import i18next from 'i18next';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
-import { RepositoryMaintainerSettings } from '../../../../../src/lib/types/repo';
 import { DifferentChecksumReport } from '../../../../../src/types/repo';
 import { commandBackend } from '../../../utils/socket';
 import RepositoryForm from './RepositoriesForm';
-
-interface Repository extends RepositoryMaintainerSettings {
-	// Should be okay, even if technically we shouldn't be able to place Maintainer Settings when MaintainerMode is off
-}
+import { Repository } from '../../../../../src/lib/types/repo';
 
 const newrepository: Repository = {
 	Name: undefined,
@@ -132,7 +127,7 @@ function RepositoriesEdit() {
 				)}
 				<Modal
 					title={i18next.t('REPOSITORIES.WARNING')}
-					visible={report !== undefined}
+					open={report !== undefined}
 					onOk={() => {
 						copyLyrics();
 						setReport(undefined);
@@ -148,7 +143,7 @@ function RepositoriesEdit() {
 						})}
 					</p>
 					<p style={{ fontWeight: 'bold' }}>
-						{report?.map(kara => kara.kara1.medias[0].lyrics[0]?.filename.slice(0, -4))}
+						{report?.map(kara => kara.kara1.medias[0].lyrics?.[0]?.filename.slice(0, -4))}
 					</p>
 					<p>
 						{i18next.t('REPOSITORIES.CONFIRM_SURE', {

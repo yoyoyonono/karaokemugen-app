@@ -22,6 +22,7 @@ import ShowVideoButton from '../generic/buttons/ShowVideoButton';
 import InlineTag from './InlineTag';
 import AddKaraButton from '../generic/buttons/AddKaraButton';
 import VideoPreview from '../generic/VideoPreview';
+import UpvoteKaraButton from '../generic/buttons/UpvoteKaraButton';
 
 interface Props {
 	kid: string;
@@ -161,6 +162,21 @@ export default function VersionSelector(props: Props) {
 														/>
 													</h5>
 												</div>
+												<div className="modal-right">
+													<h6>
+														<span>
+															<i className={`fas fa-fw fa-${YEARS.icon}`} />
+															{kara.year}
+														</span>
+													</h6>
+
+													<h6>
+														<span>
+															<i className="fas fa-fw fa-clock" />
+															{secondsTimeSpanToHMS(kara.duration, 'mm:ss')}
+														</span>
+													</h6>
+												</div>
 												<div className="buttons">
 													{kara.my_public_plc_id.length > 0 ? (
 														<button
@@ -174,10 +190,12 @@ export default function VersionSelector(props: Props) {
 														>
 															<i className="fas fa-eraser" />
 														</button>
-													) : (
+													) : kara?.public_plc_id.length === 0 ? (
 														<button onClick={e => addKara(e, kara)} className="btn">
 															<i className="fas fa-plus" />
 														</button>
+													) : (
+														<UpvoteKaraButton kara={kara} />
 													)}
 												</div>
 											</div>
@@ -188,7 +206,7 @@ export default function VersionSelector(props: Props) {
 												{context.globalState.auth.data.role === 'guest' ? null : (
 													<MakeFavButton kid={kara.kid} />
 												)}
-												{!kara?.public_plc_id || !kara?.public_plc_id[0] ? (
+												{kara?.public_plc_id.length === 0 ? (
 													<AddKaraButton kara={kara} />
 												) : null}
 												<ShowVideoButton

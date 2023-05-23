@@ -1,44 +1,45 @@
+import { shell } from 'electron';
 import { promises as fs } from 'fs';
 import { copy, remove } from 'fs-extra';
+import parallel from 'p-map';
 import { basename, parse, resolve } from 'path';
 import { TopologicalSort } from 'topological-sort';
 
-import { compareKarasChecksum, generateDB } from '../dao/database';
-import { baseChecksum, editKaraInStore, getStoreChecksum, sortKaraStore } from '../dao/dataStore';
-import { updateDownloaded } from '../dao/download';
-import { deleteRepo, insertRepo, selectRepos, updateRepo } from '../dao/repo';
-import { getSettings, refreshAll, saveSetting } from '../lib/dao/database';
-import { initHooks } from '../lib/dao/hook';
-import { refreshKaras } from '../lib/dao/kara';
-import { parseKara, writeKara } from '../lib/dao/karafile';
-import { readAllKaras } from '../lib/services/generation';
-import { DBTag } from '../lib/types/database/tag';
-import { KaraMetaFile } from '../lib/types/downloads';
-import { KaraFileV4 } from '../lib/types/kara';
-import { DiffChanges, RepositoryManifest } from '../lib/types/repo';
-import { TagFile } from '../lib/types/tag';
-import { getConfig, resolvedPathRepos } from '../lib/utils/config';
-import { asyncCheckOrMkdir, listAllFiles, moveAll, relativePath, resolveFileInDirs } from '../lib/utils/files';
-import HTTP from '../lib/utils/http';
-import logger, { profile } from '../lib/utils/logger';
-import { computeFileChanges } from '../lib/utils/patch';
-import Task from '../lib/utils/taskManager';
-import { emitWS } from '../lib/utils/ws';
-import { Repository } from '../types/config';
-import { Change, Commit, DifferentChecksumReport, ModifiedMedia, Push } from '../types/repo';
-import { adminToken } from '../utils/constants';
-import { getFreeSpace, pathIsContainedInAnother } from '../utils/files';
-import FTP from '../utils/ftp';
-import Git, { isGit } from '../utils/git';
-import { applyPatch, cleanFailedPatch, downloadAndExtractZip, writeFullPatchedFiles } from '../utils/patch';
-import sentry from '../utils/sentry';
-import { getState } from '../utils/state';
-import { updateMedias } from './downloadMedias';
-import { getKara, getKaras } from './kara';
-import { createKaraInDB, deleteKara, integrateKaraFile } from './karaManagement';
-import { createProblematicSmartPlaylist, updateAllSmartPlaylists } from './smartPlaylist';
-import { sendPayload } from './stats';
-import { getTags, integrateTagFile, removeTag } from './tag';
+import { compareKarasChecksum, generateDB } from '../dao/database.js';
+import { baseChecksum, editKaraInStore, getStoreChecksum, sortKaraStore } from '../dao/dataStore.js';
+import { updateDownloaded } from '../dao/download.js';
+import { deleteRepo, insertRepo, selectRepos, updateRepo } from '../dao/repo.js';
+import { getSettings, refreshAll, saveSetting } from '../lib/dao/database.js';
+import { initHooks } from '../lib/dao/hook.js';
+import { refreshKaras } from '../lib/dao/kara.js';
+import { parseKara, writeKara } from '../lib/dao/karafile.js';
+import { readAllKaras } from '../lib/services/generation.js';
+import { DBTag } from '../lib/types/database/tag.js';
+import { KaraMetaFile } from '../lib/types/downloads.js';
+import { KaraFileV4 } from '../lib/types/kara.js';
+import { DiffChanges, Repository, RepositoryManifest } from '../lib/types/repo.js';
+import { TagFile } from '../lib/types/tag.js';
+import { getConfig, resolvedPathRepos } from '../lib/utils/config.js';
+import { asyncCheckOrMkdir, listAllFiles, moveAll, relativePath, resolveFileInDirs } from '../lib/utils/files.js';
+import HTTP from '../lib/utils/http.js';
+import logger, { profile } from '../lib/utils/logger.js';
+import { computeFileChanges } from '../lib/utils/patch.js';
+import Task from '../lib/utils/taskManager.js';
+import { emitWS } from '../lib/utils/ws.js';
+import { Change, Commit, DifferentChecksumReport, ModifiedMedia, Push } from '../types/repo.js';
+import { adminToken } from '../utils/constants.js';
+import { getFreeSpace, pathIsContainedInAnother } from '../utils/files.js';
+import FTP from '../utils/ftp.js';
+import Git, { isGit } from '../utils/git.js';
+import { applyPatch, cleanFailedPatch, downloadAndExtractZip, writeFullPatchedFiles } from '../utils/patch.js';
+import sentry from '../utils/sentry.js';
+import { getState } from '../utils/state.js';
+import { updateMedias } from './downloadMedias.js';
+import { getKara, getKaras } from './kara.js';
+import { createKaraInDB, deleteKara, integrateKaraFile } from './karaManagement.js';
+import { createProblematicSmartPlaylist, updateAllSmartPlaylists } from './smartPlaylist.js';
+import { sendPayload } from './stats.js';
+import { getTags, integrateTagFile, removeTag } from './tag.js';
 
 const service = 'Repo';
 
@@ -507,7 +508,7 @@ export async function updateGitRepo(name: string) {
 			throw 'Pull failed (conflicts)';
 		}
 		const newCommit = await git.getCurrentCommit();
-		logger.debug(`Original commit : ${originalCommit} and new commit : ${newCommit}`);
+		logger.debug(`Original commit : ${originalCommit} and new commit : ${newCommit}`, { service });
 		const diff = await git.diff(originalCommit, newCommit);
 		const changes = computeFileChanges(diff);
 		await applyChanges(changes, repo);
@@ -528,41 +529,58 @@ async function applyChanges(changes: Change[], repo: Repository) {
 		const tagFiles = changes.filter(f => f.path.endsWith('.tag.json'));
 		const karaFiles = changes.filter(f => f.path.endsWith('.kara.json'));
 		const TIDsToDelete = [];
-		const tagPromises = [];
 		task = new Task({ text: 'UPDATING_REPO', total: karaFiles.length + tagFiles.length });
+		const tagFilesToProcess = [];
 		for (const match of tagFiles) {
 			if (match.type === 'new') {
-				tagPromises.push(
-					integrateTagFile(
-						resolve(resolvedPathRepos('Tags', repo.Name)[0], basename(match.path)),
-						false
-					).catch(err => {
-						throw err;
-					})
-				);
+				tagFilesToProcess.push(resolve(resolvedPathRepos('Tags', repo.Name)[0], basename(match.path)));
 			} else {
 				// Delete.
 				TIDsToDelete.push(match.uid);
+				task.update({ value: task.item.value + 1, subtext: match.path });
 			}
-			task.update({ value: task.item.value + 1, subtext: match.path });
 		}
-		await Promise.all(tagPromises);
+		const tagMapper = async (file: string) => {
+			await integrateTagFile(file, false);
+			task.update({ value: task.item.value + 1, subtext: basename(file) });
+		};
+		try {
+			await parallel(tagFilesToProcess, tagMapper, {
+				stopOnError: true,
+				concurrency: 32,
+			});
+		} catch (err) {
+			throw err;
+		}
 		const KIDsToDelete = [];
 		const KIDsToUpdate = [];
 		let karas: KaraMetaFile[] = [];
+		const karaFilesToProcessBeforeSort = [];
 		for (const match of karaFiles) {
 			if (match.type === 'new') {
-				const file = resolve(resolvedPathRepos('Karaokes', repo.Name)[0], basename(match.path));
-				const karaFileData = await parseKara(file);
-				karas.push({
-					file,
-					data: karaFileData,
-				});
+				karaFilesToProcessBeforeSort.push(
+					resolve(resolvedPathRepos('Karaokes', repo.Name)[0], basename(match.path))
+				);
 			} else {
 				// Delete.
 				KIDsToDelete.push(match.uid);
+				task.update({ value: task.item.value + 1, subtext: match.path });
 			}
-			task.update({ value: task.item.value + 1, subtext: match.path });
+		}
+		const karaMapper = async file => {
+			const karaFileData = await parseKara(file);
+			karas.push({
+				file,
+				data: karaFileData,
+			});
+		};
+		try {
+			await parallel(karaFilesToProcessBeforeSort, karaMapper, {
+				stopOnError: true,
+				concurrency: 32,
+			});
+		} catch (err) {
+			throw err;
 		}
 		try {
 			/* Uncomment this when you need to debug stuff.
@@ -602,6 +620,7 @@ async function applyChanges(changes: Change[], repo: Repository) {
 		}
 		for (const kara of karas) {
 			KIDsToUpdate.push(await integrateKaraFile(kara.file, kara.data, false));
+			task.update({ value: task.item.value + 1, subtext: basename(kara.file) });
 		}
 		const deletePromises = [];
 		if (KIDsToDelete.length > 0)
@@ -713,11 +732,11 @@ export async function compareLyricsChecksums(repo1Name: string, repo2Name: strin
 				// read both lyrics and then decide if they're different
 				const lyricsPath1 = resolve(
 					resolvedPathRepos('Lyrics', kara1.data.repository)[0],
-					kara1.medias[0].lyrics[0]?.filename
+					kara1.medias[0].lyrics?.[0]?.filename
 				);
 				const lyricsPath2 = resolve(
 					resolvedPathRepos('Lyrics', kara2.data.repository)[0],
-					kara2.medias[0].lyrics[0]?.filename
+					kara2.medias[0].lyrics?.[0]?.filename
 				);
 				const [lyrics1, lyrics2] = await Promise.all([
 					fs.readFile(lyricsPath1, 'utf-8'),
@@ -749,13 +768,13 @@ export async function copyLyricsRepo(report: DifferentChecksumReport[]) {
 	try {
 		for (const karas of report) {
 			task.update({
-				subtext: karas.kara2.medias[0].lyrics[0]?.filename,
+				subtext: karas.kara2.medias[0].lyrics?.[0]?.filename,
 			});
 			// Copying kara1 data to kara2
 			karas.kara2.meta.isKaraModified = true;
 			const writes = [];
 			writes.push(writeKara(karas.kara2.meta.karaFile, karas.kara2));
-			if (karas.kara1.medias[0].lyrics[0]) {
+			if (karas.kara1.medias[0].lyrics?.[0]) {
 				const sourceLyrics = await resolveFileInDirs(
 					karas.kara1.medias[0].lyrics[0]?.filename,
 					resolvedPathRepos('Lyrics', karas.kara1.data.repository)
@@ -1299,4 +1318,11 @@ function topologicalSort(karas: KaraMetaFile[]): KaraMetaFile[] {
 	}
 
 	return sorted;
+}
+
+export async function openMediaFolder(repoName: string) {
+	const mediaFolders = resolvedPathRepos('Medias', repoName);
+	for (const mediaFolder of mediaFolders) {
+		shell.openPath(mediaFolder);
+	}
 }

@@ -428,12 +428,16 @@ function KaraokeOptions(props: IProps) {
 								<>
 									<label className="label-input-options">{i18next.t('SETTINGS.KARAOKE.EVERY')}</label>
 									<input
+										min={1}
 										type="number"
 										data-exclude="true"
 										className="input-number-options"
 										id="Playlist.Medias.Jingles.Interval"
 										placeholder="20"
-										onBlur={onChange}
+										onBlur={(e: any) => {
+											if (!e.target.value) e.target.value = 1;
+											onChange(e);
+										}}
 										defaultValue={config['Playlist.Medias.Jingles.Interval']}
 									/>
 									<label className="label-input-options">{i18next.t('SETTINGS.KARAOKE.SONGS')}</label>
@@ -758,7 +762,7 @@ function KaraokeOptions(props: IProps) {
 					{config['Karaoke.StreamerMode.Twitch.Enabled'] ? (
 						<div id="twitchSettings" className="settingsGroupPanel">
 							<div className="settings-line">
-								<a href="https://twitchapps.com/tmi/" rel="noreferrer noopener" target="_blank">
+								<a href="https://twitchapps.com/tmi/" rel="noreferrer noopener">
 									{i18next.t('SETTINGS.KARAOKE.STREAM_TWITCH_OAUTH_TOKEN_GET')}
 								</a>
 							</div>

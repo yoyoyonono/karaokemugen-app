@@ -1,20 +1,21 @@
 import i18next from 'i18next';
 import { setTimeout as sleep } from 'timers/promises';
 
-import Players, { switchToPollScreen } from '../components/mpv';
-import { APIMessage } from '../controllers/common';
-import { updatePlaylistLastEditTime, updatePLCVisible } from '../dao/playlist';
-import { APIMessageType } from '../lib/types/frontend';
-import { getConfig, setConfig } from '../lib/utils/config';
-import logger, { profile } from '../lib/utils/logger';
-import { on } from '../lib/utils/pubsub';
-import { emitWS } from '../lib/utils/ws';
-import { BackgroundType } from '../types/backgrounds';
-import { MpvHardwareDecodingOptions } from '../types/mpvIPC';
-import { getState, setState } from '../utils/state';
-import { playCurrentSong, playRandomSong, playSingleSong } from './karaEngine';
-import { getCurrentSong, getCurrentSongPLCID, getNextSong, getPreviousSong, setPlaying } from './playlist';
-import { startPoll } from './poll';
+import { isShutdownInProgress } from '../components/engine.js';
+import Players, { switchToPollScreen } from '../components/mpv.js';
+import { APIMessage } from '../controllers/common.js';
+import { updatePlaylistLastEditTime, updatePLCVisible } from '../dao/playlist.js';
+import { APIMessageType } from '../lib/types/frontend.js';
+import { getConfig, setConfig } from '../lib/utils/config.js';
+import logger, { profile } from '../lib/utils/logger.js';
+import { on } from '../lib/utils/pubsub.js';
+import { emitWS } from '../lib/utils/ws.js';
+import { BackgroundType } from '../types/backgrounds.js';
+import { MpvHardwareDecodingOptions } from '../types/mpvIPC.js';
+import { getState, setState } from '../utils/state.js';
+import { playCurrentSong, playRandomSong, playSingleSong } from './karaEngine.js';
+import { getCurrentSong, getCurrentSongPLCID, getNextSong, getPreviousSong, setPlaying } from './playlist.js';
+import { startPoll } from './poll.js';
 
 const service = 'Player';
 
@@ -143,10 +144,7 @@ export async function next() {
 }
 
 async function toggleFullScreenPlayer() {
-	const fsState = await mpv.toggleFullscreen();
-	fsState
-		? logger.info('Player going to full screen', { service })
-		: logger.info('Player going to windowed mode', { service });
+	await mpv.toggleFullscreen();
 }
 
 async function toggleOnTopPlayer() {
@@ -197,6 +195,7 @@ export async function stopPlayer(now = true, endOfPlaylist = false) {
 			setState({ pauseInProgress: false });
 		}
 		await mpv.stop(stopType);
+		await mpv.setBlur(false);
 		setState({ stopping: false });
 		stopAddASongMessage();
 		if (!endOfPlaylist && getConfig().Karaoke.ClassicMode && getState().pauseInProgress) {
@@ -272,6 +271,11 @@ async function hideSubsPlayer() {
 	logger.info('Hiding lyrics on screen', { service });
 }
 
+async function setBlurVideoPlayer(blur: boolean) {
+	await mpv.setBlur(blur);
+	logger.info(`Set video blur to ${String(blur)}`, { service });
+}
+
 export async function playerNeedsRestart() {
 	const state = getState();
 	if (state.player.playerStatus === 'stop' && !state.playerNeedsRestart && !state.isTest) {
@@ -279,7 +283,7 @@ export async function playerNeedsRestart() {
 		logger.info('Player will restart in 5 seconds', { service });
 		emitWS('operatorNotificationInfo', APIMessage('NOTIFICATION.OPERATOR.INFO.PLAYER_RESTARTING'));
 		mpv.message(i18next.t('RESTARTING_PLAYER'), 5000);
-		await sleep(5000);
+		await sleep(1000);
 		await restartPlayer();
 		setState({ playerNeedsRestart: false });
 	} else {
@@ -308,6 +312,7 @@ export function displayInfo() {
 }
 
 export async function sendCommand(command: string, options: any): Promise<APIMessageType> {
+	if (isShutdownInProgress()) return;
 	// Resetting singlePlay to false everytime we use a command.
 	const state = getState();
 	if (state.isTest) throw 'Player management is disabled in test mode';
@@ -341,6 +346,10 @@ export async function sendCommand(command: string, options: any): Promise<APIMes
 			await showSubsPlayer();
 		} else if (command === 'hideSubs') {
 			await hideSubsPlayer();
+		} else if (command === 'blurVideo') {
+			await setBlurVideoPlayer(true);
+		} else if (command === 'unblurVideo') {
+			await setBlurVideoPlayer(false);
 		} else if (command === 'seek') {
 			if (isNaN(options)) throw 'Command seek must have a numeric option value';
 			await seekPlayer(options);

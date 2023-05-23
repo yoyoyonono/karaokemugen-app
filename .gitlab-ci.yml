@@ -4,11 +4,15 @@
 # Dependency Scanning customization: https://docs.gitlab.com/ee/user/application_security/dependency_scanning/#customizing-the-dependency-scanning-settings
 # Note that environment variables can be set in several places
 # See https://docs.gitlab.com/ee/ci/variables/#cicd-variable-precedence
-image: axelterizaki/karaokemugen-ci:node-16-phppg
+image: axelterizaki/karaokemugen-ci:node-18-phppg
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
   ELECTRON_CACHE: '.cache/electron'
   DS_INCLUDE_DEV_DEPENDENCIES: 'false'
+  DIST_LINUX_X64: dist_linux-x64-7.x.tar.gz
+  DIST_LINUX_ARM64: dist_linux-arm64-7.x.tar.gz
+  DIST_WIN: dist_win-6.x.tar.gz
+  DIST_MAC: dist_mac-7.x.tar.gz
 sast:
   variables:
     SAST_EXCLUDED_PATHS: spec, test, tests, tmp, assets, build, img, util, packages
@@ -34,7 +38,6 @@ stages:
   - test
   - build
   - scan
-  - prepackage
   - package
   - deploy
   - release
@@ -42,7 +45,7 @@ license_scanning:
   interruptible: true
   stage: scan
   cache: {}
-  tags: 
+  tags:
     - $RUNNER_LINUX
   rules:
     - if: '$CI_COMMIT_MESSAGE =~ /^🚀 new release/'
@@ -57,7 +60,7 @@ semgrep-sast:
   interruptible: true
   stage: scan
   cache: {}
-  tags: 
+  tags:
     - $RUNNER_LINUX
   rules:
     - if: '$CI_COMMIT_MESSAGE =~ /^🚀 new release/'
@@ -71,7 +74,7 @@ semgrep-sast:
 gemnasium-dependency_scanning:
   interruptible: true
   stage: scan
-  tags: 
+  tags:
     - $RUNNER_LINUX
   rules:
     - if: '$CI_COMMIT_MESSAGE =~ /^🚀 new release/'
@@ -85,7 +88,7 @@ gemnasium-dependency_scanning:
 nodejs-scan-sast:
   interruptible: true
   stage: scan
-  tags: 
+  tags:
     - $RUNNER_LINUX
   rules:
     - if: '$CI_COMMIT_MESSAGE =~ /^🚀 new release/'
@@ -99,7 +102,7 @@ nodejs-scan-sast:
 secret_detection:
   interruptible: true
   stage: scan
-  tags: 
+  tags:
     - $RUNNER_LINUX
   variables:
     SECRET_DETECTION_EXCLUDED_PATHS: 'node_modules kmfrontend/node_modules dist'
@@ -119,7 +122,7 @@ test:
     max: 2
   interruptible: true
   needs: []
-  tags: 
+  tags:
     - $RUNNER_LINUX
   services:
     - postgres:13
@@ -130,6 +133,7 @@ test:
     - yarn install --check-files --force --cache-folder .yarn
     - touch mpv
     - touch ffmpeg
+    - touch patch
     - mkdir app
     - cp -f config.CICD.yml app/config.yml
     - export LANG=en_US
@@ -147,10 +151,33 @@ test:
     - if: $CI_COMMIT_BRANCH == "master"
     - if: $CI_COMMIT_BRANCH == "next"
     - when: never
+build-migrationsFile:
+  stage: build
+  interruptible: true
+  tags:
+    - $RUNNER_LINUX
+  artifacts:
+    expire_in: 1 day
+    name: km-app-migrations-$CI_COMMIT_REF_SLUG}
+    paths:
+      - migrations/migrations.txt
+  cache: {}
+  script:
+    - cd migrations
+    - ls *.sql > migrations.txt
+  rules:
+    - if: $SCHEDULED_RELEASES == "true"
+      when: never
+    - if: '$CI_COMMIT_MESSAGE =~ /^🚀 new release/'
+    - if: '$CI_COMMIT_MESSAGE =~ /^:rocket: new release/'
+    - if: '$CI_COMMIT_TAG'
+    - if: $CI_COMMIT_BRANCH == "master"
+    - if: $CI_COMMIT_BRANCH == "next"
+    - when: never
 build-react:
   stage: build
   interruptible: true
-  tags: 
+  tags:
     - $RUNNER_LINUX
   dependencies:
     - test
@@ -179,7 +206,7 @@ build-react:
 deploy_kmremote:
   stage: deploy
   interruptible: true
-  tags: 
+  tags:
     - $RUNNER_LINUX
   cache: {}
   image: axelterizaki/karaokemugen-ci:transferts
@@ -200,7 +227,7 @@ deploy_kmremote:
 pkg_linux:
   stage: package
   image: electronuserland/builder:latest
-  tags: 
+  tags:
     - $RUNNER_LINUX
   cache:
     key: km-app-${CI_COMMIT_REF_SLUG}
@@ -216,15 +243,18 @@ pkg_linux:
       - release_linux
   dependencies:
     - build-react
+    - build-migrationsFile
   needs:
     - build-react
+    - build-migrationsFile
     - test
   script:
-    - yarn install
     - rm -Rf release_linux
     - npm install -g electron-builder
     - echo $CI_COMMIT_SHORT_SHA >assets/sha.txt
-    - wget -qO- http://mugen.karaokes.moe/downloads/dist_linux-6.x.tar.gz | tar xvz
+    - wget -qO- http://mugen.karaokes.moe/downloads/$DIST_LINUX_X64 | tar xvz
+    - wget -qO- http://mugen.karaokes.moe/downloads/$DIST_LINUX_ARM64 | tar xvz
+    - echo $SENTRY_DSN >assets/sentry.txt
     - bash util/electronBuilder.sh -l
     - ls -la packages/
     - mkdir release_linux
@@ -243,7 +273,7 @@ pkg_linux:
 pkg_win:
   stage: package
   image: electronuserland/builder:wine-mono
-  tags: 
+  tags:
     - $RUNNER_LINUX
   cache:
     key: km-app-${CI_COMMIT_REF_SLUG}
@@ -259,18 +289,20 @@ pkg_win:
       - release_win
   dependencies:
     - build-react
+    - build-migrationsFile
   needs:
     - build-react
+    - build-migrationsFile
     - test
   script:
-    - yarn install
     - rm -Rf release_win
     - npm install -g electron-builder
-    - wget -qO - https://download.opensuse.org/repositories/Emulators:/Wine:/Debian/xUbuntu_18.04/Release.key
+    - wget -qO - https://download.opensuse.org/repositories/Emulators:/Wine:/Debian/xUbuntu_20.04/Release.key
       | apt-key add -
     - apt-get update -qq && apt-get install -y -qq zip
-    - wget -qO- http://mugen.karaokes.moe/downloads/dist_win-6.x.tar.gz | tar xz
+    - wget -qO- http://mugen.karaokes.moe/downloads/$DIST_WIN | tar xz
     - echo $CI_COMMIT_SHORT_SHA >assets/sha.txt
+    - echo $SENTRY_DSN >assets/sentry.txt
     - bash util/electronBuilder.sh -w
     - ls -la packages/
     - mkdir release_win
@@ -308,8 +340,10 @@ pkg_mac:
       - release_mac
   dependencies:
     - build-react
+    - build-migrationsFile
   needs:
     - build-react
+    - build-migrationsFile
     - test
   variables:
     ARTIFACT_DOWNLOAD_ATTEMPTS: 10
@@ -320,8 +354,9 @@ pkg_mac:
     - rm -Rf release_mac
     - rm -Rf app-mac
     - rm -Rf app/bin
-    - wget -qO- http://mugen.karaokes.moe/downloads/dist_mac-7.x.tar.gz | tar xvz
+    - wget -qO- http://mugen.karaokes.moe/downloads/$DIST_MAC | tar xvz
     - echo $CI_COMMIT_SHORT_SHA >assets/sha.txt
+    - echo $SENTRY_DSN >assets/sentry.txt
     - bash util/electronBuilder.sh -m
     - ls -la packages/
     - mkdir release_mac
@@ -339,7 +374,7 @@ pkg_mac:
 deploy_mac:
   stage: deploy
   image: axelterizaki/karaokemugen-ci:transferts
-  tags: 
+  tags:
     - $RUNNER_LINUX
   interruptible: true
   variables:
@@ -363,7 +398,7 @@ deploy_mac:
 deploy_linux:
   stage: deploy
   image: axelterizaki/karaokemugen-ci:transferts
-  tags: 
+  tags:
     - $RUNNER_LINUX
   interruptible: true
   cache: {}
@@ -386,7 +421,7 @@ deploy_linux:
 deploy_win:
   stage: deploy
   image: axelterizaki/karaokemugen-ci:transferts
-  tags: 
+  tags:
     - $RUNNER_LINUX
   interruptible: true
   variables:
@@ -410,7 +445,7 @@ deploy_win:
 release_site:
   stage: release
   image: curlimages/curl
-  tags: 
+  tags:
     - $RUNNER_LINUX
   interruptible: true
   dependencies: []
@@ -431,7 +466,7 @@ release_site:
 weekly_releases:
   stage: schedule
   image: axelterizaki/karaokemugen-git-ssh:latest
-  tags: 
+  tags:
     - $RUNNER_LINUX
   interruptible: true
   cache: {}
@@ -444,4 +479,61 @@ weekly_releases:
     - if: '$CI_COMMIT_MESSAGE =~ /^:rocket: new release/'
       when: never
     - if: $SCHEDULED_RELEASES == "true"
+    - when: never
+flatpak-generated-sources:
+  stage: build
+  image: python:3-bullseye
+  tags:
+    - $RUNNER_LINUX
+  interruptible: true
+  artifacts:
+    expire_in: 1 day
+    name: km-app-generated_sources-${CI_COMMIT_REF_SLUG}
+    paths:
+      - generated-sources.json
+  script:
+    - git clone https://github.com/flatpak/flatpak-builder-tools.git
+    - cd flatpak-builder-tools/node
+    - pip install .
+    - cd ../..
+    - flatpak-node-generator yarn -r yarn.lock -R kmfrontend/yarn.lock -R yarn.lock
+  rules:
+    - if: '$CI_COMMIT_TAG'
+    - when: never
+deploy_flathub:
+  stage: deploy
+  image: node:18
+  tags:
+    - $RUNNER_LINUX
+  interruptible: true
+  cache:
+    key: km-app-${CI_COMMIT_REF_SLUG}
+    paths:
+      - node_modules/
+      - kmfrontend/node_modules/
+    policy: pull
+  dependencies:
+    - flatpak-generated-sources
+  needs:
+    - flatpak-generated-sources
+  script:
+    - mkdir ~/.ssh
+    - chmod 700 ~/.ssh
+    - ssh-keyscan -H github.com >> ~/.ssh/known_hosts
+    - cp $GITHUB_SSH_KEY ~/.ssh/id_rsa
+    - chmod 600 ~/.ssh/id_rsa
+    - git clone git@github.com:flathub/moe.karaokes.mugen.git
+    - bash util/updateFlatpak.sh
+    - cp generated-sources.json moe.karaokes.mugen/
+    - cd moe.karaokes.mugen
+    - git branch $CI_COMMIT_REF_SLUG
+    - git checkout $CI_COMMIT_REF_SLUG
+    - git status
+    - git add .
+    - git config user.name "Karaoke Mugen Release Bot"
+    - git config user.email "mugen@karaokes.moe"
+    - git commit -m "New version $CI_COMMIT_REF_NAME"
+    - git push --set-upstream origin $CI_COMMIT_REF_SLUG
+  rules:
+    - if: '$CI_COMMIT_TAG'
     - when: never
