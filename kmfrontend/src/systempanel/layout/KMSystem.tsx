@@ -30,6 +30,7 @@ import KaraListPage from '../pages/Karas/KaraListPage';
 import QueueDownload from '../pages/Karas/QueueDownload';
 import KaraRanking from '../pages/Karas/Ranking';
 import KaraViewcounts from '../pages/Karas/Viewcounts';
+import MassImport from '../pages/MassImport';
 import Log from '../pages/Log';
 import Options from '../pages/Options';
 import RepositoriesEdit from '../pages/Repositories/RepositoriesEdit';
@@ -115,6 +116,7 @@ class KMSystem extends Component<unknown, unknown> {
 							<Route path="/config" element={<Config />} />
 							<Route path="/storage" element={<Storage />} />
 							<Route path="/unused" element={<UnusedList />} />
+							<Route path="/massImport" element={<MassImport />} />
 							<Route path="/backgrounds" element={<Background />} />
 
 							<Route path="/sessions/new" element={<SessionsEdit />} />

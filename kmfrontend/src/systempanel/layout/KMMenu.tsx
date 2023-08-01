@@ -66,6 +66,9 @@ function KMMenu() {
 				<Menu.Item key="db">
 					<Link to="/system/db">{i18next.t('MENU.DATABASE')}</Link>
 				</Menu.Item>
+				<Menu.Item key="import">
+					<Link to="/system/massImport">Import Karaokes</Link>
+				</Menu.Item>
 				<Menu.Item key="background">
 					<Link to="/system/backgrounds">{i18next.t('MENU.BACKGROUNDS')}</Link>
 				</Menu.Item>
