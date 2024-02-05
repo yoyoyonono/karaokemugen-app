@@ -2,7 +2,7 @@ import { shell } from 'electron';
 import { promises as fs } from 'fs';
 import { copy, remove } from 'fs-extra';
 import parallel from 'p-map';
-import { basename, parse, resolve } from 'path';
+import { basename, extname, parse, resolve } from 'path';
 import { TopologicalSort } from 'topological-sort';
 
 import { compareKarasChecksum, generateDB } from '../dao/database.js';
@@ -22,6 +22,7 @@ import { KaraFileV4 } from '../lib/types/kara.js';
 import { DiffChanges, Repository, RepositoryBasic, RepositoryManifest } from '../lib/types/repo.js';
 import { TagFile } from '../lib/types/tag.js';
 import { getConfig, resolvedPathRepos } from '../lib/utils/config.js';
+import { supportedFiles } from '../lib/utils/constants.js';
 import { ErrorKM } from '../lib/utils/error.js';
 import { asyncCheckOrMkdir, listAllFiles, moveAll, relativePath, resolveFileInDirs } from '../lib/utils/files.js';
 import HTTP, { fixedEncodeURIComponent } from '../lib/utils/http.js';
@@ -29,7 +30,15 @@ import logger, { profile } from '../lib/utils/logger.js';
 import { computeFileChanges } from '../lib/utils/patch.js';
 import Task from '../lib/utils/taskManager.js';
 import { emitWS } from '../lib/utils/ws.js';
-import { Change, Commit, DifferentChecksumReport, ModifiedMedia, Push } from '../types/repo.js';
+import {
+	Change,
+	Commit,
+	DifferentChecksumReport,
+	ImportBaseFile,
+	ImportKaraObject,
+	ModifiedMedia,
+	Push,
+} from '../types/repo.js';
 import { adminToken } from '../utils/constants.js';
 import { getFreeSpace, pathIsContainedInAnother } from '../utils/files.js';
 import FTP from '../utils/ftp.js';
@@ -1563,3 +1572,26 @@ export async function initRepos() {
 }
 
 export const getRepoManifest = selectRepositoryManifest;
+
+/** Determine names from folder to import from and tempalte */
+export async function findFilesToImport(dirName: string, template: string): Promise<ImportBaseFile[]> {
+	const dir = await fs.readdir(dirName);
+	const files: ImportBaseFile[] = [];
+	const unfill = (
+		fileTemplate: string,
+		file: string,
+		match = file.match(new RegExp(fileTemplate.replace(/{[^}]+\}/g, s => `(?<${s.slice(1, -1)}>.+)`)))
+	) => match && match.groups;
+	for (const file of dir) {
+		const ext = extname(file).substring(1);
+		if (supportedFiles.audio.includes(ext) || supportedFiles.video.includes(ext)) {
+			const karaObj = unfill(template, file) as ImportKaraObject;
+			files.push({
+				directory: dirName,
+				oldFile: file,
+				newFile: karaObj,
+			});
+		}
+	}
+	return files;
+}
