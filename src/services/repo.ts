@@ -1585,7 +1585,8 @@ export async function findFilesToImport(dirName: string, template: string): Prom
 	for (const file of dir) {
 		const ext = extname(file).substring(1);
 		if (supportedFiles.audio.includes(ext) || supportedFiles.video.includes(ext)) {
-			const karaObj = unfill(template, file) as ImportKaraObject;
+			const fileWithoutExt = basename(file, `.${ext}`);
+			const karaObj = unfill(template, fileWithoutExt) as ImportKaraObject;
 			files.push({
 				directory: dirName,
 				oldFile: file,
