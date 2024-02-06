@@ -1,4 +1,5 @@
 import { promises as fs } from 'fs';
+import { exists } from 'fs-extra';
 import { basename, extname, resolve } from 'path';
 
 import { applyKaraHooks } from '../lib/dao/hook.js';
@@ -17,7 +18,6 @@ import { getKara } from './kara.js';
 import { integrateKaraFile } from './karaManagement.js';
 import { checkDownloadStatus } from './repo.js';
 import { consolidateTagsInRepo } from './tag.js';
-import { exists } from 'fs-extra';
 
 const service = 'KaraCreation';
 
@@ -171,7 +171,7 @@ export async function editKara(editedKara: EditedKara, refresh = true) {
 	}
 }
 
-export async function createKara(editedKara: EditedKara) {
+export async function createKara(editedKara: EditedKara, tempDir?: string) {
 	const kara = trimKaraData(editedKara.kara);
 	const task = new Task({
 		text: 'CREATING_SONG',
@@ -190,7 +190,7 @@ export async function createKara(editedKara: EditedKara) {
 		);
 		if (await exists(karaJsonFileDest)) throw new ErrorKM('KARA_FILE_EXISTS_ERROR');
 
-		const mediaPath = resolve(resolvedPath('Temp'), kara.medias[0].filename);
+		const mediaPath = resolve(tempDir || resolvedPath('Temp'), kara.medias[0].filename);
 		try {
 			const extractFile = await extractVideoSubtitles(mediaPath, kara.data.kid);
 			if (extractFile) {
@@ -210,7 +210,7 @@ export async function createKara(editedKara: EditedKara) {
 		const mediaDest = resolve(resolvedPathRepos('Medias', kara.data.repository)[0], filenames.mediafile);
 		let subDest: string;
 		if (kara.medias[0].lyrics?.[0]?.filename) {
-			const subPath = resolve(resolvedPath('Temp'), kara.medias[0].lyrics?.[0].filename);
+			const subPath = resolve(tempDir || resolvedPath('Temp'), kara.medias[0].lyrics?.[0].filename);
 			const ext = await processSubfile(subPath);
 			filenames.lyricsfile = replaceExt(filenames.lyricsfile, ext);
 			kara.medias[0].lyrics[0].filename = filenames.lyricsfile;

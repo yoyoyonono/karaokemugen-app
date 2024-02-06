@@ -33,11 +33,14 @@ export interface ModifiedMedia {
 export interface ImportKaraObject {
 	[TagType: string]: string;
 	title: string;
-	year: string;
+	year: number;
 }
 
 export interface ImportBaseFile {
 	directory: string;
 	oldFile: string;
 	newFile: ImportKaraObject;
+	tags: {
+		[TagType: string]: string[];
+	};
 }
