@@ -956,6 +956,11 @@
 		"COLLECTIONS_CHOICE_DESC_1": "The Song Collections are intended for different audiences. Choose the collections you want to see in your karaoke database.",
 		"COLLECTIONS_CHOICE_DESC_2": "You can change your collections at any time in the system panel."
 	},
+	"BASE_IMPORT": {
+		"IMPORTING_BASE": "Importing songs...",
+		"ANALYZING_FILES": "Analyzing files",
+		"CREATING_METADATA": "Creating metadata"		
+	},
 	"NOTIFICATION": {
 		"OPERATOR": {
 			"ERROR": {
@@ -970,6 +975,7 @@
 				"POLL_ALREADY_STARTED": "A poll is already in progress",
 				"POLL_PUBLIC_PL_EMPTY": "Unable to start poll: public playlist is empty",
 				"POLL_NOT_ENOUGH_SONGS": "Unable to start poll: not enough songs available",
+				"IMPORT_BASE_FAILED": "Failed to import songs",
 				"UPDATE_GIT_REPO_ERROR": "Updating git repository failed"
 			},
 			"INFO": {

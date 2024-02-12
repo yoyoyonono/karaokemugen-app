@@ -956,6 +956,11 @@
 		"COLLECTIONS_CHOICE_DESC_1": "Les Collections de chansons sont destinées à des publics différents. Choisissez les collections que vous souhaitez voir dans votre base de karaokés.",
 		"COLLECTIONS_CHOICE_DESC_2": "Vous pouvez changer vos collections à tout moment dans le panneau système."
 	},
+	"BASE_IMPORT": {
+		"IMPORTING_BASE": "Import de chansons...",
+		"ANALYZING_FILES": "Analyse des fichiers",
+		"CREATING_METADATA": "Création des métadonnées"		
+	},
 	"NOTIFICATION": {
 		"OPERATOR": {
 			"ERROR": {
@@ -970,6 +975,7 @@
 				"POLL_ALREADY_STARTED": "Un sondage est déjà en cours",
 				"POLL_PUBLIC_PL_EMPTY": "Impossible de démarrer un sondage : la liste de lecture publique est vide",
 				"POLL_NOT_ENOUGH_SONGS": "Impossible de démarrer un sondage : pas assez de chansons disponibles",
+				"IMPORT_BASE_FAILED": "Echec de l'importation des chansons",
 				"UPDATE_GIT_REPO_ERROR": "La mise à jour du dépot git a échouée"
 			},
 			"INFO": {

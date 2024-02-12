@@ -17,7 +17,7 @@ export default function importBaseController(router: SocketIOApp) {
 	router.route('importBase', async (socket: Socket, req: APIData) => {
 		await runChecklist(socket, req, 'admin', 'open');
 		try {
-			return await importBase(req.body.source, req.body.template, req.body.type, req.body.repoDest);
+			importBase(req.body.source, req.body.template, req.body.type, req.body.repoDest);
 		} catch (err) {
 			throw { code: err.code || 500, message: APIMessage(err.message) };
 		}

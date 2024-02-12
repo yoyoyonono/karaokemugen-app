@@ -11,6 +11,9 @@ import { convertLangTo2B } from '../lib/utils/langs.js';
 import { KaraFileV4 } from '../lib/types/kara.js';
 import { createKara } from './karaCreation.js';
 import { getRepo } from './repo.js';
+import { APIMessage } from '../lib/services/frontend.js';
+import { emitWS } from '../lib/utils/ws.js';
+import Task from '../lib/utils/taskManager.js';
 
 /** Determine names from folder to import from and tempalte */
 export async function findFilesToImport(dirName: string, template: string): Promise<ImportBaseFile[]> {
@@ -152,15 +155,40 @@ async function importBaseKara(karaObj: ImportBaseFile, repoDest: string) {
 }
 
 export async function importBase(source: string, template: string, type: 'file' | 'dir', repoDest: string) {
-	getRepo(repoDest);
-	let files = [];
-	if (type === 'dir') {
-		files = await findFilesToImport(source, template);
-	} else {
-		files = [translateKaraTemplate(source, template)];
-	}
-	files = await populateTags(files, repoDest);
-	for (const file of files) {
-		await importBaseKara(file, repoDest);
+	const task = new Task({
+		text: 'BASE_IMPORT.IMPORTING_BASE',
+	});
+	try {
+		getRepo(repoDest);
+		let files = [];
+		task.update({
+			subtext: 'BASE_IMPORT.ANALYZING_FILES',
+		});
+		if (type === 'dir') {
+			files = await findFilesToImport(source, template);
+		} else {
+			files = [translateKaraTemplate(source, template)];
+		}
+		task.update({
+			subtext: 'BASE_IMPORT.CREATING_METADATA',
+		});
+		files = await populateTags(files, repoDest);
+		let filesProcessed = 0;
+		task.update({
+			total: files.length,
+			value: filesProcessed,
+		});
+		for (const file of files) {
+			task.update({
+				subtext: file.oldFile,
+				value: filesProcessed,
+			});
+			await importBaseKara(file, repoDest);
+			filesProcessed += 1;
+		}
+	} catch (err) {
+		emitWS('operatorNotificationError', APIMessage('NOTIFICATION.OPERATOR.ERROR.IMPORT_BASE_FAILED', err));
+	} finally {
+		if (task) task.end();
 	}
 }
