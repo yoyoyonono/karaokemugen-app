@@ -11,7 +11,6 @@ import {
 	deleteMedias,
 	dropStashInRepo,
 	editRepo,
-	findFilesToImport,
 	findUnusedMedias,
 	findUnusedTags,
 	generateCommits,
@@ -287,14 +286,6 @@ export default function repoController(router: SocketIOApp) {
 			pushCommits(req.body.repoName, req.body.commits, req.body.ignoreFTP);
 		} catch (err) {
 			// Async
-		}
-	});
-	router.route('findFilesToImport', async (socket: Socket, req: APIData) => {
-		await runChecklist(socket, req, 'admin', 'open');
-		try {
-			return await findFilesToImport(req.body.dirname, req.body.template);
-		} catch (err) {
-			throw { code: err.code || 500, message: APIMessage(err.message) };
 		}
 	});
 }

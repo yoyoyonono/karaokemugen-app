@@ -2,9 +2,8 @@ import { shell } from 'electron';
 import { promises as fs } from 'fs';
 import { copy, remove } from 'fs-extra';
 import parallel from 'p-map';
-import { basename, dirname, extname, parse, resolve } from 'path';
+import { basename, parse, resolve } from 'path';
 import { TopologicalSort } from 'topological-sort';
-import { v4 as uuidV4 } from 'uuid';
 
 import { compareKarasChecksum, generateDB } from '../dao/database.js';
 import { baseChecksum, editKaraInStore, getStoreChecksum, sortKaraStore } from '../dao/dataStore.js';
@@ -23,31 +22,14 @@ import { KaraFileV4 } from '../lib/types/kara.js';
 import { DiffChanges, Repository, RepositoryBasic, RepositoryManifest } from '../lib/types/repo.js';
 import { TagFile } from '../lib/types/tag.js';
 import { getConfig, resolvedPathRepos } from '../lib/utils/config.js';
-import { supportedFiles, tagTypes } from '../lib/utils/constants.js';
 import { ErrorKM } from '../lib/utils/error.js';
-import {
-	asyncCheckOrMkdir,
-	fileExists,
-	listAllFiles,
-	moveAll,
-	relativePath,
-	resolveFileInDirs,
-} from '../lib/utils/files.js';
+import { asyncCheckOrMkdir, listAllFiles, moveAll, relativePath, resolveFileInDirs } from '../lib/utils/files.js';
 import HTTP, { fixedEncodeURIComponent } from '../lib/utils/http.js';
-import { convertLangTo2B } from '../lib/utils/langs.js';
 import logger, { profile } from '../lib/utils/logger.js';
 import { computeFileChanges } from '../lib/utils/patch.js';
 import Task from '../lib/utils/taskManager.js';
 import { emitWS } from '../lib/utils/ws.js';
-import {
-	Change,
-	Commit,
-	DifferentChecksumReport,
-	ImportBaseFile,
-	ImportKaraObject,
-	ModifiedMedia,
-	Push,
-} from '../types/repo.js';
+import { Change, Commit, DifferentChecksumReport, ModifiedMedia, Push } from '../types/repo.js';
 import { adminToken } from '../utils/constants.js';
 import { getFreeSpace, pathIsContainedInAnother } from '../utils/files.js';
 import FTP from '../utils/ftp.js';
@@ -58,11 +40,10 @@ import { getState } from '../utils/state.js';
 import { updateMedias } from './downloadMedias.js';
 import { addFont, deleteFont, initFonts } from './fonts.js';
 import { getKara, getKaras } from './kara.js';
-import { createKara } from './karaCreation.js';
 import { createKaraInDB, integrateKaraFile, removeKara } from './karaManagement.js';
 import { createProblematicSmartPlaylist, updateAllSmartPlaylists } from './smartPlaylist.js';
 import { sendPayload } from './stats.js';
-import { addTag, getTags, integrateTagFile, removeTag } from './tag.js';
+import { getTags, integrateTagFile, removeTag } from './tag.js';
 
 const service = 'Repo';
 
@@ -1582,153 +1563,3 @@ export async function initRepos() {
 }
 
 export const getRepoManifest = selectRepositoryManifest;
-
-/** Determine names from folder to import from and tempalte */
-export async function findFilesToImport(dirName: string, template: string): Promise<ImportBaseFile[]> {
-	const dir = await fs.readdir(dirName);
-	const files: ImportBaseFile[] = [];
-	for (const file of dir) {
-		const ext = extname(file).substring(1);
-		if (supportedFiles.audio.includes(ext) || supportedFiles.video.includes(ext)) {
-			const mediafile = resolve(dirName, file);
-			files.push(translateKaraTemplate(mediafile, template));
-		}
-	}
-	return files;
-}
-
-function translateKaraTemplate(mediafile: string, template: string): ImportBaseFile {
-	const unfill = (
-		fileTemplate: string,
-		file: string,
-		match = file.match(new RegExp(fileTemplate.replace(/{[^}]+\}/g, s => `(?<${s.slice(1, -1)}>.+)`)))
-	) => match && match.groups;
-	const ext = extname(mediafile).substring(1);
-	const fileWithoutExt = basename(mediafile, `.${ext}`);
-	const karaObj = unfill(template, fileWithoutExt) as ImportKaraObject;
-	return {
-		directory: dirname(mediafile),
-		oldFile: mediafile,
-		newFile: karaObj,
-		tags: {},
-	};
-}
-
-/** Analyze import base files, create missing tags in database and return the karas object with its TIDs */
-async function populateTags(baseKaras: ImportBaseFile[]): Promise<ImportBaseFile[]> {
-	// We'll do a first pass to gather all tags, see which ones do exist and create those who don't
-	const tags = await getTags({});
-	const tagPromises = [];
-	const tagCache = new Map();
-	for (const i in baseKaras) {
-		if ({}.hasOwnProperty.call(baseKaras, i)) {
-			const kara = baseKaras[i];
-			for (const key in Object.keys(kara.newFile)) {
-				// These too are ignored, they're not tags.
-				if (key === 'title' || key === 'year') continue;
-				// We assume that if there are several items in a tag they're separated by ,
-				// Like "Axelle Red, Kyo - Dernière Danse Remix"
-				const items = kara.newFile[key].split(',');
-				items.forEach((_, i2) => (items[i2] = items[i2].trim()));
-				for (const item of items) {
-					let tag = tagCache.get(item);
-					if (!tag) tag = tags.content.find(t => t.name === item && t.types.includes(tagTypes[key]));
-					let tid = '';
-					if (tag) {
-						tid = tag.tid;
-					} else {
-						tid = uuidV4();
-						tagPromises.push(
-							await addTag({
-								name: item,
-								tid,
-								types: [tagTypes[key]],
-							})
-						);
-					}
-					if (!kara.tags[key]) kara.tags[key] = [];
-					kara.tags[key].push(tid);
-				}
-			}
-		}
-	}
-	return baseKaras;
-}
-
-export async function importBaseKara(karaObj: ImportBaseFile) {
-	const mediafile = karaObj.oldFile;
-	// We have our kara and its informations, now let's play guessing games.
-	// Reject song if it has no title.
-	if (!karaObj.newFile.title) throw new ErrorKM('IMPORT_NO_TITLE_ERROR', 400);
-	// Determine if file has a subtitle we can use
-	const dir = dirname(mediafile);
-	const basefile = basename(mediafile, extname(mediafile));
-	let subfile = '';
-	for (const ext of supportedFiles.lyrics) {
-		const possibleSubfile = resolve(dir, `${basefile}.${ext}`);
-		if (await fileExists(possibleSubfile)) {
-			subfile = possibleSubfile;
-			break;
-		}
-	}
-	// Default language
-	// Determine if we can convert it to a ISO code
-	const language = karaObj.newFile.langs ? convertLangTo2B(karaObj.newFile.langs[0]) : 'eng';
-	const date = new Date();
-	const kara: KaraFileV4 = {
-		meta: {},
-		header: {
-			version: 4,
-			description: 'Karaoke Mugen Karaoke Data File',
-		},
-		medias: [
-			{
-				filename: mediafile,
-				version: 'Default',
-				duration: 0,
-				filesize: 0,
-				loudnorm: '',
-				default: true,
-				lyrics: [
-					subfile
-						? {
-								filename: subfile,
-								version: 'Default',
-								default: true,
-							}
-						: undefined,
-				],
-			},
-		],
-		data: {
-			kid: uuidV4(),
-			year: karaObj.newFile.year,
-			titles: {},
-			titles_default_language: language,
-			ignoreHooks: false,
-			created_at: date.toISOString(),
-			modified_at: date.toISOString(),
-			tags: karaObj.tags,
-		},
-	};
-	kara.data.titles[language] = karaObj.newFile.title;
-	await createKara(
-		{
-			kara,
-		},
-		dir
-	);
-}
-
-export async function importBase(source: string, template: string, type: 'file' | 'dir') {
-	let files = [];
-	if (type === 'dir') {
-		files = await findFilesToImport(source, template);
-	} else {
-		files = [translateKaraTemplate(source, template)];
-	}
-	files = await populateTags(files);
-	for (const file of files) {
-		await importBaseKara(file);
-	}
-}
