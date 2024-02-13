@@ -1,9 +1,9 @@
 // Utils
 import { copyFile } from 'node:fs/promises';
+import { extname, resolve } from 'node:path';
 
 import i18n from 'i18next';
 import { shuffle } from 'lodash';
-import { join } from 'path/posix';
 
 import { insertKaraToRequests } from '../dao/kara.js';
 // DAO
@@ -51,7 +51,7 @@ import { OldJWTToken, User } from '../lib/types/user.js';
 import { getConfig, resolvedPathRepos } from '../lib/utils/config.js';
 import { date, now, time as time2 } from '../lib/utils/date.js';
 import { ErrorKM } from '../lib/utils/error.js';
-import { resolveFileInDirs } from '../lib/utils/files.js';
+import { resolveFileInDirs, sanitizeFile } from '../lib/utils/files.js';
 import logger, { profile } from '../lib/utils/logger.js';
 import { generateM3uFileFromPlaylist } from '../lib/utils/m3u.js';
 import Task from '../lib/utils/taskManager.js';
@@ -368,19 +368,17 @@ export async function exportPlaylistMedia(
 					kara.subfile,
 					resolvedPathRepos('Lyrics', kara.repository)
 				);
-				// This works as long as filenames are not uuids. After that, the computed filename should be retrieved here
-				// with something like defineFilename() and determineMediaAndLyricsFilenames()
+				const destBaseFile = sanitizeFile(
+					`${kara.titles[kara.titles_default_language]}.${kara.kid.substring(0, 8)}`
+				);
 				logger.debug(`Copying ${karaMediaPath[0]} to ${exportDir}`, { service });
 				task.update({
-					subtext: kara.mediafile,
+					subtext: destBaseFile,
 				});
-				await copyFile(karaMediaPath[0], join(exportDir, kara.mediafile));
+				await copyFile(karaMediaPath[0], resolve(exportDir, `${destBaseFile}${extname(kara.mediafile)}`));
 				if (karaLyricsPath[0]) {
 					// Kara can have no lyrics file
-					await copyFile(karaLyricsPath[0], join(exportDir, kara.subfile));
-					task.update({
-						subtext: kara.subfile,
-					});
+					await copyFile(karaLyricsPath[0], resolve(exportDir, `${destBaseFile}${extname(kara.subfile)}`));
 				}
 				exportedResult.push({ ...kara, exportSuccessful: true });
 			} catch (err) {

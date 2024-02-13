@@ -1190,56 +1190,25 @@ export async function generateCommits(repoName: string) {
 		// Added songs
 		const [karas, tags] = await Promise.all([getKaras({ ignoreCollections: true }), getTags({})]);
 		for (const file of addedSongs) {
-			const song = basename(file, '.kara.json');
+			const kara = karas.content.find(k => k.karafile === `${basename(file)}.kara.json`);
+			// We need to find out if some tags have been added or modified and add them to our commit
+			if (!kara) {
+				logger.warn(`File "${file}" does not seem to be in database? Skipping`, { service });
+				continue;
+			}
+			const song = kara.titles[kara.titles_default_language];
 			const commit: Commit = {
 				addedFiles: [file],
 				removedFiles: [],
 				message: `🆕 🎤 Add ${song}`,
 			};
-			// We need to find out if some tags have been added or modified and add them to our commit
-			const kara = karas.content.find(k => k.karafile === basename(file));
-			if (!kara) {
-				logger.warn(`File "${file}" does not seem to be in database? Skipping`, { service });
-				continue;
-			}
 			// Let's check if the kara has been renamed and is actually a modified kara.
-			let oldMediaFile = null;
-			let sizeDifference = null;
-			const oldKaraFile = deletedKIDFiles.get(kara.kid);
-			if (oldKaraFile) {
-				// If an oldKarafile is present, then this is a rename.
-				// We have to determine if the media has also been simply renamed or we need to reupload it.
-				const oldMediaSize = deletedKIDData.get(kara.kid).medias[0].filesize;
-				const newMediaSize = kara.mediasize;
-				if (oldMediaSize !== newMediaSize) {
-					// By default this is going to be the same as a rename but with sizeDifference set to true so the ftp is forced to delete the old file and reupload the new one
-					oldMediaFile = kara.mediafile;
-					sizeDifference = true;
-				}
-				if (oldKaraFile !== file) {
-					// This is actually modified kara.
-					commit.message = `📝 🎤 Modify ${song}`;
-					// Let's remove the commit containing our song deletion and add the deletion in this commit
-					commits = commits.filter(c => !c.removedFiles.includes(oldKaraFile));
-					commit.removedFiles = [oldKaraFile];
-					// If the karafile has been modified, chances are the media has been as well.
-					oldMediaFile = deletedKIDData.get(kara.kid).medias[0].filename;
-					// We need to remove from modifiedMedias our delete
-					modifiedMedias = modifiedMedias.filter(m => m.new !== null && m.old !== oldMediaFile);
-					// We need to do the same with lyrics
-					// Problems is that lyrics have already been deleted so we're going to pick the lyrics from the status itself
-					const oldSong = basename(oldKaraFile, '.kara.json');
-					const lyricsFile = status.deleted.find(f => parse(basename(f)).name === oldSong);
-					if (lyricsFile) {
-						commit.removedFiles.push(lyricsFile);
-					}
-				}
-			}
+
 			// If oldMediaFile is still null, this is a new media that will be pushed later to the FTP.
 			modifiedMedias.push({
-				old: oldMediaFile,
+				old: null,
 				new: kara.mediafile,
-				sizeDifference,
+				sizeDifference: null,
 				commit: commit.message,
 			});
 			for (const tid of kara.tid) {
@@ -1251,7 +1220,7 @@ export async function generateCommits(repoName: string) {
 					commit.addedFiles.push(addedTag);
 					addedTags = addedTags.filter(f => basename(f) !== tagfile);
 				}
-				// Let's do the same for modified tags. For example if a new song uses a tag previously used else where in another category, then the tag has been modified and should be added with the kara
+				// Let's do the same for modified tags. For example if a new song uses a tag previously used elsewhere in another category, then the tag has been modified and should be added with the kara
 				const modifiedTag = modifiedTags.find(f => basename(f) === tagfile);
 				if (modifiedTag) {
 					commit.addedFiles.push(modifiedTag);
@@ -1268,12 +1237,6 @@ export async function generateCommits(repoName: string) {
 		}
 		// Modified songs
 		for (const file of modifiedSongs) {
-			const song = basename(file, '.kara.json');
-			const commit: Commit = {
-				addedFiles: [file],
-				removedFiles: [],
-				message: `📝 🎤 Update ${song}`,
-			};
 			// Modified songs can be renamed so we need to find out how it was named before
 			// We need to find out if some tags have been added or modified and add them to our commit
 			const kara = karas.content.find(k => k.karafile === basename(file));
@@ -1281,6 +1244,13 @@ export async function generateCommits(repoName: string) {
 				logger.warn(`File "${file}" does not seem to be in database? Skipping`, { service });
 				continue;
 			}
+			const song = kara.titles[kara.titles_default_language];
+			const commit: Commit = {
+				addedFiles: [file],
+				removedFiles: [],
+				message: `📝 🎤 Update ${song}`,
+			};
+
 			const oldKaraFile = await git.show(`HEAD:${file}`);
 			const oldKara: KaraFileV4 = JSON.parse(oldKaraFile);
 			// Let's check if the kara has a renamed media file or media size.

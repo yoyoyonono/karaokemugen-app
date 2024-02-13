@@ -83,7 +83,6 @@ export async function insertTag(tag: Tag) {
 		tag.repository,
 		tag.noLiveDownload || false,
 		tag.priority || 10,
-		tag.karafile_tag || null,
 		tag.description || {},
 		tag.external_database_ids || null,
 	]);
@@ -125,7 +124,6 @@ export async function updateTag(tag: Tag) {
 		tag.repository,
 		tag.noLiveDownload || false,
 		tag.priority || 10,
-		tag.karafile_tag || null,
 		tag.description || {},
 		tag.external_database_ids || null,
 	]);
