@@ -1,13 +1,13 @@
 import '../App.scss';
 
 import { ConfigProvider, Layout, theme } from 'antd';
+import deDE from 'antd/es/locale/de_DE';
 import enUS from 'antd/es/locale/en_US';
 import esES from 'antd/es/locale/es_ES';
 import frFR from 'antd/es/locale/fr_FR';
 import idID from 'antd/es/locale/id_ID';
-import ptPT from 'antd/es/locale/pt_PT';
-import deDE from 'antd/es/locale/de_DE';
 import itIT from 'antd/es/locale/it_IT';
+import ptPT from 'antd/es/locale/pt_PT';
 
 import i18next from 'i18next';
 import { Component } from 'react';
@@ -26,6 +26,7 @@ import KaraHistory from '../pages/Karas/History';
 import KaraBatchEdit from '../pages/Karas/KaraBatchEdit';
 import KaraDownload from '../pages/Karas/KaraDownload';
 import KaraEdit from '../pages/Karas/KaraEdit';
+import KaraImport from '../pages/Karas/KaraImport';
 import KaraListPage from '../pages/Karas/KaraListPage';
 import QueueDownload from '../pages/Karas/QueueDownload';
 import KaraRanking from '../pages/Karas/Ranking';
@@ -128,6 +129,7 @@ class KMSystem extends Component<unknown, unknown> {
 							<Route path="/karas/download/queue" element={<QueueDownload />} />
 							<Route path="/karas/download" element={<KaraDownload />} />
 							<Route path="/karas/create" element={<KaraEdit />} />
+							<Route path="/karas/import" element={<KaraImport />} />
 							<Route path="/karas/history" element={<KaraHistory />} />
 							<Route path="/karas/ranking" element={<KaraRanking />} />
 							<Route path="/karas/viewcounts" element={<KaraViewcounts />} />

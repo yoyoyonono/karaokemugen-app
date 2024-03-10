@@ -1142,6 +1142,18 @@
 			"UNSET": "Remove custom position"
 		}
 	},
+	"KARAOKE_IMPORT": {
+		"CONFIGURATION": "Configuration",
+		"SOURCE_DIR": "Source directory",
+		"SOURCE_DIR_TOOLTIP": "Directory with karaoke medias (video/audio) to import",
+		"DESTINATION_REPOSITORY": "Destination repository",
+		"DESTINATION_REPOSITORY_TOOLTIP": "Repository where the new karaokes will be imported",
+		"FILENAME_TEMPLATE": "Filename template",
+		"FILENAME_TEMPLATE_TOOLTIP": "If your existing files have a structured filename - for example containing the song name, artist and year - you can provide the format here. The recognized fields will automatically be saved on the new karaokes metadata",
+		"MEDIA_FILES": "Media files",
+		"IMPORT": "Import",
+		"IMPORT_START": "Start import"
+	},
 	"MENU": {
 		"HOME": "Dashboard",
 		"SYSTEM": "System",
@@ -1158,6 +1170,7 @@
 		"HISTORY": "History",
 		"RANKING": "Most requested",
 		"VIEWCOUNTS": "Most played",
+		"KARAIMPORT": "Import karaokes",
 		"TAGS": "Tags",
 		"DATABASE": "Database",
 		"GIT": "Git",
@@ -1885,6 +1898,10 @@
 		"KARAOKE_EDIT": {
 			"TITLE": "Edit a karaoke",
 			"DESCRIPTION": "Karaoke modification form."
+		},
+		"KARAOKE_IMPORT": {
+			"TITLE": "Import Karaokes",
+			"DESCRIPTION": "Import karaokes from a folder into Karaoke Mugen"
 		},
 		"DOWNLOAD_QUEUE": {
 			"TITLE": "Medias download queue",
