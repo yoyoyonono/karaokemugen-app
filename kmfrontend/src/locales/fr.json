@@ -152,6 +152,8 @@
 		"CRITERIA_TYPE_1002": "Plus long que (mm:ss)",
 		"CRITERIA_TYPE_1003": "Plus court que (mm:ss)",
 		"CRITERIA_TYPE_1006": "Cacher les chansons indisponibles hors ligne",
+		"CRITERIA_TYPE_1007": "Après l'année (année incluse)",
+		"CRITERIA_TYPE_1008": "Avant l'année (année incluse)",
 		"LABEL": {
 			"TAG": "Les chansons {{verb}} {{tag}} sont dans la liste.",
 			"TAG_VERBS": {
@@ -175,6 +177,8 @@
 			},
 			"YEAR": "Les chansons de l'année {{year}} sont dans la liste.",
 			"KID": "Cette chanson est dans la liste.",
+			"AFTER_YEAR": "Les chansons après l'année {{year}} sont dans la liste.",
+			"BEFORE_YEAR": "Les chansons avant l'année {{year}} sont dans la liste.",
 			"LONGER": "Les chansons de plus de {{time}} secondes sont dans la liste.",
 			"SHORTER": "Les chansons de moins de {{time}} secondes sont dans la liste."
 		},
@@ -1550,6 +1554,7 @@
 		"UNKNOWN_USER": "Utilisateur inconnu",
 		"UNKNOWN_SESSION": "Session inconnue",
 		"UNKNOWN_TAG": "Tag inconnu",
+		"DATABASE_DISK_FULL": "Disque de base de données plein ! Faites de la place immédiatement !",
 		"USER_LOGIN_INVALID": "Nom d'utilisateur invalide. N'utilisez que des caractères alphanumériques (ou avec ., _ ou -)",
 		"USER_CREATE_ERROR_ONLINE_DISABLED": "Impossible de créer l'utilisateur : le mode en ligne est désactivé",
 		"NICKNAME_ALREADY_IN_USE": "Pseudonyme déjà en cours d'utilisation",
@@ -1586,6 +1591,8 @@
 		"CRITERIAS_REMOVE_ERROR": "Erreur lors de la suppression du critère",
 		"C_SHORTER_THAN_CONFLICT": "Vous ne pouvez pas ajouter un critère \"Plus court que\" supérieur au critère \"Plus long que\".",
 		"C_LONGER_THAN_CONFLICT": "Vous ne pouvez pas ajouter un critère \"Plus long que\" inférieur au critère \"Plus court que\".",
+		"C_AFTER_YEAR_CONFLICT": "Vous ne pouvez pas ajouter un critère \"Après année\" supérieur au critère \"Avant année\".",
+		"C_BEFORE_YEAR_CONFLICT": "Vous ne pouvez pas ajouter un critère \"Avant année\" inférieur au critère \"Après année\".",
 		"USER_RESETPASSWORD_WRONGSECURITYCODE": "Mauvais code de sécurité",
 		"PL_DELETE_SONG_ERROR": "Vous ne pouvez pas supprimer ce morceau",
 		"PL_DELETE_UPVOTED": "Vous ne pouvez pas supprimer votre ajout, il est trop ancien.",
@@ -1648,6 +1655,7 @@
 		"PL_LIST_ERROR": "Erreur lors de la récupération des listes de lecture",
 		"PL_CREATE_ERROR": "Erreur lors de la création d'une liste de lecture",
 		"PL_VIEW_ERROR": "Erreur lors de la récupération des informations d'une liste de lecture",
+		"TYPE_SMART_CHANGE_CONFLICTING_CRITERIAS_ERROR": "Erreur de changement du type de liste intelligente : vous avez des critères en conflit (année/durée?) Retirez-en et réessayez.",
 		"PL_UPDATE_ERROR": "Erreur lors de la mise à jour des informations d'une liste de lecture",
 		"PL_DELETE_ERROR": "Erreur lors de la suppression d'une liste de lecture",
 		"PL_EMPTY_ERROR": "Erreur lors du vidage d'une liste de lecture",
