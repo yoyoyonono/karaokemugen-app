@@ -337,7 +337,9 @@ async function createWindow() {
 	}
 
 	win.once('ready-to-show', () => {
-		win.setFullScreen(getState().steamOS);
+		if (getState().steamOS) {
+			win.setFullScreen(true);
+		}
 		win.show();
 	});
 	win.webContents.setWindowOpenHandler(handler => {
