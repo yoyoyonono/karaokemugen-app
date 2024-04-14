@@ -123,6 +123,10 @@ const args = app.isPackaged ? process.argv.slice(1) : process.argv.slice(2);
 
 setState({ args });
 
+if (process.env.SteamDeck || process.env.SteamOS) {
+	setState({ steamOS: true });
+}
+
 // Let's go! This calls the functions below.
 // Start Electron -> Pre Init -> Main Init -> Engine Init -> Post Init
 try {

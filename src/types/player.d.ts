@@ -26,6 +26,7 @@ export interface PlayerState {
 	showSubs?: boolean;
 	onTop?: boolean;
 	fullscreen?: boolean;
+	minimized?: boolean;
 	border?: boolean;
 	'eof-reached'?: boolean;
 	url?: string;
