@@ -92,6 +92,7 @@ export default function initFrontend(): number {
 		app.use('/backgrounds', express.static(resolvedPath('Backgrounds'), { fallthrough: false }));
 		// There's a single /medias path which will list all files in all folders. Pretty handy.
 		resolvedPathRepos('Medias').forEach(dir => app.use('/medias', express.static(dir)));
+		app.use('/mediastmp', express.static(resolve(resolvedPath('Temp'), 'medias')));
 		// Path to user avatars
 		app.use('/avatars', express.static(resolvedPath('Avatars')));
 

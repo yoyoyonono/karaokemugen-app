@@ -1,10 +1,16 @@
 import { Socket } from 'socket.io';
 
+import { promises as fs } from 'fs';
+import { resolve } from 'path';
 import { validateMediaInfo } from '../../lib/dao/karafile.js';
 import { APIMessage } from '../../lib/services/frontend.js';
 import { previewHooks, processUploadedMedia } from '../../lib/services/karaCreation.js';
 import { APIData } from '../../lib/types/api.js';
 import { TagTypeNum } from '../../lib/types/tag.js';
+import { resolvedPath, resolvedPathRepos } from '../../lib/utils/config.js';
+import { Timer } from '../../lib/utils/date.js';
+import { createPreview } from '../../lib/utils/ffmpeg.js';
+import { fileExists, resolveFileInDirs } from '../../lib/utils/files.js';
 import { check, isUUID } from '../../lib/utils/validators.js';
 import { SocketIOApp } from '../../lib/utils/ws.js';
 import { getKMStats, getKara, getKaraLyrics, getKaraMediaInfo, getKaras } from '../../services/kara.js';
@@ -165,6 +171,46 @@ export default function karaController(router: SocketIOApp) {
 		await runChecklist(socket, req, 'guest', 'closed');
 		try {
 			return await getKMStats();
+		} catch (err) {
+			throw { code: err.code || 500, message: APIMessage(err.message) };
+		}
+	});
+
+	router.route('generatePreview', async (socket: Socket, req: APIData) => {
+		await runChecklist(socket, req, 'guest', 'limited');
+		try {
+			const media = await getKara(req.body?.kid, req.token);
+			const hardsubFile = `${media.kid}.${media.mediasize}.mpd`;
+			const mediaPath = (
+				await resolveFileInDirs(media.mediafile, resolvedPathRepos('Medias', media.repository))
+			)[0];
+			let subPath = null;
+			if (media.subfile) {
+				subPath = (await resolveFileInDirs(media.subfile, resolvedPathRepos('Lyrics', media.repository)))[0];
+			}
+
+			const fontsDir = resolvedPathRepos('Fonts', media.repository)[0];
+
+			const previewDir = resolve(resolvedPath('Temp'), 'medias');
+			await fs.mkdir(previewDir, { recursive: true });
+
+			const outputFile = resolve(previewDir, hardsubFile);
+
+			const kid = media.kid;
+			const loudnorm = media.loudnorm;
+
+			if (await fileExists(outputFile)) return true;
+			const assPath = subPath ? `${kid}.ass` : null;
+			if (subPath) await fs.copyFile(subPath, assPath);
+			try {
+				createPreview(mediaPath, assPath, fontsDir, outputFile, loudnorm).finally(async () => {
+					if (assPath) await fs.unlink(assPath);
+				});
+				await new Timer(1000).wait();
+				return true;
+			} catch (err) {
+				throw err;
+			}
 		} catch (err) {
 			throw { code: err.code || 500, message: APIMessage(err.message) };
 		}
