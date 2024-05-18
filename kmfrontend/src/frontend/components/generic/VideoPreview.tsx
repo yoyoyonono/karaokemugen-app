@@ -31,7 +31,7 @@ export default function VideoPreview(props: Props) {
 			} else {
 				const res = await commandBackend('generatePreview', { kid: props.kara.kid });
 				return res
-					? `http://${window.location.hostname}:1337/mediastmp/${props.kara.kid}.${props.kara.mediasize}.mpd`
+					? `http://${window.location.hostname}:1337/mediastmp/${props.kara.kid}/${props.kara.mediasize}/hardsub.m3u8`
 					: videoLink;
 			}
 		},
@@ -52,7 +52,6 @@ export default function VideoPreview(props: Props) {
 			},
 		],
 		experimentalSvgIcons: true,
-		// liveui: true,
 	};
 
 	return props.show ? <VideoJS options={options} /> : null;

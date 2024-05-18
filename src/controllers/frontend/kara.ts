@@ -1,7 +1,7 @@
 import { Socket } from 'socket.io';
 
 import { promises as fs } from 'fs';
-import { resolve } from 'path';
+import path, { resolve } from 'path';
 import { validateMediaInfo } from '../../lib/dao/karafile.js';
 import { APIMessage } from '../../lib/services/frontend.js';
 import { previewHooks, processUploadedMedia } from '../../lib/services/karaCreation.js';
@@ -180,7 +180,7 @@ export default function karaController(router: SocketIOApp) {
 		await runChecklist(socket, req, 'guest', 'limited');
 		try {
 			const media = await getKara(req.body?.kid, req.token);
-			const hardsubFile = `${media.kid}.${media.mediasize}.mpd`;
+			const hardsubFile = `hardsub.m3u8`;
 			const mediaPath = (
 				await resolveFileInDirs(media.mediafile, resolvedPathRepos('Medias', media.repository))
 			)[0];
@@ -191,7 +191,7 @@ export default function karaController(router: SocketIOApp) {
 
 			const fontsDir = resolvedPathRepos('Fonts', media.repository)[0];
 
-			const previewDir = resolve(resolvedPath('Temp'), 'medias');
+			const previewDir = resolve(resolvedPath('Temp'), 'medias', media.kid, media.mediasize?.toString());
 			await fs.mkdir(previewDir, { recursive: true });
 
 			const outputFile = resolve(previewDir, hardsubFile);
@@ -203,7 +203,15 @@ export default function karaController(router: SocketIOApp) {
 			const assPath = subPath ? `${kid}.ass` : null;
 			if (subPath) await fs.copyFile(subPath, assPath);
 			try {
-				createPreview(mediaPath, assPath, fontsDir, outputFile, loudnorm).finally(async () => {
+				await createHls(media.duration, outputFile, kid);
+				createPreview(
+					mediaPath,
+					assPath,
+					fontsDir,
+					outputFile.replace(/\.m3u8$/, '_audio.dummym3u8'), //we don't want this file, we want the one generated in createHls
+					loudnorm,
+					'audio'
+				).finally(async () => {
 					if (assPath) await fs.unlink(assPath);
 				});
 				await new Timer(1000).wait();
@@ -215,4 +223,38 @@ export default function karaController(router: SocketIOApp) {
 			throw { code: err.code || 500, message: APIMessage(err.message) };
 		}
 	});
+}
+
+export async function createHls(duration: number, outputFile: string, kid: string) {
+	const segmentDur = 10; // Segment duration in seconds
+	const outputVideoFile = outputFile.replace(/\.m3u8$/, '_video.m3u8');
+	const outputAudioFile = outputFile.replace(/\.m3u8$/, '_audio.m3u8');
+
+	await hlsFile(outputVideoFile, i => `/api/generatePreview?startSegment=${i}&kid=${kid}`);
+	await hlsFile(outputAudioFile, i => path.basename(outputAudioFile.replace(/\.m3u8$/, `${i}.ts`)));
+	await fs.writeFile(
+		outputFile,
+		`#EXTM3U
+#EXT-X-VERSION:3
+#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="aac",NAME="audio",URI="${path.basename(outputAudioFile)}"
+#EXT-X-STREAM-INF:AUDIO="aac"
+${path.basename(outputVideoFile)}
+`
+	);
+
+	async function hlsFile(outputFile: string, file: (i: number) => string) {
+		let out = `#EXTM3U
+#EXT-X-VERSION:3
+#EXT-X-TARGETDURATION:${segmentDur}
+#EXT-X-MEDIA-SEQUENCE:0
+#EXT-X-PLAYLIST-TYPE:VOD
+`;
+
+		let timeLeft = duration;
+		for (let i = 0; timeLeft > 0; i++, timeLeft -= segmentDur) {
+			out += `#EXTINF:${segmentDur}, nodesc\n${file(i)}\n`;
+		}
+		out += '#EXT-X-ENDLIST\n';
+		await fs.writeFile(outputFile, out);
+	}
 }

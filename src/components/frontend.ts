@@ -102,16 +102,16 @@ export default function initFrontend(): number {
 		// HTTP standards are important.
 		app.use('/coffee', (_req, res) => res.status(418).json());
 
+		const server = createServer(app);
+		// Init websockets
+		const ws = initWS(server);
+		app.use('/api', apiHTTPRouter(ws));
 		app.use('/', express.static(resolve(state.resourcePath, 'kmfrontend/dist')));
 		app.get('/*', (_req, res) => {
 			res.sendFile(resolve(state.resourcePath, 'kmfrontend/dist/index.html'));
 		});
 
-		const server = createServer(app);
-		// Init websockets
-		const ws = initWS(server);
 		apiRouter(ws);
-		app.use('/api', apiHTTPRouter(ws));
 		let port = state.frontendPort;
 		try {
 			server.listen(port, () => {
