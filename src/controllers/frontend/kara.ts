@@ -1,7 +1,7 @@
-import { Socket } from 'socket.io';
-
 import { promises as fs } from 'fs';
 import path, { resolve } from 'path';
+import { Socket } from 'socket.io';
+
 import { validateMediaInfo } from '../../lib/dao/karafile.js';
 import { APIMessage } from '../../lib/services/frontend.js';
 import { previewHooks, processUploadedMedia } from '../../lib/services/karaCreation.js';
@@ -9,7 +9,7 @@ import { APIData } from '../../lib/types/api.js';
 import { TagTypeNum } from '../../lib/types/tag.js';
 import { resolvedPath, resolvedPathRepos } from '../../lib/utils/config.js';
 import { Timer } from '../../lib/utils/date.js';
-import { createPreview } from '../../lib/utils/ffmpeg.js';
+import { createFrames as createFrames2, createPreview } from '../../lib/utils/ffmpeg.js';
 import { fileExists, resolveFileInDirs } from '../../lib/utils/files.js';
 import { check, isUUID } from '../../lib/utils/validators.js';
 import { SocketIOApp } from '../../lib/utils/ws.js';
@@ -181,6 +181,7 @@ export default function karaController(router: SocketIOApp) {
 		try {
 			const media = await getKara(req.body?.kid, req.token);
 			const hardsubFile = `hardsub.m3u8`;
+			const framesFileName = `frames.txt`;
 			const mediaPath = (
 				await resolveFileInDirs(media.mediafile, resolvedPathRepos('Medias', media.repository))
 			)[0];
@@ -195,6 +196,7 @@ export default function karaController(router: SocketIOApp) {
 			await fs.mkdir(previewDir, { recursive: true });
 
 			const outputFile = resolve(previewDir, hardsubFile);
+			const framesFile = resolve(previewDir, framesFileName);
 
 			const kid = media.kid;
 			const loudnorm = media.loudnorm;
@@ -203,12 +205,13 @@ export default function karaController(router: SocketIOApp) {
 			const assPath = subPath ? `${kid}.ass` : null;
 			if (subPath) await fs.copyFile(subPath, assPath);
 			try {
-				await createHls(media.duration, outputFile, kid);
+				const frames = await createFrames(mediaPath, framesFile);
+				await createHls(media.duration, outputFile, kid, frames);
 				createPreview(
 					mediaPath,
 					assPath,
 					fontsDir,
-					outputFile.replace(/\.m3u8$/, '_audio.dummym3u8'), //we don't want this file, we want the one generated in createHls
+					outputFile.replace(/\.m3u8$/, '_audio.m3u8'),
 					loudnorm,
 					'audio'
 				).finally(async () => {
@@ -225,13 +228,11 @@ export default function karaController(router: SocketIOApp) {
 	});
 }
 
-export async function createHls(duration: number, outputFile: string, kid: string) {
-	const segmentDur = 10; // Segment duration in seconds
+export async function createHls(duration: number, outputFile: string, kid: string, frames: number[]) {
 	const outputVideoFile = outputFile.replace(/\.m3u8$/, '_video.m3u8');
 	const outputAudioFile = outputFile.replace(/\.m3u8$/, '_audio.m3u8');
 
-	await hlsFile(outputVideoFile, i => `/api/generatePreview?startSegment=${i}&kid=${kid}`);
-	await hlsFile(outputAudioFile, i => path.basename(outputAudioFile.replace(/\.m3u8$/, `${i}.ts`)));
+	await hlsFileVideo(outputVideoFile, i => `/api/generatePreview?startSegment=${i}&kid=${kid}`);
 	await fs.writeFile(
 		outputFile,
 		`#EXTM3U
@@ -242,19 +243,25 @@ ${path.basename(outputVideoFile)}
 `
 	);
 
-	async function hlsFile(outputFile: string, file: (i: number) => string) {
+	async function hlsFileVideo(outputFile: string, file: (i: number) => string) {
 		let out = `#EXTM3U
 #EXT-X-VERSION:3
-#EXT-X-TARGETDURATION:${segmentDur}
+#EXT-X-TARGETDURATION:400
 #EXT-X-MEDIA-SEQUENCE:0
 #EXT-X-PLAYLIST-TYPE:VOD
 `;
 
-		let timeLeft = duration;
-		for (let i = 0; timeLeft > 0; i++, timeLeft -= segmentDur) {
-			out += `#EXTINF:${segmentDur}, nodesc\n${file(i)}\n`;
+		for (let i = 0; i < frames.length; i++) {
+			const next = frames[i + 1] || duration;
+			out += `#EXTINF:${next - frames[i]}, nodesc\n${file(i)}\n`;
 		}
 		out += '#EXT-X-ENDLIST\n';
 		await fs.writeFile(outputFile, out);
 	}
+}
+
+export async function createFrames(mediaPath: string, outputFile: string): Promise<number[]> {
+	const frames = await createFrames2(mediaPath);
+	await fs.writeFile(outputFile, frames.join('\n'));
+	return frames;
 }

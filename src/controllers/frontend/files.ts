@@ -27,10 +27,11 @@ export default function filesController(router: Router) {
 	});
 	router.route('/generatePreview').get(async (req, res: any) => {
 		try {
-			const startSegment = req.query?.startSegment || 0;
-			const media = await getKara(req.query?.kid, adminToken);
+			const numberSegment = +req.query?.startSegment || 0;
+			const media = await getKara(req.query?.kid?.toString(), adminToken);
 			const hardsubFile = `hardsub_video.m3u8`;
-			const segmentFileName = hardsubFile.replace(/\.m3u8/, `${startSegment}.ts`);
+			const framesFileName = `frames.txt`;
+			const segmentFileName = hardsubFile.replace(/\.m3u8/, `${numberSegment}.ts`);
 			const mediaPath = (
 				await resolveFileInDirs(media.mediafile, resolvedPathRepos('Medias', media.repository))
 			)[0];
@@ -45,11 +46,16 @@ export default function filesController(router: Router) {
 			await fs.mkdir(previewDir, { recursive: true });
 
 			const segmentFile = resolve(previewDir, segmentFileName);
+			const framesFile = resolve(previewDir, framesFileName);
+
+			const frames = (await fs.readFile(framesFile, 'utf8')).split('\n');
+			const startSegment = +frames[numberSegment];
+			const endSegment = +frames[numberSegment + 1] || null;
 
 			const kid = media.kid;
 			const loudnorm = media.loudnorm;
 
-			const outputVideoSegmentFile = `/mediastmp/${kid}/${media.mediasize}/hardsub_video${startSegment}.ts`;
+			const outputVideoSegmentFile = `/mediastmp/${kid}/${media.mediasize}/hardsub_video${numberSegment}.ts`;
 			if (await fileExists(segmentFile)) return res.redirect(outputVideoSegmentFile);
 			const assPath = subPath ? `${kid}.ass` : null;
 			if (subPath) await fs.copyFile(subPath, assPath);
@@ -76,7 +82,9 @@ export default function filesController(router: Router) {
 					outputFileTmp.replace(/\.m3u8/, '.dummym3u8'), //we don't want this file, we want the one generated in createHls
 					loudnorm,
 					'video',
-					startSegment
+					numberSegment,
+					startSegment,
+					endSegment
 				);
 				fs.rename(segmentFileTmp, segmentFile);
 				if (assPath) await fs.unlink(assPath);
