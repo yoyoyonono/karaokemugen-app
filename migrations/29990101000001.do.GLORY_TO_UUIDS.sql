@@ -1,0 +1,5 @@
+ALTER TABLE tag DROP COLUMN description;
+ALTER TABLE tag DROP COLUMN external_database_ids;
+ALTER TABLE tag ADD COLUMN IF NOT EXISTS karafile_tag TEXT;
+ALTER TABLE tag ADD COLUMN IF NOT EXISTS description JSONB;
+ALTER TABLE tag ADD COLUMN IF NOT EXISTS external_database_ids JSONB;

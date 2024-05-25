@@ -22,6 +22,7 @@ SELECT t.pk_tid AS tid,
 	t.repository,
 	t.nolivedownload AS "noLiveDownload",
 	t.priority,
+	t.karafile_tag,
 	t.description,
 	t.external_database_ids AS external_database_ids,
 	count(t.pk_tid) OVER()::integer AS count
@@ -51,6 +52,7 @@ INSERT INTO tag(
 	repository,
 	nolivedownload,
 	priority,
+	karafile_tag,
 	description,
 	external_database_ids
 )
@@ -79,8 +81,9 @@ ON CONFLICT (pk_tid) DO UPDATE SET
 	repository = $8,
 	nolivedownload = $9,
 	priority = $10,
-	description = $11,
-	external_database_ids = $12
+	karafile_tag = $11,
+	description = $12,
+	external_database_ids = $13
 `;
 
 export const sqlupdateKaraTagsTID = `
@@ -118,8 +121,9 @@ SET
 	repository = $8,
 	nolivedownload = $9,
 	priority = $10,
-	description = $11,
-	external_database_ids = $12
+	karafile_tag = $11,
+	description = $12,
+	external_database_ids = $13
 WHERE pk_tid = $7;
 `;
 
