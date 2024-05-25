@@ -5,8 +5,8 @@ import parallel from 'p-map';
 import { basename, parse, resolve } from 'path';
 import { TopologicalSort } from 'topological-sort';
 
-import { compareKarasChecksum, generateDB } from '../dao/database.js';
 import { baseChecksum, editKaraInStore, getStoreChecksum, sortKaraStore } from '../dao/dataStore.js';
+import { compareKarasChecksum, generateDB } from '../dao/database.js';
 import { updateDownloaded } from '../dao/download.js';
 import { deleteRepo, insertRepo, updateRepo } from '../dao/repo.js';
 import { getSettings, refreshAll, saveSetting } from '../lib/dao/database.js';
@@ -16,6 +16,7 @@ import { parseKara, writeKara } from '../lib/dao/karafile.js';
 import { readRepoManifest, selectRepos, selectRepositoryManifest } from '../lib/dao/repo.js';
 import { APIMessage } from '../lib/services/frontend.js';
 import { readAllKaras } from '../lib/services/generation.js';
+import { defineFilename, determineMediaAndLyricsFilenames } from '../lib/services/karaCreation.js';
 import { DBTag } from '../lib/types/database/tag.js';
 import { KaraMetaFile } from '../lib/types/downloads.js';
 import { KaraFileV4 } from '../lib/types/kara.js';
@@ -23,7 +24,7 @@ import { DiffChanges, Repository, RepositoryBasic, RepositoryManifest } from '..
 import { TagFile } from '../lib/types/tag.js';
 import { getConfig, resolvedPathRepos } from '../lib/utils/config.js';
 import { ErrorKM } from '../lib/utils/error.js';
-import { asyncCheckOrMkdir, listAllFiles, moveAll, relativePath, resolveFileInDirs } from '../lib/utils/files.js';
+import { asyncCheckOrMkdir, link, listAllFiles, moveAll, relativePath, resolveFileInDirs } from '../lib/utils/files.js';
 import HTTP, { fixedEncodeURIComponent } from '../lib/utils/http.js';
 import logger, { profile } from '../lib/utils/logger.js';
 import { computeFileChanges } from '../lib/utils/patch.js';
@@ -1084,6 +1085,48 @@ export async function movingMediaRepo(repoName: string, newPath: string) {
 		sentry.error(err);
 		emitWS('operatorNotificationError', APIMessage('ERROR_CODES.MOVING_MEDIAS_ERROR'));
 		throw err instanceof ErrorKM ? err : new ErrorKM('MOVING_MEDIAS_ERROR');
+	} finally {
+		task.end();
+	}
+}
+
+export async function linkingMediaRepo() {
+	const task = new Task({
+		text: 'LINKING_MEDIAS_REPO',
+	});
+	try {
+		for (const repo of getRepos()) {
+			const repoName = repo.Name;
+			const newPath = resolvedPathRepos('Links', repoName)[0];
+			fs.mkdir(newPath, { recursive: true });
+			await checkRepoPaths(repo);
+			logger.info(`Linking ${repoName} medias repository to ${newPath}...`, { service });
+			const linkTasks = [];
+			const [karas, mediaFiles] = await Promise.all([
+				getKaras({ ignoreCollections: true }),
+				listAllFiles('Medias', repoName),
+			]);
+			for (const kara of karas.content) {
+				const mediaFileKara: string = kara.mediafile;
+				const mediaFileKaraPath = mediaFiles.find(file => mediaFileKara === basename(file));
+				if (mediaFileKaraPath) {
+					const karaFilePath = (
+						await resolveFileInDirs(kara.karafile, resolvedPathRepos('Karaokes', repoName))
+					)[0];
+					const karaFileData: KaraFileV4 = await parseKara(karaFilePath);
+					const karaFile = await defineFilename(karaFileData);
+					const filenames = determineMediaAndLyricsFilenames(karaFileData, karaFile);
+
+					linkTasks.push(link(mediaFileKaraPath, resolve(newPath, filenames.mediafile)));
+				}
+			}
+			await Promise.all(linkTasks);
+		}
+	} catch (err) {
+		logger.error(`Error linking medias for repos : ${err}`, { service });
+		sentry.error(err);
+		emitWS('operatorNotificationError', APIMessage('ERROR_CODES.LINKING_MEDIAS_ERROR'));
+		throw err instanceof ErrorKM ? err : new ErrorKM('LINKING_MEDIAS_ERROR');
 	} finally {
 		task.end();
 	}
