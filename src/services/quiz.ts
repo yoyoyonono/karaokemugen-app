@@ -15,7 +15,7 @@ import {
 	updateGame,
 } from '../dao/quiz.js';
 import { formatKaraV4 } from '../lib/dao/karafile.js';
-import { defineFilename } from '../lib/services/karaCreation.js';
+import { defineOldFilename } from '../lib/services/karaCreation.js';
 import { DBKaraTag } from '../lib/types/database/kara.js';
 import { KaraList } from '../lib/types/kara.js';
 import { getConfig } from '../lib/utils/config.js';
@@ -95,7 +95,7 @@ export function buildRulesString() {
 			? i18next.t('QUIZ_RULES.QUICK_ANSWER', {
 					seconds: gameSettings.TimeSettings.QuickGuessingTime,
 					points: gameSettings.Answers.QuickAnswer.Points,
-			  })
+				})
 			: null,
 		'',
 		`${i18next.t('QUIZ_RULES.ACCEPTED_ANSWERS')} ${Object.keys(gameSettings.Answers.Accepted)
@@ -116,12 +116,12 @@ export function buildRulesString() {
 		gameSettings.EndGame.Duration.Enabled
 			? i18next.t('QUIZ_RULES.DURATION', {
 					duration: gameSettings.EndGame.Duration.Minutes - getState().quiz.currentTotalDuration / 60,
-			  })
+				})
 			: null,
 		gameSettings.EndGame.MaxSongs.Enabled
 			? i18next.t('QUIZ_RULES.MAX_SONGS', {
 					songs: gameSettings.EndGame.MaxSongs.Songs - getState().quiz.currentSongNumber,
-			  })
+				})
 			: null,
 		i18next.t('QUIZ_RULES.END_OF_PLAYLIST'),
 		'',
@@ -291,7 +291,7 @@ export async function stopAcceptingAnswers() {
 	const twitchEnabled = streamConfig.Twitch.Enabled && streamConfig.Twitch.Channel && conf.Players.Twitch;
 	// Copying song object so we can avoid people submitting answers late.
 	const song = { ...gameState.currentSong };
-	const songString = await defineFilename(formatKaraV4(song.song));
+	const songString = await defineOldFilename(formatKaraV4(song.song)); //TODO use defineFilename
 	if (gameState.currentSong.answers.length > 0) {
 		if (twitchEnabled) computeTwitchAnswer();
 		const winners: {
