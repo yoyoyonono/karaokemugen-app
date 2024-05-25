@@ -2,7 +2,7 @@ import { shell } from 'electron';
 import { promises as fs } from 'fs';
 import { copy, remove } from 'fs-extra';
 import parallel from 'p-map';
-import { basename, parse, resolve } from 'path';
+import path, { basename, parse, resolve } from 'path';
 import { TopologicalSort } from 'topological-sort';
 
 import { baseChecksum, editKaraInStore, getStoreChecksum, sortKaraStore } from '../dao/dataStore.js';
@@ -1097,19 +1097,17 @@ export async function linkingMediaRepo() {
 	try {
 		for (const repo of getRepos()) {
 			const repoName = repo.Name;
-			const newPath = resolvedPathRepos('Links', repoName)[0];
-			fs.mkdir(newPath, { recursive: true });
 			await checkRepoPaths(repo);
-			logger.info(`Linking ${repoName} medias repository to ${newPath}...`, { service });
 			const linkTasks = [];
 			const [karas, mediaFiles] = await Promise.all([
 				getKaras({ ignoreCollections: true }),
 				listAllFiles('Medias', repoName),
 			]);
 			for (const kara of karas.content) {
-				const mediaFileKara: string = kara.mediafile;
-				const mediaFileKaraPath = mediaFiles.find(file => mediaFileKara === basename(file));
+				const mediaFileKaraPath = mediaFiles.find(file => kara.mediafile === basename(file));
 				if (mediaFileKaraPath) {
+					const newMediasPath = path.dirname(mediaFileKaraPath) + '-links';
+					fs.mkdir(newMediasPath, { recursive: true });
 					const karaFilePath = (
 						await resolveFileInDirs(kara.karafile, resolvedPathRepos('Karaokes', repoName))
 					)[0];
@@ -1117,7 +1115,7 @@ export async function linkingMediaRepo() {
 					const karaFile = await defineFilename(karaFileData);
 					const filenames = determineMediaAndLyricsFilenames(karaFileData, karaFile);
 
-					linkTasks.push(link(mediaFileKaraPath, resolve(newPath, filenames.mediafile)));
+					linkTasks.push(link(mediaFileKaraPath, resolve(newMediasPath, filenames.mediafile)));
 				}
 			}
 			await Promise.all(linkTasks);
