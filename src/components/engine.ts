@@ -29,7 +29,7 @@ import { initPlaylistSystem } from '../services/playlist.js';
 import { buildAllMediasList, updatePlaylistMedias } from '../services/playlistMedias.js';
 import { stopGame } from '../services/quiz.js';
 import { initRemote } from '../services/remote.js';
-import { checkDownloadStatus, initRepos, updateAllRepos } from '../services/repo.js';
+import { checkDownloadStatus, initRepos, linkingMediaRepo, updateAllRepos } from '../services/repo.js';
 import { initSession } from '../services/session.js';
 import { initStats } from '../services/stats.js';
 import { generateAdminPassword, initUserSystem } from '../services/user.js';
@@ -141,6 +141,17 @@ export async function initEngine() {
 			await exit(0);
 		} catch (err) {
 			logger.error('Generation failed', { service, obj: err });
+			sentry.error(err);
+			await exit(1);
+		}
+	} else if (state.opt.generateLinks) {
+		try {
+			initStep(i18next.t('INIT_LINK'));
+			await initDBSystem();
+			await linkingMediaRepo();
+			await exit(0);
+		} catch (err) {
+			logger.error('Links generation failed', { service, obj: err });
 			sentry.error(err);
 			await exit(1);
 		}

@@ -17,6 +17,7 @@ export function parseArgs() {
 		.option('--dumpDB', 'Dumps database and exits')
 		.option('--forceAdminPassword [password]', "Set admin account's password")
 		.option('-g, --generate', 'Generates a new database then exits')
+		.option('--generateLinks', 'Generates links then exits')
 		.option('-k, --kill', 'Kill already-running KM app')
 		.option('--noAutoTest', '(test mode only) Do not attempt to start tests automatically')
 		.option('--noBaseCheck', 'Disable data file checking on startup')
@@ -69,6 +70,10 @@ export function setupFromCommandLineArgs(argv: any, cmdline: CommandLine) {
 	if (argv.opts().generate) {
 		logger.info('Database generation requested', { service });
 		setState({ opt: { generateDB: true } });
+	}
+	if (argv.opts().generateLinks) {
+		logger.info('Links generation requested', { service });
+		setState({ opt: { generateLinks: true } });
 	}
 	if (argv.opts().noMedia) {
 		logger.info('Medias will not be read during generation', { service });

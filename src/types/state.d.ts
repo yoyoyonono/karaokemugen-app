@@ -63,6 +63,7 @@ export interface State {
 	opt?: {
 		cli?: boolean;
 		generateDB?: boolean;
+		generateLinks?: boolean;
 		reset?: boolean;
 		noBaseCheck?: boolean;
 		noPlayer?: boolean;
