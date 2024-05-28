@@ -210,7 +210,7 @@ export async function editTag(
 			throw new ErrorKM('TAG_REPOSITORY_INVALID_CHANGE', 400, false);
 		}
 		tagObj = trimTagData(tagObj);
-		tagObj.tagfile = defineTagFilename(tagObj, oldTag);
+		tagObj.tagfile = defineTagFilename(tagObj);
 		await updateTag(tagObj);
 		if (opts.writeFile) {
 			// Try to find old tag
