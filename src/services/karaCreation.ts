@@ -3,7 +3,7 @@ import { basename, extname, resolve } from 'path';
 
 import { applyKaraHooks } from '../lib/dao/hook.js';
 import { extractVideoSubtitles, trimKaraData, verifyKaraData, writeKara } from '../lib/dao/karafile.js';
-import { determineMediaAndLyricsFilenames, processSubfile } from '../lib/services/karaCreation.js';
+import { defineFilename, determineMediaAndLyricsFilenames, processSubfile } from '../lib/services/karaCreation.js';
 import { EditedKara } from '../lib/types/kara.d.js';
 import { ASSFileCleanup } from '../lib/utils/ass.js';
 import { getConfig, resolvedPath, resolvedPathRepos } from '../lib/utils/config.js';
@@ -76,7 +76,7 @@ export async function editKara(editedKara: EditedKara, refresh = true) {
 			throw new ErrorKM('UNKNOWN_SONG', 404, false);
 		}
 		if (!kara.data.ignoreHooks) await applyKaraHooks(kara);
-		const karaFile = oldKara.kid;
+		const karaFile = await defineFilename(kara, oldKara);
 		const karaJsonFileOld = resolve(resolvedPathRepos('Karaokes', oldKara.repository)[0], oldKara.karafile);
 		const karaJsonFileDest = resolve(
 			resolvedPathRepos('Karaokes', kara.data.repository)[0],
@@ -233,7 +233,7 @@ export async function createKara(editedKara: EditedKara) {
 			}
 		}
 		if (!kara.data.ignoreHooks) await applyKaraHooks(kara);
-		const karaFile = kara.data.kid;
+		const karaFile = await defineFilename(kara);
 		const karaJsonFileDest = resolve(
 			resolvedPathRepos('Karaokes', kara.data.repository)[0],
 			`${karaFile}.kara.json`
