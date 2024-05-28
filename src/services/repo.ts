@@ -1099,9 +1099,10 @@ export async function linkingMediaRepo() {
 			const repoName = repo.Name;
 			await checkRepoPaths(repo);
 			const linkTasks = [];
-			const [karas, mediaFiles, tags] = await Promise.all([
+			const [karas, mediaFiles, lyricFiles, tags] = await Promise.all([
 				getKaras({ ignoreCollections: true }),
 				listAllFiles('Medias', repoName),
+				listAllFiles('Lyrics', repoName),
 				getTags({}),
 			]);
 			for (const kara of karas.content) {
@@ -1111,6 +1112,7 @@ export async function linkingMediaRepo() {
 
 				// We test if the media has been downloaded before attempting anything.
 				const mediaFileKaraPath = mediaFiles.find(file => kara.mediafile === basename(file));
+				const lyricFileKaraPath = lyricFiles.find(file => kara.subfile === basename(file));
 
 				if (mediaFileKaraPath) {
 					const newMediasPath = `${path.dirname(mediaFileKaraPath)}-links`;
@@ -1118,12 +1120,11 @@ export async function linkingMediaRepo() {
 
 					linkTasks.push(link(mediaFileKaraPath, resolve(newMediasPath, filenames.mediafile)));
 				}
-				if (kara.subfile) {
-					const subDir = resolvedPathRepos('Lyrics', kara.repository)[0];
-					const newLyricsPath = `${path.dirname(subDir)}-links`;
+				if (lyricFileKaraPath) {
+					const newLyricsPath = `${path.dirname(lyricFileKaraPath)}-links`;
 					await fs.mkdir(newLyricsPath, { recursive: true });
 
-					linkTasks.push(link(resolve(subDir, kara.subfile), resolve(newLyricsPath, filenames.mediafile)));
+					linkTasks.push(link(lyricFileKaraPath, resolve(newLyricsPath, filenames.mediafile)));
 				}
 			}
 			await Promise.all(linkTasks);
