@@ -122,7 +122,7 @@ async function processDownload(download: KaraDownload) {
 		}
 		const downloadTask = new Task({
 			text: 'DOWNLOADING',
-			subtext: download.mediafile,
+			subtext: `${download.name} (${download.mediafile})`,
 			value: 0,
 			total: download.size,
 		});
@@ -211,7 +211,7 @@ export async function checkMediaAndDownloadSingleKara(kara: MediaDownloadCheck, 
 			await addDownloads([
 				{
 					mediafile: kara.mediafile,
-					name: kara.mediafile,
+					name: kara.name,
 					size: kara.mediasize,
 					repository: kara.repository,
 					kid: kara.kid,

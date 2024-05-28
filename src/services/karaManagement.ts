@@ -318,6 +318,7 @@ export async function integrateKaraFile(
 		checkMediaAndDownload(
 			[
 				{
+					name: karaData.data.titles[karaData.data.titles_default_language],
 					kid: karaData.data.kid,
 					mediafile: karaData.medias[0].filename,
 					repository: karaData.data.repository,
