@@ -12,11 +12,11 @@ import { deleteRepo, insertRepo, updateRepo } from '../dao/repo.js';
 import { getSettings, refreshAll, saveSetting } from '../lib/dao/database.js';
 import { initHooks } from '../lib/dao/hook.js';
 import { refreshKaras } from '../lib/dao/kara.js';
-import { parseKara, writeKara } from '../lib/dao/karafile.js';
+import { formatKaraV4, parseKara, writeKara } from '../lib/dao/karafile.js';
 import { readRepoManifest, selectRepos, selectRepositoryManifest } from '../lib/dao/repo.js';
 import { APIMessage } from '../lib/services/frontend.js';
 import { readAllKaras } from '../lib/services/generation.js';
-import { defineFilename, determineMediaAndLyricsFilenames } from '../lib/services/karaCreation.js';
+import { defineOldFilename, determineMediaAndLyricsFilenames } from '../lib/services/karaCreation.js';
 import { DBTag } from '../lib/types/database/tag.js';
 import { KaraMetaFile } from '../lib/types/downloads.js';
 import { KaraFileV4 } from '../lib/types/kara.js';
@@ -1099,23 +1099,31 @@ export async function linkingMediaRepo() {
 			const repoName = repo.Name;
 			await checkRepoPaths(repo);
 			const linkTasks = [];
-			const [karas, mediaFiles] = await Promise.all([
+			const [karas, mediaFiles, tags] = await Promise.all([
 				getKaras({ ignoreCollections: true }),
 				listAllFiles('Medias', repoName),
+				getTags({}),
 			]);
 			for (const kara of karas.content) {
+				const karaFileData: KaraFileV4 = formatKaraV4(kara);
+				const karaFile = await defineOldFilename(karaFileData, null, tags.content);
+				const filenames = determineMediaAndLyricsFilenames(karaFileData, karaFile);
+
+				// We test if the media has been downloaded before attempting anything.
 				const mediaFileKaraPath = mediaFiles.find(file => kara.mediafile === basename(file));
+
 				if (mediaFileKaraPath) {
-					const newMediasPath = path.dirname(mediaFileKaraPath) + '-links';
-					fs.mkdir(newMediasPath, { recursive: true });
-					const karaFilePath = (
-						await resolveFileInDirs(kara.karafile, resolvedPathRepos('Karaokes', repoName))
-					)[0];
-					const karaFileData: KaraFileV4 = await parseKara(karaFilePath);
-					const karaFile = await defineFilename(karaFileData);
-					const filenames = determineMediaAndLyricsFilenames(karaFileData, karaFile);
+					const newMediasPath = `${path.dirname(mediaFileKaraPath)}-links`;
+					await fs.mkdir(newMediasPath, { recursive: true });
 
 					linkTasks.push(link(mediaFileKaraPath, resolve(newMediasPath, filenames.mediafile)));
+				}
+				if (kara.subfile) {
+					const subDir = resolvedPathRepos('Lyrics', kara.repository)[0];
+					const newLyricsPath = `${path.dirname(subDir)}-links`;
+					await fs.mkdir(newLyricsPath, { recursive: true });
+
+					linkTasks.push(link(resolve(subDir, kara.subfile), resolve(newLyricsPath, filenames.mediafile)));
 				}
 			}
 			await Promise.all(linkTasks);
