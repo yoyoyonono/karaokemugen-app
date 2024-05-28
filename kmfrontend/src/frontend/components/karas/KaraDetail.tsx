@@ -264,6 +264,14 @@ export default function KaraDetail(props: IProps) {
 								: ''}
 					</span>
 				</div>
+				<div className="detailsKaraLine">
+					<div>
+						{i18next.t('KARA_DETAIL.IDENTIFIER')}
+						<>
+							<span className="boldDetails">{kara.kid}</span>
+						</>
+					</div>
+				</div>
 				{kara.upvotes && props.scope === 'admin' ? (
 					<div className="detailsKaraLine">
 						<span title={i18next.t('KARA_DETAIL.UPVOTE_NUMBER')}>

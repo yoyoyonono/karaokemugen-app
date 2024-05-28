@@ -308,6 +308,7 @@
 	"TOOLTIP_ACCEPT_SELECT_KARA": "Accepter les chansons (copie dans la liste courante)",
 	"TOOLTIP_CLOSEPARENT": "Fermer",
 	"KARA_DETAIL": {
+		"IDENTIFIER": "Identifiant ",
 		"CREATED": "Karaoké créé ",
 		"ADDED": "Ajouté ",
 		"ADDED_2": "le ",

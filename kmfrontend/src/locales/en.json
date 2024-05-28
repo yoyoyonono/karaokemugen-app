@@ -309,6 +309,7 @@
 	"TOOLTIP_ACCEPT_SELECT_KARA": "Accept songs (free songs and copy to current list)",
 	"TOOLTIP_CLOSEPARENT": "Close",
 	"KARA_DETAIL": {
+		"IDENTIFIER": "Identifier ",
 		"CREATED": "Karaoke created ",
 		"ADDED": "Added ",
 		"ADDED_2": "on ",
