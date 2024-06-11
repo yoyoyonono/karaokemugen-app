@@ -446,6 +446,8 @@
 				"UPVOTES_ONLY": "Upvotes",
 				"DISALLOWED": "Disallowed"
 			},
+			"ALLOW_PLAYLIST_ITEM_SWAP": "Allow public to swap songs in current playlist",
+			"ALLOW_PLAYLIST_ITEM_SWAP_TOOLTIP": "Users can swap songs they requested in the current playlist if they want to sing something sooner.",
 			"MEDIAS_SETTINGS": "Media",
 			"MEDIAS_SETTINGS_TOOLTIP": "Intros, Sponsors, Jingles, Encores and Outros",
 			"PLAYLIST_RANDOMSONGSAFTERENDMESSAGE": "Display an on-screen message regularly to invite users to add a song when randomly playing song after the current playlist ended",

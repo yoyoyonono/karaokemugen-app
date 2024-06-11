@@ -446,6 +446,8 @@
 				"UPVOTES_ONLY": "Soutiens",
 				"DISALLOWED": "Interdire"
 			},
+			"ALLOW_PLAYLIST_ITEM_SWAP": "Permettre au public d'échanger les positions de leurs chansons",
+			"ALLOW_PLAYLIST_ITEM_SWAP_TOOLTIP": "Les utilisateurs peuvent échanger la position de leurs chansons dans la liste de lecture courante pour chanter une de leurs chansons plus tôt par exemple.",
 			"PLAYLIST_RANDOMSONGSAFTERENDMESSAGE": "Afficher régulièrement un message à l'écran pour inviter les utilisateurs à ajouter une chanson lors de la lecture aléatoire d'une chanson après la fin de la liste de lecture en cours",
 			"PLAYLIST_RANDOMSONGSAFTERENDMESSAGE_TOOLTIP": "Le message sera affiché au milieu de l'écran lorsque Karaoke Mugen jouera des chansons aléatoires, invitant les utilisateurs à ajouter des chansons",
 			"MEDIAS_SETTINGS": "Intermissions",

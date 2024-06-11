@@ -147,6 +147,7 @@ export const defaults: Config = {
 	},
 	Playlist: {
 		AllowDuplicates: false,
+		AllowPublicCurrentPlaylistItemSwap: true,
 		AllowPublicDuplicates: 'upvotes',
 		MaxDejaVuTime: 60,
 		Medias: {

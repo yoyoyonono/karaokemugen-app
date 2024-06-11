@@ -185,6 +185,7 @@ export interface Config {
 	};
 	Playlist: {
 		AllowDuplicates?: boolean;
+		AllowPublicCurrentPlaylistItemSwap?: boolean;
 		AllowPublicDuplicates?: PublicDuplicateSetting;
 		MaxDejaVuTime?: number;
 		Medias: {

@@ -343,6 +343,18 @@ export async function emptyPlaylist(plaid: string): Promise<string> {
 	}
 }
 
+export async function swapPLCs(plcid1: number, plcid2: number, token: OldJWTToken) {
+	if (!getConfig().Playlist.AllowPublicCurrentPlaylistItemSwap) throw new ErrorKM('PLC_SWAP_FORBIDDEN', 403);
+	const plcs = await getPLCInfoMini([plcid1, plcid2]);
+	if (
+		token.role !== 'admin' &&
+		(plcs[0].username !== token.username || plcs[1].username !== token.username || plcs[0].plaid !== plcs[1].plaid)
+	)
+		throw new ErrorKM('PLC_SWAP_FORBIDDEN', 403);
+	await editPLC([plcid2], { pos: plcs[1].pos }, false);
+	await editPLC([plcid1], { pos: plcs[0].pos });
+}
+
 /** Exports all playlist media files to a specified directory */
 export async function exportPlaylistMedia(
 	plaid: string,
