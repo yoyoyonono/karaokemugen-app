@@ -33,12 +33,20 @@ export async function selectYears(): Promise<DBYear[]> {
 	return res.rows;
 }
 
-export async function insertKara(kara: KaraFileV4): Promise<KaraOldData> {
+export async function insertKara(kara: KaraFileV4): Promise<KaraOldData[]> {
+	let karasOldData: KaraOldData[] = [];
+	for (let lyricsIndex = 0; lyricsIndex < kara.medias[0].lyrics.length; lyricsIndex++) {
+		karasOldData.push(await insertKaraVersion(kara, lyricsIndex));
+	}
+	return karasOldData;
+}
+
+export async function insertKaraVersion(kara: KaraFileV4, lyricsIndex: number): Promise<KaraOldData> {
 	const data = await db().query(
 		yesql(sqlinsertKara)({
 			karafile: kara.meta.karaFile,
 			mediafile: kara.medias[0].filename,
-			subfile: kara.medias[0].lyrics?.[0]?.filename || null,
+			subfile: kara.medias[0].lyrics?.[lyricsIndex]?.filename || null,
 			titles: kara.data.titles,
 			titles_aliases: JSON.stringify(kara.data.titles_aliases || []),
 			titles_default_language: kara.data.titles_default_language || 'eng',
@@ -54,8 +62,8 @@ export async function insertKara(kara: KaraFileV4): Promise<KaraOldData> {
 			download_status: 'DOWNLOADED', // Default
 			comment: kara.data.comment,
 			from_display_type: kara.data.from_display_type,
-			announce_position_x: kara.medias[0].lyrics[0]?.announcePositionX || null,
-			announce_position_y: kara.medias[0].lyrics[0]?.announcePositionY || null,
+			announce_position_x: kara.medias[0].lyrics[lyricsIndex]?.announcePositionX || null,
+			announce_position_y: kara.medias[0].lyrics[lyricsIndex]?.announcePositionY || null,
 			ignoreHooks: kara.data.ignoreHooks || false,
 		})
 	);

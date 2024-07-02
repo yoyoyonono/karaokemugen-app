@@ -45,11 +45,14 @@ export async function createKaraInDB(kara: KaraFileV4, opts = { refresh: true })
 	const oldData = await insertKara(kara);
 	await Promise.all([updateKaraParents(kara.data), updateTags(kara.data)]);
 	if (opts.refresh) {
-		if (!oldData.old_modified_at) {
-			await refreshKarasAfterDBChange('ADD', [kara.data]);
-		} else {
-			await refreshKarasAfterDBChange('UPDATE', [kara.data], oldData);
+		for (const oldKaraData of oldData) {
+			if (!oldKaraData.old_modified_at) {
+				await refreshKarasAfterDBChange('ADD', [kara.data]);
+			} else {
+				await refreshKarasAfterDBChange('UPDATE', [kara.data], oldKaraData);
+			}
 		}
+
 		updateAllSmartPlaylists();
 	}
 	return oldData;
@@ -282,44 +285,46 @@ export async function integrateKaraFile(
 	});
 	const karaData = await getDataFromKaraFile(file, kara, { media: true, lyrics: true });
 	const mediaDownload = getRepo(karaData.data.repository).AutoMediaDownloads;
-	const oldKara = await createKaraInDB(karaData, { refresh });
-	if (deleteOldFiles && oldKara.old_karafile) {
-		try {
-			const oldKaraFile = (
-				await resolveFileInDirs(oldKara.old_karafile, resolvedPathRepos('Karaokes', oldKara.old_repository))
-			)[0];
-			if (oldKara.old_karafile !== basename(karaData.meta.karaFile)) {
-				await fs.unlink(oldKaraFile);
-			}
-		} catch (err) {
-			logger.warn(`Failed to remove ${oldKara.old_karafile}, does it still exist?`, { service });
-		}
-		if (oldKara.old_mediafile !== karaData.medias[0].filename && oldKara.old_download_status === 'DOWNLOADED') {
+	const oldKaras = await createKaraInDB(karaData, { refresh });
+	for (const [index, oldKara] of oldKaras.entries()) {
+		if (deleteOldFiles && oldKara.old_karafile) {
 			try {
-				await fs.unlink(
-					(
-						await resolveFileInDirs(
-							oldKara.old_mediafile,
-							resolvedPathRepos('Medias', oldKara.old_repository)
-						)
-					)[0]
-				);
+				const oldKaraFile = (
+					await resolveFileInDirs(oldKara.old_karafile, resolvedPathRepos('Karaokes', oldKara.old_repository))
+				)[0];
+				if (oldKara.old_karafile !== basename(karaData.meta.karaFile)) {
+					await fs.unlink(oldKaraFile);
+				}
 			} catch (err) {
-				logger.warn(`Failed to remove ${oldKara.old_mediafile}, does it still exist?`, { service });
+				logger.warn(`Failed to remove ${oldKara.old_karafile}, does it still exist?`, { service });
 			}
-		}
-		if (oldKara.old_subfile && oldKara.old_subfile !== karaData.medias[0].lyrics?.[0]?.filename) {
-			try {
-				await fs.unlink(
-					(
-						await resolveFileInDirs(
-							oldKara.old_subfile,
-							resolvedPathRepos('Lyrics', oldKara.old_repository)
-						)
-					)[0]
-				);
-			} catch (err) {
-				logger.warn(`Failed to remove ${oldKara.old_subfile}, does it still exist?`, { service });
+			if (oldKara.old_mediafile !== karaData.medias[0].filename && oldKara.old_download_status === 'DOWNLOADED') {
+				try {
+					await fs.unlink(
+						(
+							await resolveFileInDirs(
+								oldKara.old_mediafile,
+								resolvedPathRepos('Medias', oldKara.old_repository)
+							)
+						)[0]
+					);
+				} catch (err) {
+					logger.warn(`Failed to remove ${oldKara.old_mediafile}, does it still exist?`, { service });
+				}
+			}
+			if (oldKara.old_subfile && oldKara.old_subfile !== karaData.medias[0].lyrics?.[index]?.filename) {
+				try {
+					await fs.unlink(
+						(
+							await resolveFileInDirs(
+								oldKara.old_subfile,
+								resolvedPathRepos('Lyrics', oldKara.old_repository)
+							)
+						)[0]
+					);
+				} catch (err) {
+					logger.warn(`Failed to remove ${oldKara.old_subfile}, does it still exist?`, { service });
+				}
 			}
 		}
 	}
