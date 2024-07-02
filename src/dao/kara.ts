@@ -38,7 +38,7 @@ export async function insertKara(kara: KaraFileV4): Promise<KaraOldData> {
 		yesql(sqlinsertKara)({
 			karafile: kara.meta.karaFile,
 			mediafile: kara.medias[0].filename,
-			subfile: kara.medias[0].lyrics?.[0]?.filename || null,
+			lyricsInfos: JSON.stringify(kara.medias[0].lyrics),
 			titles: kara.data.titles,
 			titles_aliases: JSON.stringify(kara.data.titles_aliases || []),
 			titles_default_language: kara.data.titles_default_language || 'eng',
@@ -54,8 +54,6 @@ export async function insertKara(kara: KaraFileV4): Promise<KaraOldData> {
 			download_status: 'DOWNLOADED', // Default
 			comment: kara.data.comment,
 			from_display_type: kara.data.from_display_type,
-			announce_position_x: kara.medias[0].lyrics[0]?.announcePositionX || null,
-			announce_position_y: kara.medias[0].lyrics[0]?.announcePositionY || null,
 			ignoreHooks: kara.data.ignoreHooks || false,
 		})
 	);

@@ -207,7 +207,7 @@ INSERT INTO kara(
 	year,
 	songorder,
 	mediafile,
-	subfile,
+	lyricsInfos,
 	duration,
 	loudnorm,
 	modified_at,
@@ -219,9 +219,7 @@ INSERT INTO kara(
 	download_status,
 	comment,
 	from_display_type,
-	ignore_hooks,
-	announce_position_x,
-	announce_position_y
+	ignore_hooks
 )
 VALUES(
 	:titles,
@@ -230,7 +228,7 @@ VALUES(
 	:year,
 	:songorder,
 	:mediafile,
-	:subfile,
+	:lyricsInfos,
 	:duration,
 	:loudnorm,
 	:modified_at,
@@ -242,9 +240,7 @@ VALUES(
 	:download_status,
 	:comment,
 	:from_display_type,
-	:ignoreHooks,
-	:announce_position_x,
-	:announce_position_y
+	:ignoreHooks
 )
 ON CONFLICT (pk_kid) DO
 UPDATE SET
@@ -254,7 +250,7 @@ UPDATE SET
  year = :year,
  songorder = :songorder,
  mediafile = :mediafile,
- subfile = :subfile,
+ subfile = :lyricsInfos,
  duration = :duration,
  loudnorm = :loudnorm,
  modified_at = :modified_at,
@@ -266,19 +262,17 @@ UPDATE SET
  download_status = :download_status,
  comment = :comment,
  from_display_type = :from_display_type,
- ignore_hooks = :ignoreHooks,
- announce_position_x = :announce_position_x,
- announce_position_y = :announce_position_y
+ ignore_hooks = :ignoreHooks
 RETURNING
  (SELECT k2.karafile FROM kara k2 WHERE k2.pk_kid = kara.pk_kid) AS old_karafile,
- (SELECT k2.subfile FROM kara k2 WHERE k2.pk_kid = kara.pk_kid) AS old_subfile,
+ (SELECT k2.lyricsInfo FROM kara k2 WHERE k2.pk_kid = kara.pk_kid) AS old_lyricsInfo,
  (SELECT k2.mediafile FROM kara k2 WHERE k2.pk_kid = kara.pk_kid) AS old_mediafile,
  (SELECT k2.modified_at FROM kara k2 WHERE k2.pk_kid = kara.pk_kid) AS old_modified_at,
  (SELECT k2.repository FROM kara k2 WHERE k2.pk_kid = kara.pk_kid) AS old_repository,
  (SELECT k2.download_status FROM kara k2 WHERE k2.pk_kid = kara.pk_kid) AS old_download_status,
  (SELECT array_remove(array_agg(DISTINCT kr.fk_kid_parent), null) FROM kara_relation kr, kara k2 WHERE kr.fk_kid_child = k2.pk_kid) AS old_parents,
  (SELECT array_remove(array_agg(DISTINCT kr.fk_kid_parent), null) FROM kara_relation kr WHERE kr.fk_kid_child = kara.pk_kid) AS parents,
- karafile, subfile, mediafile, modified_at, repository, download_status, announce_position_x, announce_position_y
+ karafile, lyricsInfos, mediafile, modified_at, repository, download_status
 ;
 `;
 

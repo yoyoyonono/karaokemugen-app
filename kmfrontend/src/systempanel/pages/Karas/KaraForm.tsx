@@ -553,8 +553,8 @@ function KaraForm(props: KaraFormProps) {
 										filename: kara.subfile || null,
 										default: true,
 										version: 'Default',
-										announcePositionX: announcePositionX as PositionX,
-										announcePositionY: announcePositionY as PositionY,
+										announce_position_x: announcePositionX as PositionX,
+										announce_position_y: announcePositionY as PositionY,
 									},
 								]
 							: [],
