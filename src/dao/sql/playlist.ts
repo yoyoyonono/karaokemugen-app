@@ -326,8 +326,6 @@ SELECT
   ak.mediasize AS mediasize,
   ak.download_status AS download_status,
   ak.from_display_type AS from_display_type,
-  ak.announce_position_x,
-  ak.announce_position_y,
   COUNT(p.played_at)::integer AS played,
   COUNT(rq.requested_at)::integer AS requested,
   (CASE WHEN :dejavu_time < max(p.played_at)
@@ -418,8 +416,6 @@ GROUP BY
 	ak.repository,
 	ak.from_display_type,
 	ak.download_status,
-	ak.announce_position_x,
-	ak.announce_position_y,
 	pc.criterias
 `;
 

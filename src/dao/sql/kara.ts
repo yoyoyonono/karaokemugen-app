@@ -66,8 +66,6 @@ SELECT
   ak.comment AS comment,
   ak.ignore_hooks AS ignore_hooks,
   ak.from_display_type AS from_display_type,
-  ak.announce_position_x,
-  ak.announce_position_y,
   COUNT(p.*)::integer AS played,
   ${selectRequested}
   (CASE WHEN :dejavu_time < MAX(p.played_at)
@@ -130,8 +128,6 @@ GROUP BY ${groupClauses}
 	ak.titles_aliases,
 	ak.titles_default_language,
 	ak.comment,
-	ak.announce_position_x,
-	ak.announce_position_y,
 	ak.songorder,
 	ak.serie_singergroup_singer_sortable,
 	ak.subfile,
