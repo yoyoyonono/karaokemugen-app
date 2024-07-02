@@ -53,7 +53,7 @@ SELECT
   ak.titles_aliases AS titles_aliases,
   ak.titles_default_language AS titles_default_language,
   ak.songorder AS songorder,
-  ak.subfile AS subfile,
+  ak.lyrics_infos AS lyric_infos,
   ak.year AS year,
   ak.mediafile AS mediafile,
   ak.karafile AS karafile,
@@ -130,7 +130,7 @@ GROUP BY ${groupClauses}
 	ak.comment,
 	ak.songorder,
 	ak.serie_singergroup_singer_sortable,
-	ak.subfile,
+	ak.lyrics_infos,
 	ak.year,
 	ak.tags,
 	ak.mediafile,
@@ -172,7 +172,7 @@ export const sqlgetAllKarasMicro = (
   ak.mediafile AS mediafile,
   ak.mediasize AS mediasize,
   ak.repository AS repository,
-  ak.subfile AS subfile,
+  ak.lyrics_infos AS lyrics_infos,
   ak.karafile AS karafile,
   ak.from_display_type AS from_display_type,
   ak.download_status AS download_status
@@ -203,7 +203,6 @@ INSERT INTO kara(
 	year,
 	songorder,
 	mediafile,
-	lyricsInfos,
 	duration,
 	loudnorm,
 	modified_at,
@@ -215,7 +214,8 @@ INSERT INTO kara(
 	download_status,
 	comment,
 	from_display_type,
-	ignore_hooks
+	ignore_hooks,
+	lyrics_infos
 )
 VALUES(
 	:titles,
@@ -224,7 +224,6 @@ VALUES(
 	:year,
 	:songorder,
 	:mediafile,
-	:lyricsInfos,
 	:duration,
 	:loudnorm,
 	:modified_at,
@@ -236,7 +235,8 @@ VALUES(
 	:download_status,
 	:comment,
 	:from_display_type,
-	:ignoreHooks
+	:ignoreHooks,
+	:lyrics_infos
 )
 ON CONFLICT (pk_kid) DO
 UPDATE SET
@@ -246,7 +246,6 @@ UPDATE SET
  year = :year,
  songorder = :songorder,
  mediafile = :mediafile,
- subfile = :lyricsInfos,
  duration = :duration,
  loudnorm = :loudnorm,
  modified_at = :modified_at,
@@ -258,17 +257,18 @@ UPDATE SET
  download_status = :download_status,
  comment = :comment,
  from_display_type = :from_display_type,
- ignore_hooks = :ignoreHooks
+ ignore_hooks = :ignoreHooks,
+ lyrics_infos = :lyrics_infos
 RETURNING
  (SELECT k2.karafile FROM kara k2 WHERE k2.pk_kid = kara.pk_kid) AS old_karafile,
- (SELECT k2.lyricsInfo FROM kara k2 WHERE k2.pk_kid = kara.pk_kid) AS old_lyricsInfo,
+ (SELECT k2.lyrics_infos FROM kara k2 WHERE k2.pk_kid = kara.pk_kid) AS old_lyrics_infos,
  (SELECT k2.mediafile FROM kara k2 WHERE k2.pk_kid = kara.pk_kid) AS old_mediafile,
  (SELECT k2.modified_at FROM kara k2 WHERE k2.pk_kid = kara.pk_kid) AS old_modified_at,
  (SELECT k2.repository FROM kara k2 WHERE k2.pk_kid = kara.pk_kid) AS old_repository,
  (SELECT k2.download_status FROM kara k2 WHERE k2.pk_kid = kara.pk_kid) AS old_download_status,
  (SELECT array_remove(array_agg(DISTINCT kr.fk_kid_parent), null) FROM kara_relation kr, kara k2 WHERE kr.fk_kid_child = k2.pk_kid) AS old_parents,
  (SELECT array_remove(array_agg(DISTINCT kr.fk_kid_parent), null) FROM kara_relation kr WHERE kr.fk_kid_child = kara.pk_kid) AS parents,
- karafile, lyricsInfos, mediafile, modified_at, repository, download_status
+ karafile, lyrics_infos, mediafile, modified_at, repository, download_status
 ;
 `;
 
