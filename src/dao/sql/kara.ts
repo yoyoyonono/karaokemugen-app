@@ -53,7 +53,7 @@ SELECT
   ak.titles_aliases AS titles_aliases,
   ak.titles_default_language AS titles_default_language,
   ak.songorder AS songorder,
-  ak.lyrics_infos AS lyric_infos,
+  ak.lyrics_infos AS lyrics_infos,
   ak.year AS year,
   ak.mediafile AS mediafile,
   ak.karafile AS karafile,

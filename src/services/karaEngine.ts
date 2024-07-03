@@ -35,7 +35,7 @@ import { getUser } from './user.js';
 const service = 'KaraEngine';
 
 /** Play a song from the library, different from when playing the current song in the playlist */
-export async function playSingleSong(kid?: string, randomPlaying = false) {
+export async function playSingleSong(kid?: string, randomPlaying = false, lyricsVersion = 'Default') {
 	try {
 		const kara = await getKara(kid, adminToken);
 		if (!kara) throw { code: 404, msg: 'KID not found' };
@@ -64,6 +64,7 @@ export async function playSingleSong(kid?: string, randomPlaying = false) {
 			plaid: null,
 			avatar: null,
 			added_at: null,
+			selectedVersion: lyricsVersion,
 			...songInfos,
 		};
 		await mpv.play(current);
