@@ -104,78 +104,93 @@ export async function editKara(editedKara: EditedKara, refresh = true) {
 		}
 
 		let mediaPath: string;
-		if (editedKara.modifiedMedia) {
+		// Only extract if there are no lyricsInfos
+		if (!editedKara.modifiedMedia && kara.medias[0].lyricsInfos.length) {
 			// Redefine mediapath as coming from temp
 			mediaPath = resolve(resolvedPath('Temp'), kara.medias[0].filename);
 			try {
 				const extractFile = await extractVideoSubtitles(mediaPath, kara.data.kid);
 				if (extractFile) {
-					if (kara.medias[0].lyrics == null) {
-						kara.medias[0].lyrics = [];
-					}
-					kara.medias[0].lyrics[0] = {
+					kara.medias[0].lyricsInfos.push({
 						filename: basename(extractFile),
 						default: true,
 						version: 'Default',
-					};
-					filenames.lyricsfile = karaFile + extname(kara.medias[0].lyrics[0].filename);
-					editedKara.modifiedLyrics = true;
+					});
+					filenames.lyricsfiles.push(karaFile + extname(kara.medias[0].lyricsInfos[0].filename));
+					editedKara.modifiedLyricsInfos.push(true);
 				}
 			} catch (err) {
 				// Not lethal
 			}
 			if (oldMediaPath) await fs.unlink(oldMediaPath);
 		}
-		const subDest = filenames.lyricsfile
-			? resolve(resolvedPathRepos('Lyrics', kara.data.repository)[0], filenames.lyricsfile)
-			: undefined;
-		// Retesting modified media because we needed original media in place for toyunda stuff. Now that toyunda is gone...
-		// Maybe we could actually refactor this somehow.
-		if (editedKara.modifiedMedia) {
+		for (const [lyricsIndex, lyricsFile] of filenames.lyricsfiles.entries()) {
+			const subDest = lyricsFile
+				? resolve(resolvedPathRepos('Lyrics', kara.data.repository)[0], lyricsFile)
+				: undefined;
+			// Retesting modified media because we needed original media in place for toyunda stuff. Now that toyunda is gone...
+			// Maybe we could actually refactor this somehow.
+			if (editedKara.modifiedMedia) {
+				kara.medias[0].filename = filenames.mediafile;
+				await smartMove(mediaPath, mediaDest, { overwrite: true });
+			} else if (oldKara.mediafile !== filenames.mediafile && oldMediaPath) {
+				// Check if media name has changed BECAUSE WE'RE NOT USING UUIDS AS FILENAMES GRRRR.
+				try {
+					await smartMove(oldMediaPath, mediaDest);
+				} catch (err) {
+					// Most probable error is that media is unmovable since busy
+					throw new ErrorKM('KARA_EDIT_ERROR_UNMOVABLE_MEDIA', 409, false);
+				}
+			}
 			kara.medias[0].filename = filenames.mediafile;
-			await smartMove(mediaPath, mediaDest, { overwrite: true });
-		} else if (oldKara.mediafile !== filenames.mediafile && oldMediaPath) {
-			// Check if media name has changed BECAUSE WE'RE NOT USING UUIDS AS FILENAMES GRRRR.
-			try {
-				await smartMove(oldMediaPath, mediaDest);
-			} catch (err) {
-				// Most probable error is that media is unmovable since busy
-				throw new ErrorKM('KARA_EDIT_ERROR_UNMOVABLE_MEDIA', 409, false);
+			if (editedKara.modifiedLyricsInfos[lyricsIndex]) {
+				if (kara.medias[0].lyricsInfos[lyricsIndex]) {
+					const subPath = resolve(resolvedPath('Temp'), kara.medias[0].lyricsInfos[lyricsIndex].filename);
+					const ext = await processSubfile(subPath);
+					if (oldKara.lyrics_infos[lyricsIndex].filename) {
+						const oldSubPath = (
+							await resolveFileInDirs(
+								oldKara.lyrics_infos[lyricsIndex].filename,
+								resolvedPathRepos('Lyrics', oldKara.repository)
+							)
+						)[0];
+						await fs.unlink(oldSubPath);
+					}
+					kara.medias[0].lyricsInfos[lyricsFile].filename = replaceExt(
+						filenames.lyricsfiles[lyricsIndex],
+						ext
+					);
+					try {
+						await smartMove(subPath, subDest, { overwrite: true });
+					} catch (err) {
+						throw new ErrorKM('KARA_EDIT_ERROR_UNMOVABLE_LYRICS', 409, false);
+					}
+				}
+			} else if (
+				kara.medias[0].lyricsInfos[lyricsIndex]?.filename &&
+				oldKara.lyrics_infos[lyricsIndex].filename !== lyricsFile
+			) {
+				// Check if lyric name has changed BECAUSE WE'RE NOT USING UUIDS AS FILENAMES GRRRR.
+				kara.medias[0].lyricsInfos[lyricsIndex].filename = lyricsFile;
+				const oldSubPath =
+					lyricsFile && oldKara.lyrics_infos[lyricsIndex].filename
+						? (
+								await resolveFileInDirs(
+									oldKara.lyrics_infos[lyricsIndex].filename,
+									resolvedPathRepos('Lyrics', oldKara.repository)
+								)
+							)[0]
+						: undefined;
+				if (lyricsFile) {
+					try {
+						await smartMove(oldSubPath, subDest, { overwrite: true });
+					} catch (err) {
+						throw new ErrorKM('KARA_EDIT_ERROR_UNMOVABLE_LYRICS', 409, false);
+					}
+				}
 			}
 		}
-		kara.medias[0].filename = filenames.mediafile;
-		if (editedKara.modifiedLyrics) {
-			if (kara.medias[0].lyrics?.[0]) {
-				const subPath = resolve(resolvedPath('Temp'), kara.medias[0].lyrics?.[0].filename);
-				const ext = await processSubfile(subPath);
-				if (oldKara.subfile) {
-					const oldSubPath = (
-						await resolveFileInDirs(oldKara.subfile, resolvedPathRepos('Lyrics', oldKara.repository))
-					)[0];
-					await fs.unlink(oldSubPath);
-				}
-				kara.medias[0].lyrics[0].filename = replaceExt(filenames.lyricsfile, ext);
-				try {
-					await smartMove(subPath, subDest, { overwrite: true });
-				} catch (err) {
-					throw new ErrorKM('KARA_EDIT_ERROR_UNMOVABLE_LYRICS', 409, false);
-				}
-			}
-		} else if (kara.medias[0].lyrics?.[0]?.filename && oldKara.subfile !== filenames.lyricsfile) {
-			// Check if lyric name has changed BECAUSE WE'RE NOT USING UUIDS AS FILENAMES GRRRR.
-			kara.medias[0].lyrics[0].filename = filenames.lyricsfile;
-			const oldSubPath =
-				filenames.lyricsfile && oldKara.subfile
-					? (await resolveFileInDirs(oldKara.subfile, resolvedPathRepos('Lyrics', oldKara.repository)))[0]
-					: undefined;
-			if (filenames.lyricsfile) {
-				try {
-					await smartMove(oldSubPath, subDest, { overwrite: true });
-				} catch (err) {
-					throw new ErrorKM('KARA_EDIT_ERROR_UNMOVABLE_LYRICS', 409, false);
-				}
-			}
-		}
+
 		await fs.unlink(karaJsonFileOld);
 		await writeKara(karaJsonFileDest, kara);
 		await integrateKaraFile(karaJsonFileDest, kara, false, refresh);
@@ -191,7 +206,9 @@ export async function editKara(editedKara: EditedKara, refresh = true) {
 			(typeof editedKara.applyLyricsCleanup !== 'boolean' && // Fallback to setting when no value is sent
 				getConfig().Maintainer.ApplyLyricsCleanupOnKaraSave === true)
 		) {
-			if (kara.medias[0].lyrics?.[0]?.filename) await ASSFileCleanup(subDest, newKara);
+			for (const [lyricsIndex, lyricsFile] of filenames.lyricsfiles.entries()) {
+				if (kara.medias[0].lyricsInfos[lyricsIndex].filename) await ASSFileCleanup(lyricsFile, newKara);
+			}
 		}
 	} catch (err) {
 		logger.error('Error while editing kara', { service, obj: err });
@@ -243,30 +260,31 @@ export async function createKara(editedKara: EditedKara) {
 		const mediaPath = resolve(resolvedPath('Temp'), kara.medias[0].filename);
 		try {
 			const extractFile = await extractVideoSubtitles(mediaPath, kara.data.kid);
-			if (extractFile) {
-				if (kara.medias[0].lyrics == null) {
-					kara.medias[0].lyrics = [];
-				}
-				kara.medias[0].lyrics[0] = {
+			// Only used extracted lyrics if there are no lyrics
+			if (extractFile && !kara.medias[0].lyricsInfos.length) {
+				kara.medias[0].lyricsInfos.push({
 					filename: basename(extractFile),
 					default: true,
 					version: 'Default',
-				};
+				});
 			}
 		} catch (err) {
 			// Not lethal
 		}
 		const filenames = determineMediaAndLyricsFilenames(kara, karaFile);
 		const mediaDest = resolve(resolvedPathRepos('Medias', kara.data.repository)[0], filenames.mediafile);
-		let subDest: string;
-		if (kara.medias[0].lyrics?.[0]?.filename) {
-			const subPath = resolve(resolvedPath('Temp'), kara.medias[0].lyrics?.[0].filename);
-			const ext = await processSubfile(subPath);
-			filenames.lyricsfile = replaceExt(filenames.lyricsfile, ext);
-			kara.medias[0].lyrics[0].filename = filenames.lyricsfile;
-			subDest = resolve(resolvedPathRepos('Lyrics', kara.data.repository)[0], filenames.lyricsfile);
-			await smartMove(subPath, subDest, { overwrite: true });
+		for (const [lyricsIndex, lyricsFile] of filenames.lyricsfiles.entries()) {
+			let subDest: string;
+			if (kara.medias[0].lyricsInfos[lyricsIndex]?.filename) {
+				const subPath = resolve(resolvedPath('Temp'), kara.medias[0].lyricsInfos[0].filename);
+				const ext = await processSubfile(subPath);
+				filenames[lyricsIndex] = replaceExt(lyricsFile, ext);
+				kara.medias[0].lyricsInfos[0].filename = filenames[lyricsIndex];
+				subDest = resolve(resolvedPathRepos('Lyrics', kara.data.repository)[0], filenames[lyricsIndex]);
+				await smartMove(subPath, subDest, { overwrite: true });
+			}
 		}
+
 		await smartMove(mediaPath, mediaDest, { overwrite: true });
 		kara.medias[0].filename = filenames.mediafile;
 		await writeKara(karaJsonFileDest, kara);
@@ -283,7 +301,10 @@ export async function createKara(editedKara: EditedKara) {
 			(typeof editedKara.applyLyricsCleanup !== 'boolean' && // Fallback to setting when no value is sent
 				getConfig().Maintainer.ApplyLyricsCleanupOnKaraSave === true)
 		) {
-			if (kara.medias[0].lyrics?.[0]?.filename) await ASSFileCleanup(subDest, newKara);
+			for (const [lyricsIndex, lyricsFile] of filenames.lyricsfiles.entries()) {
+				const subDest = resolve(resolvedPathRepos('Lyrics', kara.data.repository)[0], lyricsFile);
+				if (kara.medias[0].lyricsInfos[lyricsIndex].filename) await ASSFileCleanup(subDest, newKara);
+			}
 		}
 	} catch (err) {
 		logger.error('Error while creating kara', { service, obj: err });

@@ -2,7 +2,7 @@ import { DBKara } from '../lib/types/database/kara.js';
 import { DBPLCBase } from '../lib/types/database/playlist.js';
 import { AggregatedCriteria } from '../lib/types/playlist.js';
 
-export interface CurrentSong extends DBPLCBase, DBKara {
+export interface CurrentSong extends DBPLCBase, Omit<DBKara, 'lyrics_infos'> {
 	avatar?: string;
 	infos?: string;
 }
