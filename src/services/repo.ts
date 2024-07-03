@@ -1283,8 +1283,8 @@ export async function generateCommits(repoName: string) {
 					modifiedTags = modifiedTags.filter(f => basename(f) !== tagfile);
 				}
 			}
-			if (kara.subfile) {
-				const lyricsFile = addedLyrics.find(f => basename(f) === kara.subfile);
+			for (const lyricsInfo of kara.lyrics_infos) {
+				const lyricsFile = addedLyrics.find(f => basename(f) === lyricsInfo.filename);
 				addedLyrics = addedLyrics.filter(f => f !== lyricsFile);
 				commit.addedFiles.push(lyricsFile);
 			}
@@ -1343,15 +1343,14 @@ export async function generateCommits(repoName: string) {
 					modifiedTags = modifiedTags.filter(f => basename(f) !== tagfile);
 				}
 			}
-			if (kara.subfile) {
-				// For modified songs, we check first for added lyrics, then for modified lyrics.
-				let lyricsFile = addedLyrics.find(f => basename(f) === kara.subfile);
+			for (const lyricsInfo of kara.lyrics_infos) {
+				let lyricsFile = addedLyrics.find(f => basename(f) === lyricsInfo.filename);
 				if (lyricsFile) {
 					addedLyrics = addedLyrics.filter(f => f !== lyricsFile);
 					commit.addedFiles.push(lyricsFile);
 				} else {
 					// Checking modified lyrics. If none is found then lyrics have not been modified
-					lyricsFile = modifiedLyrics.find(f => basename(f) === kara.subfile);
+					lyricsFile = modifiedLyrics.find(f => basename(f) === lyricsInfo.filename);
 					if (lyricsFile) {
 						modifiedLyrics = modifiedLyrics.filter(f => f !== lyricsFile);
 						commit.addedFiles.push(lyricsFile);

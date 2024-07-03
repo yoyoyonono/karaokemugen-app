@@ -95,13 +95,18 @@ export async function removeKara(
 				} catch (err) {
 					logger.warn(`Non fatal: Removing karafile ${kara.karafile} failed`, { service, obj: err });
 				}
-				if (kara.subfile) {
+				for (const lyricsInfo of kara.lyrics_infos) {
 					try {
 						await fs.unlink(
-							(await resolveFileInDirs(kara.subfile, resolvedPathRepos('Lyrics', kara.repository)))[0]
+							(
+								await resolveFileInDirs(
+									lyricsInfo.filename,
+									resolvedPathRepos('Lyrics', kara.repository)
+								)
+							)[0]
 						);
 					} catch (err) {
-						logger.warn(`Non fatal: Removing subfile ${kara.subfile} failed`, { service, obj: err });
+						logger.warn(`Non fatal: Removing subfile ${lyricsInfo.filename} failed`, { service, obj: err });
 					}
 				}
 			}
@@ -166,10 +171,10 @@ export async function copyKaraToRepo(kid: string, repoName: string) {
 		tasks.push(
 			copy(mediaFiles[0], resolve(resolvedPathRepos('Medias', repoName)[0], kara.mediafile), { overwrite: true })
 		);
-		if (kara.subfile) {
-			const lyricsFiles = await resolveFileInDirs(kara.subfile, resolvedPathRepos('Lyrics', oldRepoName));
+		for (const lyricsInfo of kara.lyrics_infos) {
+			const lyricsFiles = await resolveFileInDirs(lyricsInfo.filename, resolvedPathRepos('Lyrics', oldRepoName));
 			tasks.push(
-				copy(lyricsFiles[0], resolve(resolvedPathRepos('Lyrics', repoName)[0], kara.subfile), {
+				copy(lyricsFiles[0], resolve(resolvedPathRepos('Lyrics', repoName)[0], lyricsInfo.filename), {
 					overwrite: true,
 				})
 			);
@@ -420,10 +425,13 @@ export async function encodeMediaFileToRepoDefaults(
 	}
 }
 
-export async function openLyricsFile(kid: string) {
+export async function openLyricsFile(kid: string, version = 'Default') {
 	try {
-		const { subfile, repository, mediafile } = await getKara(kid, adminToken);
-		const lyricsPath = resolve(resolvedPathRepos('Lyrics', repository)[0], subfile);
+		const { lyrics_infos, repository, mediafile } = await getKara(kid, adminToken);
+		const lyricsPath = resolve(
+			resolvedPathRepos('Lyrics', repository)[0],
+			lyrics_infos.filter(l => l.version === version)[0].filename
+		);
 		if (extname(lyricsPath) === '.ass' && mediafile) {
 			for (const repo of resolvedPathRepos('Medias', repository)) {
 				const mediaPath = resolve(repo, mediafile);
@@ -441,10 +449,13 @@ export async function openLyricsFile(kid: string) {
 	}
 }
 
-export async function showLyricsInFolder(kid: string) {
+export async function showLyricsInFolder(kid: string, version = 'Default') {
 	try {
-		const { subfile, repository } = await getKara(kid, adminToken);
-		const lyricsPath = resolve(resolvedPathRepos('Lyrics', repository)[0], subfile);
+		const { lyrics_infos, repository } = await getKara(kid, adminToken);
+		const lyricsPath = resolve(
+			resolvedPathRepos('Lyrics', repository)[0],
+			lyrics_infos.filter(l => l.version === version)[0].filename
+		);
 		shell.showItemInFolder(lyricsPath);
 	} catch (err) {
 		logger.error('Failed to open lyrics folder', { service });

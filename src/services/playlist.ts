@@ -367,7 +367,7 @@ export async function exportPlaylistMedia(
 					resolvedPathRepos('Medias', kara.repository)
 				);
 				const karaLyricsPath = await resolveFileInDirs(
-					kara.lyricsInfo.filename,
+					kara.lyrics_infos.filter(l => l.version === kara.selectedVersion)[0].filename,
 					resolvedPathRepos('Lyrics', kara.repository)
 				);
 				// This works as long as filenames are not uuids. After that, the computed filename should be retrieved here
@@ -382,9 +382,12 @@ export async function exportPlaylistMedia(
 					await fs.copyFile(karaMediaPath[0], exportPath);
 				if (karaLyricsPath[0]) {
 					// Kara can have no lyrics file
-					await fs.copyFile(karaLyricsPath[0], join(exportDir, kara.lyricsInfo.filename));
+					await fs.copyFile(
+						karaLyricsPath[0],
+						join(exportDir, kara.lyrics_infos.filter(l => l.version === kara.selectedVersion)[0].filename)
+					);
 					task.update({
-						subtext: kara.lyricsInfo.filename,
+						subtext: kara.lyrics_infos.filter(l => l.version === kara.selectedVersion)[0].filename,
 					});
 				}
 				exportedResult.push({ ...kara, exportSuccessful: true });
