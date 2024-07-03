@@ -64,7 +64,7 @@ export async function playSingleSong(kid?: string, randomPlaying = false, lyrics
 			plaid: null,
 			avatar: null,
 			added_at: null,
-			selectedVersion: lyricsVersion,
+			selected_version: lyricsVersion,
 			...songInfos,
 		};
 		await mpv.play(current);

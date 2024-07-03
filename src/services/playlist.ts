@@ -367,7 +367,7 @@ export async function exportPlaylistMedia(
 					resolvedPathRepos('Medias', kara.repository)
 				);
 				const karaLyricsPath = await resolveFileInDirs(
-					kara.lyrics_infos.filter(l => l.version === kara.selectedVersion)[0].filename,
+					kara.lyrics_infos.filter(l => l.version === kara.selected_version)[0].filename,
 					resolvedPathRepos('Lyrics', kara.repository)
 				);
 				// This works as long as filenames are not uuids. After that, the computed filename should be retrieved here
@@ -384,10 +384,10 @@ export async function exportPlaylistMedia(
 					// Kara can have no lyrics file
 					await fs.copyFile(
 						karaLyricsPath[0],
-						join(exportDir, kara.lyrics_infos.filter(l => l.version === kara.selectedVersion)[0].filename)
+						join(exportDir, kara.lyrics_infos.filter(l => l.version === kara.selected_version)[0].filename)
 					);
 					task.update({
-						subtext: kara.lyrics_infos.filter(l => l.version === kara.selectedVersion)[0].filename,
+						subtext: kara.lyrics_infos.filter(l => l.version === kara.selected_version)[0].filename,
 					});
 				}
 				exportedResult.push({ ...kara, exportSuccessful: true });
@@ -732,6 +732,7 @@ export async function addKaraToPlaylist(params: AddKaraParams) {
 				plaid: params.plaid,
 				added_at: date_add,
 				criterias: params.criterias?.find(c => c.kid === k.kid)?.criterias,
+				selected_version: params.selectedVersion,
 			};
 		});
 
@@ -1653,6 +1654,7 @@ export async function getCurrentSong(): Promise<CurrentSong> {
 		const plcid = await getCurrentSongPLCID();
 		const plaid = getState().currentPlaid;
 		const kara = await getPLCInfo(plcid, false, 'admin');
+		logger.debug(kara);
 		if (!kara) throw `No current song available : PLCID ${plcid} with kara ${JSON.stringify(kara)}`;
 		// Let's add details to our object so the player knows what to do with it.
 		kara.plaid = plaid;
@@ -1823,6 +1825,7 @@ export async function createAutoMix(params: AutoMixParams, username: string): Pr
 			requester: username,
 			plaid,
 			visible: params.surprisePlaylist !== true,
+			selectedVersion: 'Default',
 		});
 		emitWS('playlistsUpdated');
 		return {

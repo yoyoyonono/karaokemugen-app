@@ -24,4 +24,5 @@ export interface AddKaraParams {
 	criterias?: AggregatedCriteria[];
 	throwOnMissingKara?: boolean;
 	visible?: boolean;
+	selectedVersion: string;
 }

@@ -156,6 +156,7 @@ export default function karaController(router: SocketIOApp) {
 				kids: req.body.kids,
 				requester: req.token.username,
 				throwOnMissingKara: true,
+				selectedVersion: 'Default',
 			});
 		} catch (err) {
 			throw { code: err.code || 500, message: APIMessage(err.message) };

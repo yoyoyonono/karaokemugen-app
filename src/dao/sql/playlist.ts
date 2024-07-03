@@ -784,7 +784,8 @@ INSERT INTO playlist_content(
 	flag_visible,
 	flag_refused,
 	flag_accepted,
-	criterias
+	criterias,
+	selected_version
 ) VALUES(
 	$1,
 	$2,
@@ -796,7 +797,8 @@ INSERT INTO playlist_content(
 	$8,
 	$9,
 	$10,
-	$11
+	$11,
+	$12
 ) RETURNING pk_plcid AS plcid, fk_kid AS kid, pos, fk_login AS username
 `;
 

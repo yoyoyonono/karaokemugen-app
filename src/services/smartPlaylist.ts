@@ -183,6 +183,7 @@ export async function updateSmartPlaylist(plaid: string) {
 				refresh: false,
 				criterias: newArray,
 				visible: false,
+				selectedVersion: 'Default',
 			});
 		} catch (err) {
 			logger.warn(`Unable to add karaokes to playlist "${pl.name}"`, { service, obj: err });

@@ -808,7 +808,7 @@ export class Players {
 		profile('mpvPlay');
 		let mediaFile: string;
 		let subFile: string;
-		const lyricsFilename = song.lyrics_infos.filter(l => l.version === song.selectedVersion)[0].filename;
+		const lyricsFilename = song.lyrics_infos.filter(l => l.version === song.selected_version)[0].filename;
 		const options: Record<string, any> = {
 			'force-media-title': getState().quiz.running
 				? 'Quiz!'
@@ -1356,7 +1356,7 @@ export class Players {
 	getMessagePosition(): number {
 		// Returns a number from 1 to 9 depending on the position on screen. 1 is bottom left, 9 is top right.
 		let pos = 9;
-		const lyricsVersion = playerState.currentSong.selectedVersion;
+		const lyricsVersion = playerState.currentSong.selected_version;
 		// No song playing
 		if (!playerState.currentSong) return 1;
 		// Song playing

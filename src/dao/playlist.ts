@@ -422,6 +422,7 @@ export async function insertKaraIntoPlaylist(karaList: PLCInsert[]): Promise<DBP
 		kara.flag_refused || false,
 		kara.flag_accepted || false,
 		kara.criterias,
+		kara.selected_version,
 	]);
 	return transaction({ params: karas, sql: sqladdKaraToPlaylist });
 }
