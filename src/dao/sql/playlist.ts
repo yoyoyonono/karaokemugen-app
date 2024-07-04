@@ -33,7 +33,8 @@ UPDATE playlist SET
 	type_smart = :type_smart,
 	smart_limit_order = :smart_limit_order,
 	smart_limit_type = :smart_limit_type,
-	smart_limit_number = :smart_limit_number
+	smart_limit_number = :smart_limit_number,
+	selected_version = :selected_version
 WHERE pk_plaid = :plaid;
 `;
 
@@ -53,7 +54,8 @@ INSERT INTO playlist(
 	flag_smart,
 	type_smart,
 	fk_login,
-	time_left
+	time_left,
+	selected_version
 )
 VALUES(
 	:name,
@@ -70,7 +72,8 @@ VALUES(
 	:flag_smart,
 	:type_smart,
 	:username,
-	0
+	0,
+	:selected_version
 ) RETURNING pk_plaid
 `;
 
@@ -142,7 +145,8 @@ SELECT pc.fk_kid AS kid,
 	ak.mediafile,
 	ak.repository,
 	ak.mediasize,
-	ak.duration
+	ak.duration,
+	pc.selected_version
 FROM playlist_content pc
 INNER JOIN all_karas ak ON pc.fk_kid = ak.pk_kid
 LEFT OUTER JOIN playlist pl ON pl.pk_plaid = pc.fk_plaid
@@ -164,7 +168,8 @@ GROUP BY
 	ak.repository,
 	ak.mediasize,
 	ak.duration,
-	pl.fk_plcid_playing
+	pl.fk_plcid_playing,
+	pc.selected_version
 ORDER BY pc.pos, pc.created_at DESC
 
 `;
@@ -232,7 +237,8 @@ SELECT
   ak.repository AS repository,
   array_remove(array_agg(DISTINCT pc_pub.pk_plcid), null) AS public_plc_id,
   array_remove(array_agg(DISTINCT pc_self.pk_plcid), null) AS my_public_plc_id,
-  pc.criterias
+  pc.criterias,
+  pc.selected_version as selected_version
 FROM all_karas AS ak
 LEFT OUTER JOIN kara k ON k.pk_kid = ak.pk_kid
 INNER JOIN playlist_content AS pc ON pc.fk_kid = ak.pk_kid
@@ -289,7 +295,8 @@ SELECT ak.pk_kid AS kid,
 	pc.criterias,
 	ak.duration AS duration,
 	ak.repository as repository,
-	(SELECT COUNT(up.fk_plcid)::integer FROM upvote up WHERE up.fk_plcid = pc.pk_plcid) AS upvotes
+	(SELECT COUNT(up.fk_plcid)::integer FROM upvote up WHERE up.fk_plcid = pc.pk_plcid) AS upvotes,
+	pc.selected_version as selected_version
 FROM all_karas AS ak
 INNER JOIN playlist_content AS pc ON pc.fk_kid = ak.pk_kid
 LEFT OUTER JOIN playlist AS pl ON pl.pk_plaid = pc.fk_plaid
@@ -367,7 +374,8 @@ SELECT
   array_remove(array_agg(DISTINCT krc.fk_kid_parent), null) AS parents,
   array_remove(array_agg(DISTINCT krp.fk_kid_child), null) AS children,
   array_remove((SELECT array_agg(DISTINCT fk_kid_child) FROM kara_relation WHERE fk_kid_parent = ANY (array_remove(array_agg(DISTINCT krc.fk_kid_parent), null))), ak.pk_kid) AS siblings,
-  pc.criterias
+  pc.criterias,
+  pc.selected_version as selected_version
 FROM playlist_content AS pc
 INNER JOIN playlist AS pl ON pl.pk_plaid = :current_plaid
 INNER JOIN all_karas AS ak ON pc.fk_kid = ak.pk_kid
@@ -437,7 +445,8 @@ SELECT pc.fk_kid AS kid,
 	(CASE WHEN pl.fk_plcid_playing = pc.pk_plcid
 		THEN TRUE
 		ELSE FALSE
-	END) AS flag_playing
+	END) AS flag_playing,
+	pc.selected_version
 FROM all_karas AS ak
 INNER JOIN playlist_content AS pc ON pc.fk_kid = ak.pk_kid
 INNER JOIN playlist AS pl ON pl.pk_plaid = pc.fk_plaid
@@ -453,7 +462,8 @@ SELECT
 		THEN TRUE
 		ELSE FALSE
 	END) AS flag_playing,
-	pc.pk_plcid AS plcid
+	pc.pk_plcid AS plcid,
+	pc.selected_version as selected_version
 FROM playlist_content pc
 INNER JOIN playlist AS pl ON pl.pk_plaid = pc.fk_plaid
 WHERE pc.fk_plaid = :plaid
