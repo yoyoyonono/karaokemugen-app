@@ -1356,10 +1356,10 @@ export class Players {
 	getMessagePosition(): number {
 		// Returns a number from 1 to 9 depending on the position on screen. 1 is bottom left, 9 is top right.
 		let pos = 9;
-		const lyricsVersion = playerState.currentSong.selected_version;
 		// No song playing
 		if (!playerState.currentSong) return 1;
 		// Song playing
+		const lyricsVersion = playerState.currentSong.selected_version;
 		const manifest = getRepoManifest(playerState.currentSong.repository);
 		const X =
 			playerState.currentSong.lyrics_infos.filter(l => l.version === lyricsVersion)[0].announce_position_x ||
