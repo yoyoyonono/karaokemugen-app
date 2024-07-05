@@ -79,15 +79,13 @@ function KaraForm(props: KaraFormProps) {
 	const [titlesIsTouched, setTitlesIsTouched] = useState(false);
 	const [serieSingersRequired, setSerieSingersRequired] = useState(props.kara ? false : true);
 	const [subfile, setSubfile] = useState(
-		props.kara?.subfile
-			? [
-					{
-						uid: -1,
-						name: props.kara.subfile,
-						status: 'done',
-					},
-				]
-			: []
+		props.kara?.lyrics_infos.map(l => {
+			return {
+				uid: l.version,
+				name: l.filename,
+				status: 'done',
+			};
+		}) ?? []
 	);
 	const [mediafile, setMediafile] = useState(
 		props.kara?.mediafile

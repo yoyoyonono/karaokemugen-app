@@ -244,7 +244,7 @@ function KaraList(props: KaraListProps) {
 			icon: <FolderViewOutlined />,
 			onClick: () => commandBackend('showLyricsInFolder', { kid: record.kid }),
 		};
-		if (record.subfile) {
+		if (record.lyrics_infos.length) {
 			menu.push(showLyricsButton);
 		}
 		if (record.download_status === 'DOWNLOADED') {
@@ -378,7 +378,7 @@ function KaraList(props: KaraListProps) {
 					if (record.download_status !== 'DOWNLOADED') {
 						playVideoButton = null;
 					}
-					if (record.subfile === null) {
+					if (record.lyrics_infos.length === 0) {
 						lyricsButton = null;
 					}
 					return (
