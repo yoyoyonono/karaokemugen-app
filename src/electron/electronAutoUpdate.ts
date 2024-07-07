@@ -1,5 +1,6 @@
 import { dialog } from 'electron';
-import { autoUpdater } from 'electron-updater';
+import updater from 'electron-updater';
+const { autoUpdater } = updater;
 import i18next from 'i18next';
 
 import { exit } from '../components/engine.js';

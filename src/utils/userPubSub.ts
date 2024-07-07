@@ -1,4 +1,5 @@
-import { debounce } from 'lodash';
+import lodash from 'lodash';
+const { debounce } = lodash;
 import { io, Socket } from 'socket.io-client';
 
 import { DBUser } from '../lib/types/database/user.js';

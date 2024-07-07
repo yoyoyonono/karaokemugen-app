@@ -1,8 +1,8 @@
 import { dialog, shell } from 'electron';
-import { autoUpdater } from 'electron-updater';
+import updater from 'electron-updater';
+const { autoUpdater } = updater;
 
 import logger from '../../lib/utils/logger.js';
-import { getState } from '../../utils/state.js';
 import { handleFile, win } from '../electron.js';
 import { setManualUpdate } from '../electronAutoUpdate.js';
 
@@ -37,7 +37,7 @@ export const urls = {
 
 export function openURL(url: string) {
 	const base = 'http://localhost';
-	const port = getState().frontendPort;
+	const port = 3000;
 	const fullUrl = `${base}:${port}${url}`;
 	win?.loadURL(fullUrl);
 }

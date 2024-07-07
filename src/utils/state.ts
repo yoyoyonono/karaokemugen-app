@@ -1,5 +1,6 @@
 // Node modules
-import { merge } from 'lodash';
+import lodash from 'lodash';
+const { merge } = lodash;
 
 import packageJSON from '../../package.json';
 import { RecursivePartial } from '../lib/types/index.js';

@@ -1,7 +1,8 @@
 import dotenv from 'dotenv';
 import { app } from 'electron';
 import { existsSync, readFileSync } from 'fs';
-import { mkdirpSync } from 'fs-extra';
+import fs from 'fs-extra';
+const { mkdirpSync } = fs;
 import { dirname, resolve } from 'path';
 import { createInterface } from 'readline';
 import sourceMapSupport from 'source-map-support';

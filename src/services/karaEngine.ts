@@ -1,5 +1,6 @@
 import i18next from 'i18next';
-import { sample } from 'lodash';
+import lodash from 'lodash';
+const { sample } = lodash;
 import { resolve } from 'path';
 
 import { selectPlaylistContentsMicro, updatePlaylistDuration, updatePlaylistLastEditTime } from '../dao/playlist.js';

@@ -1,6 +1,7 @@
 import i18next from 'i18next';
 import langs from 'langs';
-import { intersectionWith, isEqual } from 'lodash';
+import lodash from 'lodash';
+const { intersectionWith, isEqual } = lodash;
 
 import {
 	deleteCriteria,

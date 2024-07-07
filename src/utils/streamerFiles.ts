@@ -1,6 +1,7 @@
 import { promises as fs } from 'fs';
 import i18next from 'i18next';
-import { debounce } from 'lodash';
+import lodash from 'lodash';
+const { debounce } = lodash;
 import { resolve } from 'path';
 
 import { getSongSeriesSingers, getSongTitle, getSongVersion } from '../lib/services/kara.js';

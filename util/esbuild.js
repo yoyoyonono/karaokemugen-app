@@ -8,13 +8,10 @@ const buildOptions = {
 	entryPoints: ['src/index.ts'],
 	platform: 'node',
 	target: 'node16',
-	format: 'cjs',
 	bundle: true,
 	sourcemap: true,
-	conditions: ['module'],
 	external: ['electron', 'pg-native', 'fsevents'],
 	legalComments: 'external',
-	color: true,
 	logLevel: 'info',
 };
 

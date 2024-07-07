@@ -1,5 +1,6 @@
 import i18n from 'i18next';
-import { sample, sampleSize } from 'lodash';
+import lodash from 'lodash';
+const { sample, sampleSize } = lodash;
 import { setTimeout as sleep } from 'timers/promises';
 
 import { APIMessage } from '../lib/services/frontend.js';

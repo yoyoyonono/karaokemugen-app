@@ -1,9 +1,12 @@
-import { compare, genSalt, hash } from 'bcryptjs';
+import bcryptjs from 'bcryptjs';
+const { compare, genSalt, hash } = bcryptjs;
 import { createHash } from 'crypto';
 import { promises as fs } from 'fs';
 import { copy } from 'fs-extra';
-import { sign, verify } from 'jsonwebtoken';
-import { deburr, merge, sample } from 'lodash';
+import jsonwebtoken from 'jsonwebtoken';
+const { sign, verify } = jsonwebtoken;
+import lodash from 'lodash';
+const { deburr, merge, sample } = lodash;
 import { resolve } from 'path';
 import randomstring from 'randomstring';
 import { v4 as uuidV4 } from 'uuid';

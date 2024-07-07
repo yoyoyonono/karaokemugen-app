@@ -1,8 +1,11 @@
 import { execa } from 'execa';
 import fs from 'fs/promises';
 import i18n from 'i18next';
-import { sample } from 'lodash';
-import { Promise as id3, Tags } from 'node-id3';
+import lodash from 'lodash';
+import nodeId3, { Tags } from 'node-id3';
+
+const { sample } = lodash;
+const { Promise: id3 } = nodeId3;
 import retry from 'p-retry';
 import { dirname, resolve } from 'path';
 import semver from 'semver';

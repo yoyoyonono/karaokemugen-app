@@ -1,6 +1,7 @@
 import discordRPC from 'discord-rpc';
 import i18next from 'i18next';
-import { sample } from 'lodash';
+import lodash from 'lodash';
+const { sample } = lodash;
 
 import { getConfig } from '../lib/utils/config.js';
 import logger from '../lib/utils/logger.js';

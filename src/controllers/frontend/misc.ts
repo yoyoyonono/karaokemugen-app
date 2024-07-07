@@ -1,4 +1,5 @@
-import { sample } from 'lodash';
+import lodash from 'lodash';
+const { sample } = lodash;
 import { Socket } from 'socket.io';
 
 import { initKaraBase, shutdown } from '../../components/engine.js';

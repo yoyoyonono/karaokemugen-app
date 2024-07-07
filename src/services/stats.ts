@@ -1,6 +1,7 @@
 import { promises as fs } from 'fs';
 import internet from 'internet-available';
-import { cloneDeep } from 'lodash';
+import lodash from 'lodash';
+const { cloneDeep } = lodash;
 import { resolve } from 'path';
 import prettyBytes from 'pretty-bytes';
 import si from 'systeminformation';

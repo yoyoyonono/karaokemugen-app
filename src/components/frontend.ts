@@ -102,9 +102,6 @@ export default function initFrontend(): number {
 		app.use('/coffee', (_req, res) => res.status(418).json());
 
 		app.use('/', express.static(resolve(state.resourcePath, 'kmfrontend/dist')));
-		app.get('/*', (_req, res) => {
-			res.sendFile(resolve(state.resourcePath, 'kmfrontend/dist/index.html'));
-		});
 
 		const server = createServer(app);
 		// Init websockets

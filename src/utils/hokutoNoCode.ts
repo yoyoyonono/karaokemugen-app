@@ -5,7 +5,8 @@
 
 import { app, dialog } from 'electron';
 import { existsSync, readdirSync, rmdirSync } from 'fs';
-import { moveSync } from 'fs-extra';
+import fs from 'fs-extra';
+const { moveSync } = fs;
 import { resolve } from 'path';
 import semver from 'semver';
 

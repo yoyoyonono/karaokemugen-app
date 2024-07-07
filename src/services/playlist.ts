@@ -2,7 +2,8 @@
 import { promises as fs } from 'fs';
 
 import i18n from 'i18next';
-import { shuffle } from 'lodash';
+import lodash from 'lodash';
+const { shuffle } = lodash;
 import { join } from 'path/posix';
 
 import { insertKaraToRequests } from '../dao/kara.js';

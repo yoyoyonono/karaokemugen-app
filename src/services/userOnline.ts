@@ -1,5 +1,6 @@
 import FormData from 'form-data';
-import { createReadStream } from 'fs-extra';
+import fs from 'fs-extra';
+const { createReadStream } = fs;
 import { resolve } from 'path';
 import { Stream } from 'stream';
 

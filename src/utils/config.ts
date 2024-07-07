@@ -4,8 +4,10 @@
 import { dialog } from 'electron';
 import { copy } from 'fs-extra';
 import i18next from 'i18next';
-import { address } from 'ip';
-import { cloneDeep, isEqual, merge } from 'lodash';
+import ip from 'ip';
+const { address } = ip;
+import lodash from 'lodash';
+const { cloneDeep, isEqual, merge } = lodash;
 import { resolve } from 'path';
 import { v4 as uuidV4 } from 'uuid';
 

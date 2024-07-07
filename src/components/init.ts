@@ -1,6 +1,7 @@
 import { app, dialog } from 'electron';
 import { promises as fs } from 'fs';
-import { copy, remove } from 'fs-extra';
+import fsExtra from 'fs-extra';
+const { copy, remove } = fsExtra;
 import i18next from 'i18next';
 import { resolve } from 'path';
 import { getPortPromise } from 'portfinder';

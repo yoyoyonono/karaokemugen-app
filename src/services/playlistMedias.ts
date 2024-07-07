@@ -1,6 +1,7 @@
 import { promises as fs } from 'fs';
 import { remove } from 'fs-extra';
-import { cloneDeep, sample } from 'lodash';
+import lodash from 'lodash';
+const { cloneDeep, sample } = lodash;
 import { basename, resolve } from 'path';
 import prettyBytes from 'pretty-bytes';
 

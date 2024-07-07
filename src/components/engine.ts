@@ -401,7 +401,7 @@ export async function welcomeToYoukousoKaraokeMugen(): Promise<string> {
 	profile('welcome');
 	const conf = getConfig();
 	const state = getState();
-	let url = `http://localhost:${state.frontendPort}/welcome`;
+	let url = `http://localhost:${3000}/welcome`;
 	if (conf.App.FirstRun) {
 		const adminPassword = await generateAdminPassword();
 		url = `http://localhost:${conf.System.FrontendPort}/setup?admpwd=${adminPassword}`;

@@ -1,4 +1,5 @@
-import { merge } from 'lodash';
+import lodash from 'lodash';
+const { merge } = lodash;
 import { Socket } from 'socket.io';
 
 import { APIMessage } from '../lib/services/frontend.js';

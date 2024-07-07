@@ -1,5 +1,6 @@
 import { promises as fs } from 'fs';
-import { sample } from 'lodash';
+import lodash from 'lodash';
+const { sample } = lodash;
 import { basename, resolve } from 'path';
 
 import { resolvedPath } from '../lib/utils/config.js';

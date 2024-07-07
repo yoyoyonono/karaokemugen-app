@@ -1,5 +1,6 @@
 import i18n from 'i18next';
-import { shuffle } from 'lodash';
+import lodash from 'lodash';
+const { shuffle } = lodash;
 
 import { TipsAndTricks, TipType } from '../types/tips.js';
 

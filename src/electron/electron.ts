@@ -393,7 +393,7 @@ export async function updateChibiPlayerWindow(show: boolean) {
 			},
 			icon: resolve(state.resourcePath, 'build/icon1024.png'),
 		});
-		const port = state.frontendPort;
+		const port = 3000;
 		chibiPlayerWindow.once('ready-to-show', () => {
 			chibiPlayerWindow.show();
 		});
@@ -440,7 +440,7 @@ export async function updateChibiPlaylistWindow(show: boolean) {
 			resizable: true,
 			icon: resolve(state.resourcePath, 'build/icon1024.png'),
 		});
-		const port = state.frontendPort;
+		const port = 3000;
 		chibiPlaylistWindow.once('ready-to-show', () => {
 			chibiPlaylistWindow.show();
 		});
@@ -492,7 +492,7 @@ export async function updateChibiRankingWindow(show: boolean) {
 			resizable: true,
 			icon: resolve(state.resourcePath, 'build/icon1024.png'),
 		});
-		const port = state.frontendPort;
+		const port = 3000;
 		chibiRankingWindow.once('ready-to-show', () => {
 			chibiRankingWindow.show();
 		});
@@ -551,6 +551,6 @@ export async function showAbout() {
 			aboutWindow.destroy();
 			aboutWindow = undefined;
 		});
-		aboutWindow.loadURL(`http://localhost:${state.frontendPort}/about?admpwd=${await generateAdminPassword()}`);
+		aboutWindow.loadURL(`http://localhost:${3000}/about?admpwd=${await generateAdminPassword()}`);
 	}
 }

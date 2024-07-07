@@ -1,7 +1,8 @@
 import { app, dialog, shell } from 'electron';
 import fs from 'fs/promises';
 import i18next from 'i18next';
-import { sample } from 'lodash';
+import lodash from 'lodash';
+const { sample } = lodash;
 import { resolve } from 'path';
 import Postgrator from 'postgrator';
 
