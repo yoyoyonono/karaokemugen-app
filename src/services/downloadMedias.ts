@@ -12,7 +12,7 @@ import logger, { profile } from '../lib/utils/logger.js';
 import { on } from '../lib/utils/pubsub.js';
 import Task from '../lib/utils/taskManager.js';
 import { emitWS } from '../lib/utils/ws.js';
-import { File } from '../types/download.js';
+import { File, UpdateMediasResult } from '../types/download.js';
 import Sentry from '../utils/sentry.js';
 import { addDownloads } from './download.js';
 import { checkDownloadStatus, getRepo, getRepos } from './repo.js';
@@ -52,8 +52,8 @@ async function compareMedias(
 	localFiles: File[],
 	remoteKaras: DBMedia[],
 	repo: string,
-	updateOnly = false
-): Promise<boolean> {
+	dryRun = false
+): Promise<UpdateMediasResult> {
 	const removedFiles: string[] = [];
 	const addedFiles: DBMedia[] = [];
 	const updatedFiles: DBMedia[] = [];
@@ -66,21 +66,14 @@ async function compareMedias(
 				updatedFiles.push(remoteKara);
 			}
 			// Do nothing if file exists and sizes are the same
-		} else if (!updateOnly) addedFiles.push(remoteKara);
-	}
-
-	if (!updateOnly) {
-		for (const localFile of localFiles) {
-			const remoteFilePresent = remoteKaras.find(remoteKara => localFile.basename === remoteKara.mediafile);
-			if (!remoteFilePresent) removedFiles.push(localFile.basename);
 		}
 	}
-	// Remove files to update to start over their download
-	for (const file of updatedFiles) {
-		await fs.unlink(resolve(mediasPath, file.mediafile));
+
+	for (const localFile of localFiles) {
+		const remoteFilePresent = remoteKaras.find(remoteKara => localFile.basename === remoteKara.mediafile);
+		if (!remoteFilePresent) removedFiles.push(localFile.basename);
 	}
 	const filesToDownload = addedFiles.concat(updatedFiles);
-	if (removedFiles.length > 0) await removeFiles(removedFiles, mediasPath);
 	if (filesToDownload.length > 0) {
 		filesToDownload.sort((a, b) => {
 			return a.mediafile > b.mediafile ? 1 : b.mediafile > a.mediafile ? -1 : 0;
@@ -89,16 +82,30 @@ async function compareMedias(
 		for (const file of filesToDownload) {
 			bytesToDownload += file.mediasize;
 		}
+		logger.info(`Removing ${removedFiles.length} files`);
 		logger.info(
 			`Downloading ${filesToDownload.length} new/updated medias (size : ${prettyBytes(bytesToDownload)})`,
 			{ service }
 		);
+	} else {
+		logger.info('No new medias to download', { service });
+	}
+	if (dryRun) {
+		logger.info('Dry run enabled - no action taken', { service });
+	} else {
+		// Remove files to update to start over their download
+		for (const file of updatedFiles) {
+			await fs.unlink(resolve(mediasPath, file.mediafile));
+		}
+		if (removedFiles.length > 0) await removeFiles(removedFiles, mediasPath);
 		await downloadMedias(filesToDownload);
 		logger.info('Done updating medias', { service });
-		return true;
 	}
-	logger.info('No new medias to download', { service });
-	return false;
+	return {
+		removedFiles,
+		addedFiles,
+		updatedFiles,
+	};
 }
 
 async function downloadMedias(karas: DBMedia[]): Promise<void> {
@@ -156,11 +163,12 @@ async function removeFiles(files: string[], dir: string): Promise<void> {
 }
 
 /** Updates medias for all repositories */
-export async function updateAllMedias(repoNames?: string[]) {
+export async function updateAllMedias(repoNames?: string[], dryRun = false): Promise<UpdateMediasResult[]> {
+	const results = [];
 	for (const repo of getRepos(repoNames).filter(r => r.Online && r.Enabled)) {
 		try {
 			logger.info(`Updating medias from repository ${repo.Name}`, { service });
-			await updateMedias(repo.Name);
+			results.push(await updateMedias(repo.Name, dryRun));
 		} catch (err) {
 			logger.warn(`Repository ${repo.Name} failed to update medias properly`, { service, obj: err });
 			Sentry.error(err);
@@ -171,10 +179,11 @@ export async function updateAllMedias(repoNames?: string[]) {
 		}
 	}
 	await checkDownloadStatus();
+	return results;
 }
 
 /** Update medias for one repository */
-export async function updateMedias(repo: string): Promise<boolean> {
+export async function updateMedias(repo: string, dryRun = false): Promise<UpdateMediasResult> {
 	const task = new Task({
 		text: 'UPDATING_MEDIAS',
 		subtext: repo,
@@ -183,8 +192,8 @@ export async function updateMedias(repo: string): Promise<boolean> {
 	updateRunning = true;
 	try {
 		const [remoteMedias, localMedias] = await Promise.all([listRemoteMedias(repo), listLocalMedias(repo)]);
-		const updateVideos = await compareMedias(localMedias, remoteMedias, repo);
-		return !!updateVideos;
+		const updateVideos = await compareMedias(localMedias, remoteMedias, repo, dryRun);
+		return updateVideos;
 	} catch (err) {
 		throw err;
 	} finally {

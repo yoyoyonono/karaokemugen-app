@@ -35,3 +35,9 @@ export interface MediaDownloadCheck {
 	repository: string;
 	mediasize: number;
 }
+
+export interface UpdateMediasResult {
+	removedFiles: string[];
+	addedFiles: DBMedia[];
+	updatedFiles: DBMedia[];
+}

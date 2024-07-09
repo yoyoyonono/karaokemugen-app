@@ -34,6 +34,7 @@ export function parseArgs() {
 		.option('-t, --test', 'Launches in test mode (for running unit tests)')
 		.option('-u, --updateBase', 'Update karaoke base files')
 		.option('--updateMediasAll', 'Update karaoke media files only (no other data files)')
+		.option('--dryRun', 'For media updates, do not take action, only print what would be done.')
 		.option(
 			'--updateMedias [repos]',
 			'Update karaoke media files for specified repositories (separate with commas)'
@@ -96,12 +97,12 @@ export function setupFromCommandLineArgs(argv: any, cmdline: CommandLine) {
 	}
 	if (argv.opts().updateMediasAll) {
 		logger.info('Full media update requested', { service });
-		setState({ opt: { mediaUpdateAll: true } });
+		setState({ opt: { mediaUpdateAll: true, dryRun: argv.opts().dryRun } });
 	}
 	if (argv.opts().updateMedias) {
 		const reposToUpdate = argv.opts().updateMedias.split(',');
 		logger.info(`Media update requested for ${reposToUpdate.join(', ')}`, { service });
-		setState({ opt: { mediaUpdate: reposToUpdate } });
+		setState({ opt: { mediaUpdate: reposToUpdate, dryRun: argv.opts().dryRun } });
 	}
 	if (argv.opts().test && !app.isPackaged) {
 		logger.info('TEST MODE ENABLED. DO NOT DO THIS AT HOME.', { service });

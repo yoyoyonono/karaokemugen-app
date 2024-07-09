@@ -71,6 +71,7 @@ export interface State {
 		baseUpdate?: boolean;
 		mediaUpdateAll?: boolean;
 		mediaUpdate?: string[];
+		dryRun?: boolean;
 		noBrowser?: boolean;
 		sql?: boolean;
 		validate?: boolean;

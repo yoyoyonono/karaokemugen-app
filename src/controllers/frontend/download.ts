@@ -68,7 +68,6 @@ export default function downloadController(router: SocketIOApp) {
 	});
 	router.route('updateAllMedias', async (socket: Socket, req: APIData) => {
 		await runChecklist(socket, req, 'admin', 'open');
-		updateAllMedias().catch(() => {});
-		return APIMessage('UPDATING_MEDIAS_IN_PROGRESS');
+		return await updateAllMedias(req.body.repoNames, req.body.dryRun);
 	});
 }
