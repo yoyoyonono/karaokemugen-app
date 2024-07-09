@@ -15,7 +15,8 @@ import { emitWS } from '../lib/utils/ws.js';
 import { File } from '../types/download.js';
 import Sentry from '../utils/sentry.js';
 import { addDownloads } from './download.js';
-import { checkDownloadStatus, getRepo } from './repo.js';
+import { checkDownloadStatus, getRepo, getRepos } from './repo.js';
+import { ErrorKM } from '../lib/utils/error.js';
 
 const service = 'MediasUpdater';
 
@@ -155,8 +156,8 @@ async function removeFiles(files: string[], dir: string): Promise<void> {
 }
 
 /** Updates medias for all repositories */
-export async function updateAllMedias() {
-	for (const repo of getConfig().System.Repositories.filter(r => r.Online && r.Enabled)) {
+export async function updateAllMedias(repoNames?: string[]) {
+	for (const repo of getRepos(repoNames).filter(r => r.Online && r.Enabled)) {
 		try {
 			logger.info(`Updating medias from repository ${repo.Name}`, { service });
 			await updateMedias(repo.Name);
@@ -174,22 +175,20 @@ export async function updateAllMedias() {
 
 /** Update medias for one repository */
 export async function updateMedias(repo: string): Promise<boolean> {
-	if (updateRunning) throw { code: 409, msg: 'An update is already running, please wait for it to finish.' };
-	updateRunning = true;
 	const task = new Task({
 		text: 'UPDATING_MEDIAS',
 		subtext: repo,
 	});
+	if (updateRunning) throw new ErrorKM('ERROR_CODES.UPDATE_REPO_ALREADY_IN_PROGRESS', 409);
+	updateRunning = true;
 	try {
 		const [remoteMedias, localMedias] = await Promise.all([listRemoteMedias(repo), listLocalMedias(repo)]);
 		const updateVideos = await compareMedias(localMedias, remoteMedias, repo);
-
-		updateRunning = false;
 		return !!updateVideos;
 	} catch (err) {
-		updateRunning = false;
 		throw err;
 	} finally {
+		updateRunning = false;
 		task.end();
 	}
 }

@@ -65,7 +65,7 @@ export default function repoController(router: SocketIOApp) {
 	router.route('getRepos', async (socket: Socket, req: APIData) => {
 		await runChecklist(socket, req, 'guest', 'closed', { optionalAuth: true });
 		try {
-			return getRepos(req.token?.role !== 'admin');
+			return getRepos(null, req.token?.role !== 'admin');
 		} catch (err) {
 			throw { code: err.code || 500, message: APIMessage(err.message) };
 		}
