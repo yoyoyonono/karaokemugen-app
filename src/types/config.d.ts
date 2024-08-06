@@ -62,7 +62,8 @@ export interface Config {
 	};
 	Online: {
 		Host?: string;
-		Port?: number;
+		Secure?: boolean;
+		Timeout?: number;
 		Users?: boolean;
 		Stats?: boolean;
 		ErrorTracking?: boolean;

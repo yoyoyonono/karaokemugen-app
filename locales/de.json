@@ -92,7 +92,7 @@
 	"MENU_EDIT_REDO": "&Wiederholen",
 	"MENU_VIEW_TOGGLEDEVTOOLS": "&Entwicklungstools anzeigen",
 	"MENU_EDIT_STOPSPEECH": "Beende Rede",
-	"MENU_HELP_TWITTER": "&Twitter",
+	"MENU_HELP_TWITTER": "&𝕏",
 	"INIT_MIGRATION": "Aktualisiere die Datenbank Struktur, bitte warten…",
 	"MENU_HELP_ABOUT": "&Über",
 	"REQUESTED_AND_other": "und {{count}} anderen",
@@ -141,7 +141,6 @@
 	"MENU_HELP_MASTODON": "&Mastodon",
 	"INIT_BASEUPDATE": "Aktualisiere Songs…",
 	"GO_TO_QUIZ_MODE": "Gehe zu $url zum abspielen!",
-	"MENU_HELP_SEND_KARAOKE": "&Sende dein Karaoke",
 	"INIT_RESTOREDB": "Stelle Datenbank wiederher…",
 	"MENU_HELP": "&Hilfe",
 	"MENU_HELP_REPORT_BUG": "Melde einen &Bug",
@@ -152,13 +151,12 @@
 	"MENU_TOOLS_DATABASE": "Daten&bank",
 	"REQUESTED_WITH": "(mit {{names}})",
 	"MENU_OPTIONS": "&Optionen",
-	"GENERATING_DATABASE": "Schritt 2/2 - Aktualisiere Datenbank…",
+	"GENERATING_DATABASE": "Schritt 2 / 2 - Aktualisiere Datenbank…",
 	"TIPS": {
 		"NORMAL": [
 			"Mit den Multimedia-Tasten deiner Tastatur kannst Du das Karaoke ebenfalls steuern!",
 			"Vergesse nicht, deinen Sicherheitsgurt anzulegen, bevor du Karaoke spielst. Singe sicher und achte darauf, dass kein Lautsprecher herunterfällt!",
 			"Vergesse nicht, die Repository's ab und zu zu synchronisieren: Vielleicht entdeckst du ja neue Lieder!",
-			"Du kannst ein Lied nicht in der Datenbank finden? Zögere nicht, auf https://kara.moe/suggest/ nachzuschauen, vielleicht ist es dort schon zu finden!",
 			"Karaoke Mugen ist ein 100 % Open-Source- und Gemeinschaftsprojekt, an dem jeder teilnehmen kann!",
 			"Du kannst Dateien über das Menü „Datei“ -> „Importieren“ importieren, per Drag & Drop importieren oder die ausführbare Datei „Karaoke Mugen“ damit verknüpfen, damit KM sie öffnen und verwenden kann: Wiedergabelisten, Favoriten …",
 			"Ich bin Nanamin, das Maskottchen von Karaoke Mugen, und ich wurde von der wunderbaren Sedeto erschaffen! http://www.sedeto.fr",
@@ -282,8 +280,7 @@
 		},
 		"STAGES": {
 			"resolving": "Delta-Änderungen auflösen",
-			"receiving": "Empfange Daten",
-			"updating": "Aktualisiere Dateien"
+			"receiving": "Empfange Daten"
 		},
 		"CURRENT_ACTION": "Git Aktionen"
 	},
@@ -300,13 +297,9 @@
 	},
 	"FULLSCREEN_TIP": "Drücke F um den Vollbild-Modus zu beenden.",
 	"NO_KARA_PLAYING": "Es wird gerade kein Song abgespielt",
-	"WORLD_REPOSITORY_DISABLED": {
-		"TITLE": "Das World Repository wurde deaktiviert",
-		"MESSAGE": "Aufgrund der Hinzufügung von Sammlungen wurden die Repositorys World und kara.moe zusammengeführt. Somit ist das Welt-Repository nicht mehr notwendig. Es wurde deaktiviert und wir empfehlen dir, es vollständig im Systemfenster zu entfernen."
-	},
 	"INTERFACE_CLOSED": "Schließen",
 	"CURRENT_VERSION_OK": "Du verwendest bereits die neueste Version von Karaoke Mugen!",
-	"GENERATING_READING": "Schritt 1/2 - Lese Daten ein…",
+	"GENERATING_READING": "Schritt 1 / 2 - Lese Daten ein…",
 	"ERROR": "Fehler",
 	"MENU_OPTIONS_CHIBIPLAYER": "Zeige kleinen Player",
 	"UPDATE_ERROR": "Beim Versuch, Karaoke Mugen zu aktualisieren, ist ein Fehler aufgetreten: ",

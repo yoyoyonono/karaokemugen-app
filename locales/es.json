@@ -71,14 +71,13 @@
 	"MENU_HELP_WEBSITE": "&Sitio Web",
 	"MENU_HELP_DISCORD": "&Discord",
 	"MENU_HELP_FORUM": "&Foro",
-	"MENU_HELP_TWITTER": "&Twitter",
+	"MENU_HELP_TWITTER": "&𝕏",
 	"MENU_HELP_MASTODON": "&Mastodon",
 	"MENU_HELP_BLUESKY": "&Bluesky",
 	"MENU_HELP_CHANGELOG": "&Notas de lanzamiento",
 	"MENU_HELP_GITLAB": "&GitLab",
 	"MENU_HELP_GUIDE": "&Guía de usuario",
 	"MENU_HELP_CONTRIB_DOC": "&Crea tu Karaoke",
-	"MENU_HELP_SEND_KARAOKE": "&Envía tu Karaoke",
 	"MENU_HELP_REPORT_BUG": "Reportar un &error",
 	"MENU_GOTO": "&Ir a",
 	"MENU_GOTO_OSX": "Ir a",
@@ -114,10 +113,6 @@
 	"ABOUT": {
 		"TITLE": "Acerca de Karaoke Mugen"
 	},
-	"WORLD_REPOSITORY_DISABLED": {
-		"TITLE": "El repositorio mundial ha sido deshabilitado",
-		"MESSAGE": "El repositorio mundial ha sido deshabilitado por el administrador del sistema. Por favor, contacte con él para más información."
-	},
 	"REPO_DISABLED": {
 		"TITLE": "Repositorio deshabilitado",
 		"MESSAGE": "El repositorio {{repo}} ha sido deshabilitado por el administrador del sistema. Por favor, contacte con él para más información."
@@ -131,7 +126,6 @@
 			"¡Puedes usar las teclas multimedia de tu teclado para controlar tu karaoke!",
 			"No olvides ponerte el cinturón de seguridad antes de hacer karaoke. ¡Canta con seguridad y ten cuidado con las caídas de los altavoces!",
 			"No olvides sincronizar la base de vez en cuando: ¡puedes descubrir nuevos karaokes!",
-			"¿No encuentras una canción en la base de datos? No dude en consultar https://kara.moe/suggest/, ¡puede que esté allí!",
 			"Karaoke Mugen es un proyecto 100% de código abierto y colaborativo, ¡todos pueden participar!",
 			"Puede importar archivos a través del menú Archivo -> Importar, arrastrar y soltar o asociar el ejecutable Karaoke Mugen para permitir que KM los abra y los use: listas de reproducción, favoritos…",
 			"Soy Nanamin, la mascota de Karaoke Mugen, ¡y fui creada por la maravillosa Sedeto! http://www.sedeto.fr",
@@ -198,8 +192,8 @@
 		"TITLE": "Repositorio desconocido",
 		"MESSAGE": "Está a punto de agregar el repositorio {{repoName}} a Karaoke Mugen. ¿Está seguro?"
 	},
-	"GENERATING_READING": "Paso 1/2 - Lectura de datos…",
-	"GENERATING_DATABASE": "Paso 2/2: Actualizando la base de datos…",
+	"GENERATING_READING": "Paso 1 / 2 - Leyendo los datos…",
+	"GENERATING_DATABASE": "Paso 2 / 2 - Actualizando la base de datos…",
 	"TWITCH": {
 		"CHAT": {
 			"VOTE": "Nuevo voto: usa !vote x donde x es el número de la canción:",
@@ -228,8 +222,7 @@
 		},
 		"STAGES": {
 			"resolving": "Resolving delta",
-			"receiving": "Receiving data",
-			"updating": "Updating files"
+			"receiving": "Receiving data"
 		}
 	},
 	"OFFICIAL_WEBSITE": "Sitio web oficial",
@@ -252,9 +245,21 @@
 		"VERSIONS": "Versión",
 		"WARNINGS": "Advertencia",
 		"FRANCHISES": "Franquicia",
-		"COLLECTIONS": "Colección"
+		"COLLECTIONS": "Colección",
+		"FAMILIES": "Contenido de vídeo"
 	},
 	"MIGRATION": "Migración",
 	"YEAR": "Año",
-	"TITLE": "Título"
+	"TITLE": "Título",
+	"MIGRATION_MESSAGES": [
+		"Alineamiento de micrófonos",
+		"Cálculo de las ondas sonoras de normalización",
+		"Bebidas refrescantes",
+		"Afinar las cuerdas vocales",
+		"Descubriendo la ciudad perdida de Karaokum Mugen-la",
+		"La respuesta de la informática a la vida, el universo y todo lo demás",
+		"Iniciando el convector de tiempo"
+	],
+	"FALLBACK": "Retroceder",
+	"UNKNOWN": "Desconocido"
 }

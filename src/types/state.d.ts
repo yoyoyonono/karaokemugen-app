@@ -89,6 +89,8 @@ export interface State {
 		music: string;
 	};
 	quiz: GameState;
+	errorMovingUserDir?: boolean;
+	movedUserDir?: boolean;
 }
 
 export interface SystemMessage {

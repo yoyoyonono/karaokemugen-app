@@ -35,6 +35,10 @@ export function initFetchPopularSongs() {
 	fetchPopularSongs();
 }
 
+export function stopFetchPopularSongs() {
+	if (popularKaraFetchIntervalID) clearInterval(popularKaraFetchIntervalID);
+}
+
 export async function getKara(kid: string, token: OldJWTToken | JWTTokenWithRoles, lang?: string): Promise<DBKara> {
 	try {
 		profile('getKaraInfo');
@@ -165,7 +169,9 @@ export async function fetchPopularSongs() {
 		const repos = conf.System.Repositories.filter(r => r.Enabled && r.Online);
 		for (const repo of repos) {
 			try {
-				const res = await HTTP.get(`https://${repo.Name}/api/karas/search?order=requested`);
+				const res = await HTTP.get(
+					`${repo.Secure ? 'https' : 'http'}://${repo.Name}/api/karas/search?order=requested`
+				);
 				const karas = res.data as any;
 				for (const kara of karas.content) {
 					popularKIDs.set(kara.kid, kara.requested);

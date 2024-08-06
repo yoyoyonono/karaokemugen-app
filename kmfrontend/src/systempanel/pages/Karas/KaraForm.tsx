@@ -1,4 +1,7 @@
+import './KaraForm.scss';
+
 import {
+	CloseOutlined,
 	DeleteOutlined,
 	DoubleRightOutlined,
 	MinusOutlined,
@@ -16,9 +19,10 @@ import {
 	Collapse,
 	Divider,
 	Form,
-	FormInstance,
+	Image,
 	Input,
 	InputNumber,
+	message,
 	Modal,
 	Radio,
 	Row,
@@ -28,30 +32,33 @@ import {
 	Tooltip,
 	Typography,
 	Upload,
-	message,
+	UploadFile,
 } from 'antd';
-import { SelectValue } from 'antd/lib/select';
+import { useForm } from 'antd/es/form/Form';
+import { Flex, Spin } from 'antd/lib';
+import { CheckboxChangeEvent } from 'antd/lib/checkbox';
+import { DefaultOptionType, SelectValue } from 'antd/lib/select';
 import { filesize } from 'filesize';
 import i18next from 'i18next';
 import { useContext, useEffect, useRef, useState } from 'react';
 import { v4 as UUIDv4 } from 'uuid';
-import './KaraForm.scss';
 
-import { Flex, Spin } from 'antd/lib';
-import { CheckboxChangeEvent } from 'antd/lib/checkbox';
 import { PositionX, PositionY } from '../../../../../src/lib/types';
 import { DBKara } from '../../../../../src/lib/types/database/kara';
 import { KaraFileV4, MediaInfo, MediaInfoValidationResult } from '../../../../../src/lib/types/kara';
+import type { RepositoryManifestV2 } from '../../../../../src/lib/types/repo';
+import { blobToBase64 } from '../../../../../src/lib/utils/filesCommon';
 import { Config } from '../../../../../src/types/config';
-import TaskProgress from '../../components/TaskProgressBar';
 import GlobalContext from '../../../store/context';
-import { buildKaraTitle, getTagInLocale } from '../../../utils/kara';
+import { buildKaraTitle, getPreviewLink, getPreviewPath, getTagInLocale } from '../../../utils/kara';
 import { commandBackend } from '../../../utils/socket';
 import { getTagTypeName, tagTypes, tagTypesKaraFileV4Order } from '../../../utils/tagTypes';
+import { secondsTimeSpanToHMS } from '../../../utils/tools';
 import EditableGroupAlias from '../../components/EditableGroupAlias';
 import EditableTagGroup from '../../components/EditableTagGroup';
 import LanguagesList from '../../components/LanguagesList';
 import OpenLyricsFileButton from '../../components/OpenLyricsFileButton';
+import TaskProgress from '../../components/TaskProgressBar';
 
 const { Paragraph } = Typography;
 const { Panel } = Collapse;
@@ -64,7 +71,7 @@ interface KaraFormProps {
 }
 
 function KaraForm(props: KaraFormProps) {
-	const formRef = useRef<FormInstance>(null);
+	const [form] = useForm();
 	const context = useContext(GlobalContext);
 
 	// State
@@ -102,10 +109,19 @@ function KaraForm(props: KaraFormProps) {
 	const [isEncodingMedia, setIsEncodingMedia] = useState(false);
 	const [encodeMediaOptions, setEncodeMediaOptions] = useState<{ trim: boolean }>({ trim: false });
 	const [repositoriesValue, setRepositoriesValue] = useState<string[]>(null);
+	const [repositoryManifest, setRepositoryManifest] = useState<RepositoryManifestV2>();
 	const [repoToCopySong, setRepoToCopySong] = useState<string>(null);
 	const [karaSearch, setKaraSearch] = useState<{ label: string; value: string }[]>([]);
 	const [parentKara, setParentKara] = useState<DBKara>(null);
 	const [errors, setErrors] = useState<string[]>([]);
+	const [displayTypeOptions, setDisplayTypeOptions] = useState<DefaultOptionType[]>();
+
+	const [coverImageEmbedRunning, setCoverImageEmbedRunning] = useState<boolean>(false);
+	const [coverImagePreviewOpen, setCoverImagePreviewOpen] = useState(false);
+	const [coverImagePreviewUri, setCoverImagePreviewUri] = useState('');
+
+	const [mediaEditLocked, setMediaEditLocked] = useState<boolean>(false);
+
 	const [announcePosition, setAnnouncePosition] = useState(
 		(props.kara?.announce_position_x &&
 			props.kara?.announce_position_y &&
@@ -121,36 +137,56 @@ function KaraForm(props: KaraFormProps) {
 	}, [isEncodingMedia]);
 
 	useEffect(() => {
+		setMediaEditLocked(isEncodingMedia || coverImageEmbedRunning);
+	}, [isEncodingMedia, coverImageEmbedRunning]);
+
+	useEffect(() => {
 		getRepositories();
-		formRef.current.validateFields();
+		form.validateFields();
+		updateDisplayTypeOptions();
 		getParents();
 		loadMediaInfo();
 		setApplyLyricsCleanup(context.globalState.settings.data.config?.Maintainer?.ApplyLyricsCleanupOnKaraSave);
 		return () => {
 			// i18next.t('KARA.MEDIA_ENCODE.LEAVE_PAGE') // No detection for unsaved changes yet
-			if (isEncodingMediaRef.current) commandBackend('abortMediaEncoding');
+			if (isEncodingMediaRef.current) abortEncoding();
 		};
 	}, []);
 
 	useEffect(() => {
-		formRef.current.setFieldsValue({
-			repository: props.kara?.repository || (repositoriesValue ? repositoriesValue[0] : null),
+		const repository = props.kara?.repository || (repositoriesValue ? repositoriesValue[0] : null);
+		form.setFieldsValue({
+			repository,
 		});
+		getRepoManifest(repository);
 	}, [repositoriesValue]);
 
 	useEffect(() => {
-		formRef.current.validateFields(['series']);
-		formRef.current.validateFields(['singergroups']);
-		formRef.current.validateFields(['singers']);
+		form.validateFields(['series']);
+		form.validateFields(['singergroups']);
+		form.validateFields(['singers']);
 	}, [serieSingersRequired]);
 
 	useEffect(() => {
 		validateMediaRules();
 	}, [mediaInfo]);
 
+	useEffect(() => {
+		const oldFormFields = form.getFieldsValue(['mediafile', 'subfile']); // Fields to take over to the applied kara
+		form.resetFields();
+		form.setFieldsValue(oldFormFields); // Re-sets media and lyrics file, if already uploaded
+	}, [parentKara]);
+
+	const getRepoManifest = async (repository: string) => {
+		if (repository) {
+			const res = await commandBackend('getRepoManifest', { name: repository });
+			setRepositoryManifest(res);
+		}
+	};
+
 	const getParents = async () => {
-		if (formRef.current.getFieldValue('parents') !== null) {
-			const parents: string[] = formRef.current.getFieldValue('parents');
+		if (form.getFieldValue('parents') !== null) {
+			const parents: string[] = form.getFieldValue('parents');
 			if (parents.length > 0) {
 				const res = await commandBackend('getKaras', { q: `k:${parents.join()}`, ignoreCollections: true });
 				const karaSearch = res.content.map(kara => {
@@ -172,14 +208,14 @@ function KaraForm(props: KaraFormProps) {
 				false,
 				60000
 			);
-			if (!props.kara.mediafile || mediaInfo.filename === formRef.current.getFieldValue('mediafile'))
+			if (!props.kara.mediafile || mediaInfo.filename === form.getFieldValue('mediafile'))
 				// Avoid showing wrong mediaInfo when mediafile is changed too quickly
 				setMediaInfo(mediaInfo);
 		}
 	};
 
 	const validateMediaRules = async () => {
-		const repo: string = formRef.current?.getFieldValue('repository');
+		const repo: string = form?.getFieldValue('repository');
 		if (mediaInfo && repo) {
 			const mediaInfoValidationResults: MediaInfoValidationResult[] = await commandBackend(
 				'validateMediaInfo',
@@ -204,7 +240,7 @@ function KaraForm(props: KaraFormProps) {
 					{
 						kid: props.kara?.kid,
 						filename: mediafileIsTouched && mediaInfo?.filename,
-						repo: formRef.current.getFieldValue('repository'),
+						repo: form.getFieldValue('repository'),
 						encodeOptions: encodeMediaOptions,
 					},
 					false,
@@ -213,13 +249,17 @@ function KaraForm(props: KaraFormProps) {
 				setMediaInfo(newMediaInfo);
 				setIsEncodingMedia(false);
 				setMediafileIsTouched(true);
-				formRef.current.setFieldsValue({ mediafile: newMediaInfo.filename });
-				formRef.current.validateFields();
+				form.setFieldsValue({ mediafile: newMediaInfo.filename });
+				form.validateFields();
 			} catch (e) {
 				setIsEncodingMedia(false);
 				throw e;
 			}
 		}
+	};
+
+	const abortEncoding = async () => {
+		await commandBackend('abortMediaEncoding');
 	};
 
 	const renderMediaInfo = (mediaInfo: MediaInfo, mediaInfoValidationResults: MediaInfoValidationResult[]) => {
@@ -230,6 +270,11 @@ function KaraForm(props: KaraFormProps) {
 			formatSuggestedValue?: (value: any) => string;
 		}> = [
 			{ name: 'fileExtension', title: 'KARA.MEDIA_FILE_INFO.FILE_FORMAT' },
+			{
+				name: 'duration',
+				title: 'KARA.MEDIA_FILE_INFO.DURATION',
+				format: (value: number) => value && `${secondsTimeSpanToHMS(value, 'mm:ss')}`,
+			},
 			{
 				name: 'size',
 				title: 'KARA.MEDIA_FILE_INFO.FILE_SIZE',
@@ -248,7 +293,10 @@ function KaraForm(props: KaraFormProps) {
 			{
 				name: 'videoAspectRatio',
 				title: 'KARA.MEDIA_FILE_INFO.VIDEO_ASPECT_RATIO',
-				format: (value: any) => `SAR ${value?.pixelAspectRatio} DAR ${value?.displayAspectRatio}`,
+				format: (value: any) =>
+					value?.pixelAspectRatio || value?.displayAspectRatio
+						? `SAR ${value?.pixelAspectRatio} DAR ${value?.displayAspectRatio}`
+						: '-',
 			},
 			{
 				name: 'videoResolution',
@@ -266,15 +314,19 @@ function KaraForm(props: KaraFormProps) {
 				title: 'KARA.MEDIA_FILE_INFO.AUDIO_SAMPLE_RATE',
 				format: (value: number) => `${value} Hz`,
 			},
-			{ name: 'hasCoverArt', title: 'KARA.MEDIA_FILE_INFO.AUDIO_COVER_ART' },
-		];
+			mediaInfo?.mediaType === 'audio' &&
+				({
+					name: 'hasCoverArt',
+					title: 'KARA.MEDIA_FILE_INFO.AUDIO_COVER_ART',
+				} as any),
+		].filter(i => !!i);
 
 		const rows = propertiesToDisplay
 			.map(property => ({
 				...property,
 				valueFormatted:
 					mediaInfo &&
-					mediaInfo[property.name] &&
+					typeof mediaInfo[property.name] !== 'undefined' &&
 					((property.format && property.format(mediaInfo[property.name])) ||
 						String(mediaInfo[property.name])),
 				validationResult: mediaInfoValidationResults?.find(r => r.name === property.name),
@@ -296,23 +348,92 @@ function KaraForm(props: KaraFormProps) {
 			}));
 
 		return (
-			<table style={{ borderSpacing: '0 10px' }}>
-				<tbody className="media-info">
-					{rows.map(r => (
-						<tr className={r.className} key={r.name}>
-							<td>{i18next.t(r.title)}</td>
-							<td>{r.valueFormatted || '-'}</td>
-							{r.suggestedValueFormatted && (
-								<td>
-									<DoubleRightOutlined /> {r.suggestedValueFormatted}
-								</td>
-							)}
-						</tr>
-					))}
-				</tbody>
-			</table>
+			<>
+				<table style={{ borderSpacing: '0 10px' }}>
+					<tbody className="media-info">
+						{rows.map(r => (
+							<tr className={r.className} key={r.name}>
+								<td>{i18next.t(r.title)}</td>
+								<td>{r.valueFormatted || '-'}</td>
+								{r.suggestedValueFormatted && (
+									<td>
+										<DoubleRightOutlined /> {r.suggestedValueFormatted}
+									</td>
+								)}
+							</tr>
+						))}
+					</tbody>
+				</table>
+				{mediaInfo?.warnings?.length > 0 && (
+					<div className="media-info warnings">
+						{mediaInfo.warnings.map(w => (
+							<div className="unmet-warning ">{i18next.t('KARA.MEDIA_FILE_INFO.WARNINGS.' + w)}</div>
+						))}
+					</div>
+				)}
+			</>
 		);
 	};
+
+	const renderCoverArtUpload = () => (
+		<>
+			<Upload
+				headers={{
+					authorization: localStorage.getItem('kmToken'),
+					onlineAuthorization: localStorage.getItem('kmOnlineToken'),
+				}}
+				action="/api/importFile"
+				accept=".jpg,.jpeg"
+				multiple={false}
+				maxCount={1}
+				onChange={onAudioCoverUploadChange}
+				onPreview={onCoverImagePreview}
+				listType="picture"
+				showUploadList={{
+					showRemoveIcon: false,
+					showPreviewIcon: false,
+					showDownloadIcon: false,
+				}}
+				defaultFileList={
+					mediaInfo.hasCoverArt
+						? [
+								{
+									uid: '1',
+									name: 'Embedded cover',
+									status: 'done',
+									thumbUrl:
+										!mediafileIsTouched && props.kara
+											? getPreviewLink(props.kara, context)
+											: mediaInfo
+												? getPreviewPath({
+														contentid: mediaInfo.filename,
+														mediasize: mediaInfo.size,
+													})
+												: null,
+								},
+							]
+						: []
+				}
+			>
+				<Button disabled={mediaEditLocked}>
+					{i18next.t(mediaInfo.hasCoverArt ? 'KARA.AUDIO_COVER.REPLACE' : 'KARA.AUDIO_COVER.UPLOAD')}
+					<Tooltip title={i18next.t('KARA.AUDIO_COVER.UPLOAD_TOOLTIP')}>
+						<QuestionCircleOutlined />
+					</Tooltip>
+				</Button>
+				{coverImageEmbedRunning ? <Spin style={{ margin: '0 10px' }} /> : null}
+			</Upload>
+			<Image
+				wrapperStyle={{ display: 'none' }}
+				preview={{
+					visible: coverImagePreviewOpen,
+					onVisibleChange: visible => setCoverImagePreviewOpen(visible),
+					afterOpenChange: visible => !visible && setCoverImagePreviewUri(''),
+				}}
+				src={coverImagePreviewUri}
+			/>
+		</>
+	);
 
 	const openChildrenModal = async (event, kid: string) => {
 		event.stopPropagation();
@@ -356,12 +477,7 @@ function KaraForm(props: KaraFormProps) {
 		if (!defaultLanguage || !titles || Object.keys(titles).length === 0 || !titles[defaultLanguage]) {
 			message.error(i18next.t('KARA.TITLE_REQUIRED'));
 		} else {
-			const data = await commandBackend(
-				'previewHooks',
-				getKaraToSend(formRef.current.getFieldsValue()),
-				false,
-				300000
-			);
+			const data = await commandBackend('previewHooks', getKaraToSend(form.getFieldsValue()), false, 300000);
 			Modal.info({
 				title: i18next.t('KARA.PREVIEW_HOOKS_MODAL'),
 				content: (
@@ -380,6 +496,13 @@ function KaraForm(props: KaraFormProps) {
 								{i18next.t(`TAG_TYPES.${getTagTypeName(tag.types[0])}_other`)})
 							</div>
 						))}
+						{data.fromDisplayTypeChange ? (
+							<div title={data.fromDisplayTypeChange}>
+								{`${i18next.t('KARA.FROM_DISPLAY_TYPE')} : ${i18next.t(
+									`TAG_TYPES.${getTagTypeName(data.fromDisplayTypeChange)}_one`
+								)}`}
+							</div>
+						) : null}
 					</ul>
 				),
 			});
@@ -388,7 +511,7 @@ function KaraForm(props: KaraFormProps) {
 
 	const handleSubmit = values => {
 		setErrors([]);
-		if (mediafileIsTouched && !mediaInfo?.loudnorm) {
+		if ((mediafileIsTouched && !mediaInfo?.loudnorm) || coverImageEmbedRunning) {
 			message.error(i18next.t('KARA.MEDIA_IN_PROCESS'));
 		} else if (
 			mediafileIsTouched &&
@@ -402,9 +525,7 @@ function KaraForm(props: KaraFormProps) {
 		}
 	};
 
-	const handleDelete = e => {
-		props.handleDelete(props.kara.kid);
-	};
+	const handleDelete = () => props.handleDelete(props.kara.kid);
 
 	const getKaraToSend = values => {
 		const kara: DBKara = values;
@@ -502,7 +623,7 @@ function KaraForm(props: KaraFormProps) {
 		const fileList = info.fileList.slice(-1);
 		setMediafile(fileList);
 		if (info.file.status === 'uploading') {
-			formRef.current.setFieldsValue({ mediafile: null });
+			form.setFieldsValue({ mediafile: null });
 			setMediaInfo(null);
 			setMediaInfoValidationResults([]);
 		} else if (info.file.status === 'done') {
@@ -518,48 +639,94 @@ function KaraForm(props: KaraFormProps) {
 					60000
 				);
 				setMediaInfo(mediaInfo);
-				formRef.current.setFieldsValue({ mediafile: mediaInfo.filename });
+				form.setFieldsValue({ mediafile: mediaInfo.filename });
 				message.success(i18next.t('KARA.ADD_FILE_SUCCESS', { name: info.file.name }));
 			} else {
-				formRef.current.setFieldsValue({ mediafile: null });
+				form.setFieldsValue({ mediafile: null });
 				message.error(i18next.t('KARA.ADD_FILE_MEDIA_ERROR', { name: info.file.name }));
 				info.file.status = 'error';
 				setMediafile([]);
 			}
 		} else if (info.file.status === 'error' || info.file.status === 'removed') {
-			formRef.current.setFieldsValue({ mediafile: null });
+			form.setFieldsValue({ mediafile: null });
 			setMediafile([]);
 		}
-		formRef.current.validateFields();
+		form.validateFields();
 	};
 
 	const onSubUploadChange = info => {
 		const fileList = info.fileList.slice(-1);
 		setSubfile(fileList);
 		if (info.file.status === 'uploading') {
-			formRef.current.setFieldsValue({ subfile: null });
+			form.setFieldsValue({ subfile: null });
 		} else if (info.file.status === 'done') {
 			if (isSubFile(info.file.name)) {
 				setSubfileIsTouched(true);
-				formRef.current.setFieldsValue({ subfile: info.file.response.filename });
+				form.setFieldsValue({ subfile: info.file.response.filename });
 				message.success(i18next.t('KARA.ADD_FILE_SUCCESS', { name: info.file.name }));
 			} else {
-				formRef.current.setFieldsValue({ subfile: null });
+				form.setFieldsValue({ subfile: null });
 				message.error(i18next.t('KARA.ADD_FILE_LYRICS_ERROR', { name: info.file.name }));
 				info.file.status = 'error';
 				setSubfile([]);
 			}
 		} else if (info.file.status === 'error' || info.file.status === 'removed') {
-			formRef.current.setFieldsValue({ subfile: null });
+			form.setFieldsValue({ subfile: null });
 			setSubfile([]);
 		}
 	};
 
+	const onAudioCoverUploadChange = async info => {
+		const fileList = info.fileList.slice(-1);
+		try {
+			if (info.file.status === 'uploading') {
+				setCoverImageEmbedRunning(true);
+			} else if (info.file.status === 'done') {
+				setMediafileIsTouched(true);
+				const mediaInfoAfterEmbed: MediaInfo = await commandBackend(
+					'embedAudioFileCoverArt',
+					{
+						kid: props.kara?.kid,
+						tempFilename: mediafileIsTouched && mediaInfo?.filename,
+						coverPictureFilename: info.file.response.filename,
+					},
+					false,
+					60000
+				);
+				if (mediaInfoAfterEmbed.error) throw new Error('Error in mediaInfo');
+				// Handle cover embeds like a new media file upload
+				setMediaInfo(mediaInfoAfterEmbed);
+				setMediafileIsTouched(true);
+				form.setFieldsValue({ mediafile: mediaInfoAfterEmbed.filename });
+				form.validateFields();
+
+				message.success(i18next.t('KARA.AUDIO_COVER.EMBED_COVER_SUCCESS'));
+				setCoverImageEmbedRunning(false);
+			} else if (info.file.status === 'error' || info.file.status === 'removed') {
+				setCoverImageEmbedRunning(false);
+				throw new Error('Upload error');
+			}
+		} catch (err) {
+			message.error(i18next.t('KARA.AUDIO_COVER.EMBED_COVER_ERROR'));
+			setCoverImageEmbedRunning(false);
+		}
+	};
+
+	const onCoverImagePreview = async (file: UploadFile) => {
+		const existingUrl = file.url || file.thumbUrl;
+		if (!existingUrl && !file.preview) {
+			file.preview = await blobToBase64(file.originFileObj);
+		}
+
+		setCoverImagePreviewUri(existingUrl || (file.preview as string));
+		setCoverImagePreviewOpen(true);
+	};
+
 	const onChangeSingersSeries = () => {
 		setSerieSingersRequired(
-			formRef.current.getFieldValue('singers')?.length === 0 &&
-				formRef.current.getFieldValue('singergroups')?.length === 0 &&
-				formRef.current.getFieldValue('series')?.length === 0
+			form.getFieldValue('singers')?.length === 0 &&
+				form.getFieldValue('singergroups')?.length === 0 &&
+				form.getFieldValue('series')?.length === 0
 		);
 	};
 
@@ -575,9 +742,15 @@ function KaraForm(props: KaraFormProps) {
 			if (karas.content) {
 				setKaraSearch(
 					karas.content
-						.filter(k => k.kid !== props.kara?.kid)
-						.filter(k => !k.parents.includes(props.kara?.kid))
-						.map(k => {
+						.filter((k: DBKara) => k.kid !== props.kara?.kid)
+						.filter((k: DBKara) => !k.parents.includes(props.kara?.kid))
+						.filter(
+							(k: DBKara) =>
+								k.parents.length === 0 ||
+								!repositoryManifest?.rules?.karaFile?.maxParentDepth ||
+								repositoryManifest.rules.karaFile.maxParentDepth !== 1
+						)
+						.map((k: DBKara) => {
 							return {
 								label: buildKaraTitle(context.globalState.settings.data, k, true, karas.i18n),
 								value: k.kid,
@@ -606,14 +779,11 @@ function KaraForm(props: KaraFormProps) {
 			if (
 				!props.kara?.kid &&
 				titlesIsTouched !== true &&
-				formRef.current.isFieldsTouched(['versions', 'series', 'language']) !== true
+				form.isFieldsTouched(['versions', 'series', 'language']) !== true
 			) {
 				setTitles(parentKara.titles);
 				setDefaultLanguage(parentKara.titles_default_language);
 				setParentKara(parentKara);
-				const oldFormFields = formRef.current.getFieldsValue(['mediafile', 'subfile']); // Fields to take over to the applied kara
-				formRef.current.resetFields();
-				formRef.current.setFieldsValue(oldFormFields); // Re-sets media and lyrics file, if already uploaded
 				onChangeSingersSeries();
 			}
 		}
@@ -623,11 +793,19 @@ function KaraForm(props: KaraFormProps) {
 		e.key === 'Enter' && e.preventDefault();
 	};
 
-	const mapTagTypesToSelectOption = (tagType: string) => (
-		<Select.Option key={tagType} value={tagType.toLowerCase()}>
-			{i18next.t(tagType ? `TAG_TYPES.${tagType}_one` : 'TAG_TYPES.DEFAULT')}
-		</Select.Option>
-	);
+	const updateDisplayTypeOptions = () => {
+		setDisplayTypeOptions(
+			Object.keys(tagTypes)
+				.filter(tagType => form.getFieldValue(tagType.toLowerCase())?.length > 0)
+				.concat('')
+				.map(tagType => {
+					return {
+						label: i18next.t(tagType ? `TAG_TYPES.${tagType}_one` : 'TAG_TYPES.DEFAULT'),
+						value: tagType.toLowerCase(),
+					};
+				})
+		);
+	};
 
 	const mapRepoToSelectOption = (repo: string) => (
 		<Select.Option key={repo} value={repo}>
@@ -647,9 +825,10 @@ function KaraForm(props: KaraFormProps) {
 
 	return (
 		<Form
-			ref={formRef}
+			form={form}
 			onFinish={handleSubmit}
 			onFinishFailed={handleSubmitFailed}
+			onValuesChange={updateDisplayTypeOptions}
 			className="kara-form"
 			initialValues={{
 				series: props.kara?.series || parentKara?.series,
@@ -688,6 +867,11 @@ function KaraForm(props: KaraFormProps) {
 				collections: props.kara?.collections || parentKara?.collections,
 			}}
 		>
+			{repositoryManifest?.docsURL && (
+				<Button type="link" style={{ fontWeight: 'bold', fontSize: 17 }} href={repositoryManifest.docsURL}>
+					{i18next.t('KARA.REPOSITORY_DOCUMENTATION', { instance: repositoryManifest.name })}
+				</Button>
+			)}
 			<Divider orientation="left">{i18next.t('KARA.SECTIONS.FILES')}</Divider>
 			<Form.Item
 				label={
@@ -715,6 +899,7 @@ function KaraForm(props: KaraFormProps) {
 									message: i18next.t('KARA.MEDIA_REQUIRED'),
 								},
 							]}
+							style={{ marginRight: '20px' }}
 						>
 							<Upload
 								headers={{
@@ -727,7 +912,7 @@ function KaraForm(props: KaraFormProps) {
 								onChange={onMediaUploadChange}
 								fileList={mediafile as any[]}
 							>
-								<Button>
+								<Button disabled={mediaEditLocked}>
 									<UploadOutlined />
 									{i18next.t('KARA.MEDIA_FILE')}
 								</Button>
@@ -735,44 +920,41 @@ function KaraForm(props: KaraFormProps) {
 						</Form.Item>
 					</Col>
 					{props.kara?.download_status === 'DOWNLOADED' || mediaInfo?.size ? (
-						<Col flex={'0 1 400px'}>
-							<Card>
-								{!mediaInfo?.overallBitrate ? (
-									<Flex
-										gap="small"
-										vertical
-										style={{
-											position: 'absolute',
-											left: '0',
-											right: '0',
-											bottom: '0',
-											top: '0',
-											justifyContent: 'center',
-											alignContent: 'center',
-										}}
+						<Card style={{ minWidth: '400px', maxWidth: '700px' }}>
+							{!mediaInfo?.overallBitrate ? (
+								<Flex
+									gap="small"
+									vertical
+									style={{
+										position: 'absolute',
+										left: '0',
+										right: '0',
+										bottom: '0',
+										top: '0',
+										justifyContent: 'center',
+										alignContent: 'center',
+									}}
+								>
+									<Spin />
+								</Flex>
+							) : (
+								''
+							)}
+							{renderMediaInfo(mediaInfo, mediaInfoValidationResults)}
+							{mediaInfo?.mediaType === 'audio' && (
+								<>
+									<Divider></Divider>
+									{renderCoverArtUpload()}
+								</>
+							)}
+							{encodeMediaEnabled() ? (
+								<>
+									<Divider></Divider>
+									<Space
+										style={{ width: '100%' }} // Shoud be block={true} but seems not supported
+										direction="vertical"
 									>
-										<Spin />
-									</Flex>
-								) : (
-									''
-								)}
-								{renderMediaInfo(mediaInfo, mediaInfoValidationResults)}
-								{mediaInfo?.warnings?.length > 0 && (
-									<div className="media-info warnings">
-										{mediaInfo.warnings.map(w => (
-											<div className="unmet-warning">
-												{i18next.t('KARA.MEDIA_FILE_INFO.WARNINGS.' + w)}
-											</div>
-										))}
-									</div>
-								)}
-								{encodeMediaEnabled() ? (
-									<>
-										<Divider></Divider>
-										<Space
-											style={{ width: '100%' }} // Shoud be block={true} but seems not supported
-											direction="vertical"
-										>
+										<Flex gap={'5px'}>
 											<Button
 												block={true}
 												type="primary"
@@ -782,49 +964,52 @@ function KaraForm(props: KaraFormProps) {
 														style={{ lineHeight: 0 }} // Spinning icon fix
 													/>
 												}
-												disabled={!mediaInfo?.overallBitrate || isEncodingMedia}
+												disabled={
+													!mediaInfo?.overallBitrate || isEncodingMedia || mediaEditLocked
+												}
 												onClick={encodeMedia}
 											>
 												{i18next.t('KARA.MEDIA_ENCODE.LABEL')}
 											</Button>
-											<TaskProgress
-												taskTextTypes={[
-													'CALCULATING_MEDIA_ENCODING_PARAMETERS',
-													'ENCODING_MEDIA',
-												]}
-											></TaskProgress>
-											<Checkbox
-												disabled={isEncodingMedia}
-												defaultChecked={encodeMediaOptions?.trim || false}
-												onChange={e =>
-													setEncodeMediaOptions({
-														...encodeMediaOptions,
-														trim: e.target.checked,
-													})
-												}
-											>
-												{i18next.t('KARA.MEDIA_ENCODE.OPTIONS.TRIM_MEDIA')}&nbsp;
-												<Tooltip
-													title={i18next.t('KARA.MEDIA_ENCODE.OPTIONS.TRIM_MEDIA_TOOLTIP')}
-												>
-													<QuestionCircleOutlined />
-												</Tooltip>
-											</Checkbox>
+											<Button
+												icon={<CloseOutlined />}
+												disabled={!isEncodingMedia}
+												onClick={abortEncoding}
+												danger
+											></Button>
+										</Flex>
+										<TaskProgress
+											taskTextTypes={['CALCULATING_MEDIA_ENCODING_PARAMETERS', 'ENCODING_MEDIA']}
+										></TaskProgress>
+										<Checkbox
+											disabled={isEncodingMedia}
+											defaultChecked={encodeMediaOptions?.trim || false}
+											onChange={e =>
+												setEncodeMediaOptions({
+													...encodeMediaOptions,
+													trim: e.target.checked,
+												})
+											}
+										>
+											{i18next.t('KARA.MEDIA_ENCODE.OPTIONS.TRIM_MEDIA')}&nbsp;
+											<Tooltip title={i18next.t('KARA.MEDIA_ENCODE.OPTIONS.TRIM_MEDIA_TOOLTIP')}>
+												<QuestionCircleOutlined />
+											</Tooltip>
+										</Checkbox>
 
-											{encodeMediaOptions?.trim ? (
-												<Alert
-													style={{ textAlign: 'left', marginBottom: '20px' }}
-													description={i18next.t('KARA.MEDIA_ENCODE.TIMING_CHANGE_WARNING')}
-													type="warning"
-												/>
-											) : (
-												''
-											)}
-										</Space>
-									</>
-								) : null}
-							</Card>
-						</Col>
+										{encodeMediaOptions?.trim ? (
+											<Alert
+												style={{ textAlign: 'left', marginBottom: '20px' }}
+												description={i18next.t('KARA.MEDIA_ENCODE.TIMING_CHANGE_WARNING')}
+												type="warning"
+											/>
+										) : (
+											''
+										)}
+									</Space>
+								</>
+							) : null}
+						</Card>
 					) : null}
 				</Row>
 			</Form.Item>
@@ -943,7 +1128,7 @@ function KaraForm(props: KaraFormProps) {
 				onFieldIsTouched={isFieldTouched => titlesIsTouched !== true && setTitlesIsTouched(isFieldTouched)}
 				onChange={titles => {
 					setTitles(titles);
-					formRef.current.validateFields(['titles']);
+					form.validateFields(['titles']);
 				}}
 				defaultLanguage={defaultLanguage}
 				onDefaultLanguageSelect={setDefaultLanguage}
@@ -961,9 +1146,7 @@ function KaraForm(props: KaraFormProps) {
 				labelCol={{ flex: '0 1 220px' }}
 				name="titles_aliases"
 			>
-				<EditableGroupAlias
-					onChange={aliases => formRef.current?.setFieldsValue({ titles_aliases: aliases })}
-				/>
+				<EditableGroupAlias onChange={aliases => form?.setFieldsValue({ titles_aliases: aliases })} />
 			</Form.Item>
 			<Divider orientation="left">{i18next.t('KARA.SECTIONS.IDENTITY')}</Divider>
 			<Form.Item
@@ -978,11 +1161,7 @@ function KaraForm(props: KaraFormProps) {
 				]}
 				name="langs"
 			>
-				<EditableTagGroup
-					form={formRef.current}
-					tagType={5}
-					onChange={tags => formRef.current.setFieldsValue({ langs: tags })}
-				/>
+				<EditableTagGroup form={form} tagType={5} onChange={tags => form.setFieldsValue({ langs: tags })} />
 			</Form.Item>
 			<Form.Item
 				label={
@@ -1004,10 +1183,10 @@ function KaraForm(props: KaraFormProps) {
 				name="series"
 			>
 				<EditableTagGroup
-					form={formRef.current}
+					form={form}
 					tagType={1}
 					onChange={tags => {
-						formRef.current.setFieldsValue({ series: tags });
+						form.setFieldsValue({ series: tags });
 						onChangeSingersSeries();
 					}}
 				/>
@@ -1026,9 +1205,9 @@ function KaraForm(props: KaraFormProps) {
 				name="franchises"
 			>
 				<EditableTagGroup
-					form={formRef.current}
+					form={form}
 					tagType={18}
-					onChange={tags => formRef.current.setFieldsValue({ franchises: tags })}
+					onChange={tags => form.setFieldsValue({ franchises: tags })}
 				/>
 			</Form.Item>
 			<Form.Item
@@ -1044,10 +1223,10 @@ function KaraForm(props: KaraFormProps) {
 				]}
 			>
 				<EditableTagGroup
-					form={formRef.current}
+					form={form}
 					tagType={3}
 					checkboxes={true}
-					onChange={tags => formRef.current.setFieldsValue({ songtypes: tags })}
+					onChange={tags => form.setFieldsValue({ songtypes: tags })}
 				/>
 			</Form.Item>
 			<Form.Item
@@ -1079,10 +1258,10 @@ function KaraForm(props: KaraFormProps) {
 				name="versions"
 			>
 				<EditableTagGroup
-					form={formRef.current}
+					form={form}
 					tagType={14}
 					checkboxes={true}
-					onChange={tags => formRef.current.setFieldsValue({ versions: tags })}
+					onChange={tags => form.setFieldsValue({ versions: tags })}
 				/>
 			</Form.Item>
 			<Form.Item
@@ -1098,10 +1277,10 @@ function KaraForm(props: KaraFormProps) {
 				name="singers"
 			>
 				<EditableTagGroup
-					form={formRef.current}
+					form={form}
 					tagType={2}
 					onChange={tags => {
-						formRef.current.setFieldsValue({ singer: tags });
+						form.setFieldsValue({ singer: tags });
 						onChangeSingersSeries();
 					}}
 				/>
@@ -1119,10 +1298,10 @@ function KaraForm(props: KaraFormProps) {
 				name="singergroups"
 			>
 				<EditableTagGroup
-					form={formRef.current}
+					form={form}
 					tagType={17}
 					onChange={tags => {
-						formRef.current.setFieldsValue({ singergroup: tags });
+						form.setFieldsValue({ singergroup: tags });
 						onChangeSingersSeries();
 					}}
 				/>
@@ -1141,9 +1320,9 @@ function KaraForm(props: KaraFormProps) {
 				name="songwriters"
 			>
 				<EditableTagGroup
-					form={formRef.current}
+					form={form}
 					tagType={8}
-					onChange={tags => formRef.current.setFieldsValue({ songwriters: tags })}
+					onChange={tags => form.setFieldsValue({ songwriters: tags })}
 				/>
 			</Form.Item>
 			<Form.Item
@@ -1159,11 +1338,7 @@ function KaraForm(props: KaraFormProps) {
 				wrapperCol={{ span: 7 }}
 				name="creators"
 			>
-				<EditableTagGroup
-					form={formRef.current}
-					tagType={4}
-					onChange={tags => formRef.current.setFieldsValue({ creators: tags })}
-				/>
+				<EditableTagGroup form={form} tagType={4} onChange={tags => form.setFieldsValue({ creators: tags })} />
 			</Form.Item>
 			<Form.Item
 				hasFeedback
@@ -1209,10 +1384,10 @@ function KaraForm(props: KaraFormProps) {
 				]}
 			>
 				<EditableTagGroup
-					form={formRef.current}
+					form={form}
 					tagType={16}
 					checkboxes={true}
-					onChange={tags => formRef.current.setFieldsValue({ collections: tags })}
+					onChange={tags => form.setFieldsValue({ collections: tags })}
 				/>
 			</Form.Item>
 
@@ -1230,10 +1405,10 @@ function KaraForm(props: KaraFormProps) {
 				name="families"
 			>
 				<EditableTagGroup
-					form={formRef.current}
+					form={form}
 					tagType={10}
 					checkboxes={true}
-					onChange={tags => formRef.current.setFieldsValue({ families: tags })}
+					onChange={tags => form.setFieldsValue({ families: tags })}
 				/>
 			</Form.Item>
 			<Form.Item
@@ -1249,10 +1424,10 @@ function KaraForm(props: KaraFormProps) {
 					<Panel header={i18next.t('SHOW-HIDE')} key="1" forceRender={true}>
 						<EditableTagGroup
 							value={props.kara?.platforms || parentKara?.platforms}
-							form={formRef.current}
+							form={form}
 							tagType={13}
 							checkboxes={true}
-							onChange={tags => formRef.current.setFieldsValue({ platforms: tags })}
+							onChange={tags => form.setFieldsValue({ platforms: tags })}
 						/>
 					</Panel>
 				</Collapse>
@@ -1264,10 +1439,10 @@ function KaraForm(props: KaraFormProps) {
 				name="genres"
 			>
 				<EditableTagGroup
-					form={formRef.current}
+					form={form}
 					tagType={12}
 					checkboxes={true}
-					onChange={tags => formRef.current.setFieldsValue({ genres: tags })}
+					onChange={tags => form.setFieldsValue({ genres: tags })}
 				/>
 			</Form.Item>
 			<Form.Item
@@ -1277,10 +1452,10 @@ function KaraForm(props: KaraFormProps) {
 				name="origins"
 			>
 				<EditableTagGroup
-					form={formRef.current}
+					form={form}
 					tagType={11}
 					checkboxes={true}
-					onChange={tags => formRef.current.setFieldsValue({ origins: tags })}
+					onChange={tags => form.setFieldsValue({ origins: tags })}
 				/>
 			</Form.Item>
 			<Form.Item
@@ -1290,10 +1465,10 @@ function KaraForm(props: KaraFormProps) {
 				name="misc"
 			>
 				<EditableTagGroup
-					form={formRef.current}
+					form={form}
 					tagType={7}
 					checkboxes={true}
-					onChange={tags => formRef.current.setFieldsValue({ misc: tags })}
+					onChange={tags => form.setFieldsValue({ misc: tags })}
 				/>
 			</Form.Item>
 			<Form.Item
@@ -1303,10 +1478,10 @@ function KaraForm(props: KaraFormProps) {
 				name="warnings"
 			>
 				<EditableTagGroup
-					form={formRef.current}
+					form={form}
 					tagType={15}
 					checkboxes={true}
-					onChange={tags => formRef.current.setFieldsValue({ warnings: tags })}
+					onChange={tags => form.setFieldsValue({ warnings: tags })}
 				/>
 			</Form.Item>
 			<Form.Item
@@ -1323,10 +1498,10 @@ function KaraForm(props: KaraFormProps) {
 				name="groups"
 			>
 				<EditableTagGroup
-					form={formRef.current}
+					form={form}
 					tagType={9}
 					checkboxes={true}
-					onChange={tags => formRef.current.setFieldsValue({ groups: tags })}
+					onChange={tags => form.setFieldsValue({ groups: tags })}
 				/>
 			</Form.Item>
 			<Divider orientation="left">{i18next.t('KARA.SECTIONS.META')}</Divider>
@@ -1344,7 +1519,7 @@ function KaraForm(props: KaraFormProps) {
 				wrapperCol={{ span: 7 }}
 				name="from_display_type"
 			>
-				<Select>{Object.keys(tagTypes).concat('').map(mapTagTypesToSelectOption)}</Select>
+				<Select options={displayTypeOptions} />
 			</Form.Item>
 			<Form.Item
 				className="wrap-label"
@@ -1420,11 +1595,7 @@ function KaraForm(props: KaraFormProps) {
 				]}
 				name="authors"
 			>
-				<EditableTagGroup
-					form={formRef.current}
-					tagType={6}
-					onChange={tags => formRef.current.setFieldsValue({ author: tags })}
-				/>
+				<EditableTagGroup form={form} tagType={6} onChange={tags => form.setFieldsValue({ author: tags })} />
 			</Form.Item>
 			<Form.Item
 				hasFeedback
@@ -1481,7 +1652,11 @@ function KaraForm(props: KaraFormProps) {
 					]}
 					name="repository"
 				>
-					<Select disabled={props.kara?.repository !== undefined} placeholder={i18next.t('KARA.REPOSITORY')}>
+					<Select
+						disabled={props.kara?.repository !== undefined}
+						placeholder={i18next.t('KARA.REPOSITORY')}
+						onChange={value => getRepoManifest(value)}
+					>
 						{repositoriesValue.map(mapRepoToSelectOption)}
 					</Select>
 				</Form.Item>
