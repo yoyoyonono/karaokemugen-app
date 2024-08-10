@@ -1,13 +1,13 @@
 import { DeleteOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons';
 import { Alert, Button, Image, Layout, Modal, Select, Table, Typography, Upload } from 'antd';
-import Title from '../components/Title';
 import i18next from 'i18next';
 import { basename } from 'path-browserify';
 import { useEffect, useState } from 'react';
 import ReactAudioPlayer from 'react-audio-player';
 
-import { commandBackend } from '../../utils/socket';
 import { supportedFiles } from '../../../../src/lib/utils/constants';
+import { commandBackend } from '../../utils/socket';
+import Title from '../components/Title';
 
 export type BackgroundType = 'pause' | 'stop' | 'poll';
 
@@ -141,9 +141,13 @@ export default function Background() {
 					showIcon
 					message={
 						<ul>
-							{(
-								i18next.t<string>('BACKGROUNDS_MGMT.INFO', { returnObjects: true }) as any as string[]
-							)?.map((info, i) => <li key={i}>{info}</li>)}
+							{i18next
+								.t<
+									string,
+									{ returnObjects: true },
+									string[]
+								>('BACKGROUNDS_MGMT.INFO', { returnObjects: true })
+								?.map((info, i) => <li key={i}>{info}</li>)}
 						</ul>
 					}
 				/>
@@ -152,9 +156,29 @@ export default function Background() {
 					<PlusOutlined />
 				</Button>
 				<Typography.Title>{i18next.t('BACKGROUNDS_MGMT.PICTURES')}</Typography.Title>
-				<Table dataSource={bgList?.pictures} columns={columns} rowKey="file" />
+				<Table
+					dataSource={bgList?.pictures}
+					columns={columns}
+					rowKey="file"
+					scroll={{
+						x: true,
+					}}
+					expandable={{
+						showExpandColumn: false,
+					}}
+				/>
 				<Typography.Title>{i18next.t('BACKGROUNDS_MGMT.MUSIC')}</Typography.Title>
-				<Table dataSource={bgList?.music} columns={columns} rowKey="file" />
+				<Table
+					dataSource={bgList?.music}
+					columns={columns}
+					rowKey="file"
+					scroll={{
+						x: true,
+					}}
+					expandable={{
+						showExpandColumn: false,
+					}}
+				/>
 				<Modal
 					title={i18next.t('BACKGROUNDS_MGMT.NEW')}
 					open={addModal}

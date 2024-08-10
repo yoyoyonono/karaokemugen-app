@@ -1,14 +1,15 @@
+import './EditableTagGroup.scss';
+
 import { PlusOutlined } from '@ant-design/icons';
 import { AutoComplete, Button, Checkbox, Col, Form, FormInstance, Row, Tag } from 'antd';
 import i18next from 'i18next';
 import { Component } from 'react';
 
-import { DBKaraTag } from '../../../../src/lib/types/database/kara';
+import type { DBKaraTag } from '../../../../src/lib/types/database/kara';
 import GlobalContext from '../../store/context';
 import { getTagInLocale } from '../../utils/kara';
 import { commandBackend } from '../../utils/socket';
 import { CreateTagModal } from './CreateTagModal';
-import './EditableTagGroup.scss';
 
 interface EditableTagGroupProps {
 	onChange: any;
@@ -73,6 +74,11 @@ export default class EditableTagGroup extends Component<EditableTagGroupProps, E
 			});
 			this.props.onChange && this.props.onChange(tags);
 		}
+	};
+
+	handleConfirmCreate = (val: DBKaraTag) => {
+		this.setState({ tags: [...this.state.tags, val], value: [...this.state.value, val], currentVal: undefined });
+		this.props.onChange && this.props.onChange([...this.state.value, val]);
 	};
 
 	getTags = async (filter: string, type: number) => {
@@ -212,10 +218,7 @@ export default class EditableTagGroup extends Component<EditableTagGroupProps, E
 							onClose={() => {
 								this.setState({ createModal: false });
 							}}
-							onCreate={tag => {
-								this.setState({ tags: [...this.state.tags, tag as unknown as DBKaraTag] });
-								this.handleInputConfirm(tag.tid);
-							}}
+							onCreate={this.handleConfirmCreate}
 							repo={this.props.form.getFieldValue('repository')}
 						/>
 					) : null}

@@ -1,5 +1,4 @@
 # You can override the included template(s) by including variable overrides
-# SAST customization: https://docs.gitlab.com/ee/user/application_security/sast/#customizing-the-sast-settings
 # Secret Detection customization: https://docs.gitlab.com/ee/user/application_security/secret_detection/#customizing-settings
 # Dependency Scanning customization: https://docs.gitlab.com/ee/user/application_security/dependency_scanning/#customizing-the-dependency-scanning-settings
 # Note that environment variables can be set in several places
@@ -13,14 +12,8 @@ variables:
   DIST_LINUX_ARM64: dist_linux-arm64-8.0.tar.gz
   DIST_WIN: dist_win-8.0.tar.gz
   DIST_MAC: dist_mac-8.0.tar.gz
-sast:
-  variables:
-    SAST_EXCLUDED_PATHS: spec, test, tests, tmp, assets, build, img, util, packages
-    SECRET_DETECTION_EXCLUDED_PATHS: doc, spec, test, tests, .md, node_modules, yarn.lock, kmfrontend/node_modules
-  stage: test
 include:
   - template: Security/Dependency-Scanning.gitlab-ci.yml
-  - template: Security/SAST.gitlab-ci.yml
   - template: Security/Secret-Detection.gitlab-ci.yml
 workflow:
   rules:
@@ -40,44 +33,11 @@ stages:
   - package
   - deploy
   - release
-semgrep-sast:
-  interruptible: true
-  stage: scan
-  artifacts:
-    expire_in: 1 day
-  cache: {}
-  tags:
-    - $RUNNER_LINUX
-  rules:
-    - if: '$CI_COMMIT_MESSAGE =~ /^🚀 new release/'
-      when: never
-    - if: '$CI_COMMIT_MESSAGE =~ /^:rocket: new release/'
-      when: never
-    - if: $SCHEDULED_RELEASES == "true"
-      when: never
-    - if: $CI_COMMIT_BRANCH == "next"
-    - when: never
 gemnasium-dependency_scanning:
   interruptible: true
   stage: scan
   artifacts:
     expire_in: 1 day
-  tags:
-    - $RUNNER_LINUX
-  rules:
-    - if: '$CI_COMMIT_MESSAGE =~ /^🚀 new release/'
-      when: never
-    - if: '$CI_COMMIT_MESSAGE =~ /^:rocket: new release/'
-      when: never
-    - if: $SCHEDULED_RELEASES == "true"
-      when: never
-    - if: $CI_COMMIT_BRANCH == "next"
-    - when: never
-nodejs-scan-sast:
-  interruptible: true
-  artifacts:
-    expire_in: 1 day
-  stage: scan
   tags:
     - $RUNNER_LINUX
   rules:
@@ -119,7 +79,7 @@ test:
   tags:
     - $RUNNER_LINUX
   services:
-    - postgres:13
+    - postgres:16
   variables:
     POSTGRES_USER: karaokemugen_app
     POSTGRES_PASSWORD: musubi
@@ -253,6 +213,7 @@ pkg_linux_x64:
     - bash util/electronBuilder.sh -l --x64
     - ls -la packages/
     - mkdir release_linux
+    - rm -Rf packages/*arm64*
     - mv packages/*.deb release_linux/
     - mv packages/*.tar.gz release_linux/
     - mv packages/*.yml release_linux/
@@ -298,6 +259,9 @@ pkg_linux_arm64:
     - bash util/electronBuilder.sh -l --arm64
     - ls -la packages/
     - mkdir release_linux
+    - rm -Rf packages/*amd64*
+    - rm -Rf packages/*x64*
+    - rm -Rf packages/*x86_64*
     - mv packages/*.deb release_linux/
     - mv packages/*.tar.gz release_linux/
     - mv packages/*.yml release_linux/
@@ -403,7 +367,6 @@ pkg_mac:
     - mkdir release_mac
     - mv packages/*-mac.yml release_mac
     - mv packages/*.dmg release_mac/
-    - mv packages/*.zip release_mac/
     - ls -la release_mac/*
   rules:
     - if: $SCHEDULED_RELEASES == "true"
@@ -592,3 +555,40 @@ deploy_flathub:
   rules:
     - if: '$CI_COMMIT_TAG'
     - when: never
+gitlab_release:
+  stage: release
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  rules:
+    - if: '$CI_COMMIT_TAG'
+  script:
+    - echo "running release_job"
+    - /bin/sh util/extractChangelog.sh $CI_COMMIT_TAG CHANGELOG.md >current_changes.md
+  release: # See https://docs.gitlab.com/ee/ci/yaml/#release for available properties
+    tag_name: '$CI_COMMIT_TAG'
+    description: './current_changes.md'
+    milestones:
+      - '$CURRENT_MILESTONE'
+    assets:
+      links:
+        - name: Windows Installer
+          url: https://mugen.karaokes.moe/downloads/Karaoke%20Mugen%20Setup%20$CI_COMMIT_TAG.exe
+        - name: Windows Portable
+          url: https://mugen.karaokes.moe/downloads/Karaoke%20Mugen-$CI_COMMIT_TAG-win.zip
+        - name: macOS DMG (Apple Silicon)
+          url: https://mugen.karaokes.moe/downloads/Karaoke%20Mugen-$CI_COMMIT_TAG-mac-arm64.dmg
+        - name: macOS DMG (Intel)
+          url: https://mugen.karaokes.moe/downloads/Karaoke%20Mugen-$CI_COMMIT_TAG-mac-x86.dmg
+        - name: Linux Flatpak (x86)
+          url: https://flathub.org/apps/moe.karaokes.mugen
+        - name: Linux DEB (x86)
+          url: https://mugen.karaokes.moe/downloads/Karaoke%20Mugen-$CI_COMMIT_TAG-linux-amd64.deb
+        - name: Linux DEB (arm64)
+          url: https://mugen.karaokes.moe/downloads/Karaoke%20Mugen-$CI_COMMIT_TAG-linux-arm64.deb
+        - name: Linux AppImage (x86)
+          url: https://mugen.karaokes.moe/downloads/Karaoke%20Mugen-$CI_COMMIT_TAG-linux-x86_64.AppImage
+        - name: Linux AppImage (arm64)
+          url: https://mugen.karaokes.moe/downloads/Karaoke%20Mugen-$CI_COMMIT_TAG-linux-arm64.AppImage
+        - name: Linux tar.gz (x86)
+          url: https://mugen.karaokes.moe/downloads/Karaoke%20Mugen-$CI_COMMIT_TAG-linux-x64.tar.gz
+        - name: Linux tar.gz (arm64)
+          url: https://mugen.karaokes.moe/downloads/Karaoke%20Mugen-$CI_COMMIT_TAG-linux-arm64.tar.gz

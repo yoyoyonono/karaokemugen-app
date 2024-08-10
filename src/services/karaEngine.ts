@@ -29,7 +29,7 @@ import {
 	updateUserQuotas,
 } from './playlist.js';
 import { startPoll } from './poll.js';
-import { setQuizModifier, startQuizRound } from './quiz.js';
+import { checkIfSongIsQuizzable, setQuizModifier, startQuizRound } from './quiz.js';
 import { getUser } from './user.js';
 
 const service = 'KaraEngine';
@@ -69,6 +69,7 @@ export async function playSingleSong(kid?: string, randomPlaying = false) {
 		await mpv.play(current);
 		writeStreamFiles('song_name');
 		writeStreamFiles('requester');
+		writeStreamFiles('next_song_name_and_requester');
 		setState({ singlePlay: !randomPlaying, randomPlaying });
 		emit('newSong', current);
 	} catch (err) {
@@ -204,39 +205,21 @@ export async function playCurrentSong(now: boolean) {
 			logger.debug('Karaoke selected', { service, obj: kara });
 
 			// If we're in quiz mode, we need to make a check before playing
+			let startTime = 0;
+			let modifiers = null;
 			if (getState().quiz.running) {
-				// Check if the song has at least one answer possible from possible answer types
-				// Whichever answer type we get to first that exists in a song breaks the loop.
-				let answerPossible = false;
-				for (const [possibleAnswerType, { Enabled }] of Object.entries(
-					getState().quiz.settings.Answers.Accepted
-				)) {
-					if (!Enabled) {
-						continue;
-					}
-					// Skipping title as all songs have titles... right? RIGHT?
-					if (possibleAnswerType === 'title') {
-						answerPossible = true;
-					} else if (possibleAnswerType === 'year' && kara.year) {
-						answerPossible = true;
-					} else if (possibleAnswerType !== 'year' && kara[possibleAnswerType]?.length > 0) {
-						answerPossible = true;
-					}
-					if (answerPossible) break;
-				}
-				if (!answerPossible)
-					throw '[Quiz Mode] Song has no possible answer for the criterias selected for this game';
+				checkIfSongIsQuizzable(kara);
+				modifiers = setQuizModifier();
+				startTime = startQuizRound(kara);
 			}
 			logger.info(`Playing ${kara.mediafile.substring(0, kara.mediafile.length - 4)}`, { service });
-			const modifiers = getState().quiz.running ? setQuizModifier() : null;
-			let startTime = 0;
-			if (getState().quiz.running) startTime = startQuizRound(kara);
 			await mpv.play(kara, modifiers, startTime);
 			setState({ randomPlaying: false });
 			updateUserQuotas(kara);
 			writeStreamFiles('time_remaining_in_current_playlist');
 			writeStreamFiles('song_name');
 			writeStreamFiles('requester');
+			writeStreamFiles('next_song_name_and_requester');
 			await updatePlaylistDuration(kara.plaid);
 			updatePlaylistLastEditTime(kara.plaid);
 			emitWS('playlistInfoUpdated', kara.plaid);

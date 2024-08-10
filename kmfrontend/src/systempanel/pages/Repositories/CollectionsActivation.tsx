@@ -1,11 +1,11 @@
 import { Checkbox, Table } from 'antd';
 import i18next from 'i18next';
 import { useContext, useEffect, useState } from 'react';
+
 import { Tag } from '../../../../../src/lib/types/tag';
 import GlobalContext from '../../../store/context';
-
-import { commandBackend } from '../../../utils/socket';
 import { getDescriptionInLocale } from '../../../utils/kara';
+import { commandBackend } from '../../../utils/socket';
 
 function CollectionsActivation() {
 	const context = useContext(GlobalContext);
@@ -61,7 +61,19 @@ function CollectionsActivation() {
 		},
 	];
 
-	return <Table dataSource={collections} columns={columns} rowKey="tid" />;
+	return (
+		<Table
+			dataSource={collections}
+			columns={columns}
+			rowKey="tid"
+			scroll={{
+				x: true,
+			}}
+			expandable={{
+				showExpandColumn: false,
+			}}
+		/>
+	);
 }
 
 export default CollectionsActivation;

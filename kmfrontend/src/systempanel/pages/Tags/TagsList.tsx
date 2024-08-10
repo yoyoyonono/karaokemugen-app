@@ -1,6 +1,5 @@
 import { DeleteOutlined, EditOutlined } from '@ant-design/icons';
 import { Button, Input, Layout, Modal, Select, Table, Tag, Tooltip } from 'antd';
-import Title from '../../components/Title';
 import i18next from 'i18next';
 import { useContext, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -10,12 +9,15 @@ import GlobalContext from '../../../store/context';
 import { commandBackend } from '../../../utils/socket';
 import { getTagTypeName, tagTypes } from '../../../utils/tagTypes';
 import { isModifiable } from '../../../utils/tools';
+import Title from '../../components/Title';
 
 function TagsList() {
 	const context = useContext(GlobalContext);
 	const [searchParams, setSearchParams] = useSearchParams();
 
 	const [filter, setFilter] = useState(localStorage.getItem('tagFilter') || '');
+	const [currentPage, setCurrentPage] = useState(parseInt(localStorage.getItem('tagsPage')) || 1);
+	const [currentPageSize, setCurrentPageSize] = useState(parseInt(localStorage.getItem('tagsPageSize')) || 10);
 	const [tags, setTags] = useState<DBTag[]>([]);
 	const [tag, setTag] = useState<DBTag>();
 	const [deleteModal, setDeleteModal] = useState(false);
@@ -67,6 +69,13 @@ function TagsList() {
 	useEffect(() => {
 		refresh();
 	}, []);
+
+	const handleTableChange = pagination => {
+		setCurrentPage(pagination.current);
+		setCurrentPageSize(pagination.pageSize);
+		localStorage.setItem('tagsPage', pagination.current);
+		localStorage.setItem('tagsPageSize', pagination.pageSize);
+	};
 
 	const columns = [
 		{
@@ -159,7 +168,25 @@ function TagsList() {
 						})}
 					</Select>
 				</div>
-				<Table dataSource={tags} columns={columns} rowKey="tid" />
+				<Table
+					onChange={handleTableChange}
+					dataSource={tags}
+					columns={columns}
+					rowKey="tid"
+					scroll={{
+						x: true,
+					}}
+					expandable={{
+						showExpandColumn: false,
+					}}
+					pagination={{
+						position: ['topRight', 'bottomRight'],
+						current: currentPage || 1,
+						defaultPageSize: currentPageSize,
+						pageSize: currentPageSize,
+						showQuickJumper: true,
+					}}
+				/>
 				<Modal
 					title={i18next.t('TAGS.TAG_DELETED_CONFIRM')}
 					open={deleteModal}

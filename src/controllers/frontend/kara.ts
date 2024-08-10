@@ -3,20 +3,32 @@ import path, { resolve } from 'path';
 import { Socket } from 'socket.io';
 
 import { validateMediaInfo } from '../../lib/dao/karafile.js';
-import { APIMessage } from '../../lib/services/frontend.js';
+import { APIMessage, errMessage } from '../../lib/services/frontend.js';
 import { previewHooks, processUploadedMedia } from '../../lib/services/karaCreation.js';
 import { APIData } from '../../lib/types/api.js';
 import { TagTypeNum } from '../../lib/types/tag.js';
 import { resolvedPath, resolvedPathRepos } from '../../lib/utils/config.js';
 import { Timer } from '../../lib/utils/date.js';
-import { createFrames as createFrames2, createPreview } from '../../lib/utils/ffmpeg.js';
+import { ErrorKM } from '../../lib/utils/error.js';
+import {
+	abortAllMediaEncodingProcesses,
+	createFrames as createFrames2,
+	createPreview,
+} from '../../lib/utils/ffmpeg.js';
 import { fileExists, resolveFileInDirs } from '../../lib/utils/files.js';
 import { check, isUUID } from '../../lib/utils/validators.js';
 import { SocketIOApp } from '../../lib/utils/ws.js';
-import { getKMStats, getKara, getKaraLyrics, getKaraMediaInfo, getKaras } from '../../services/kara.js';
+import { getKara, getKaraLyrics, getKaraMediaInfo, getKaras, getKMStats } from '../../services/kara.js';
 import { createKara, editKara } from '../../services/karaCreation.js';
 import { playSingleSong } from '../../services/karaEngine.js';
-import { batchEditKaras, copyKaraToRepo, deleteMediaFile, removeKara } from '../../services/karaManagement.js';
+import {
+	batchEditKaras,
+	copyKaraToRepo,
+	deleteMediaFile,
+	embedAudioFileCoverArt,
+	encodeMediaFileToRepoDefaults,
+	removeKara,
+} from '../../services/karaManagement.js';
 import { addKaraToPlaylist } from '../../services/playlist.js';
 import { runChecklist } from '../middlewares.js';
 
@@ -74,6 +86,43 @@ export default function karaController(router: SocketIOApp) {
 			return { ...mediaInfo, filePath: undefined };
 		} catch (err) {
 			throw { code: err.code || 500, message: APIMessage(err.message) };
+		}
+	});
+	router.route('embedAudioFileCoverArt', async (socket: Socket, req: APIData) => {
+		await runChecklist(socket, req, 'admin', 'open');
+		try {
+			const mediaInfo = await embedAudioFileCoverArt(req.body.coverPictureFilename, {
+				kid: req.body.kid,
+				tempFileName: req.body.tempFilename,
+			});
+			return { ...mediaInfo, filePath: undefined };
+		} catch (err) {
+			throw { code: err.code || 500, message: APIMessage(err.message) };
+		}
+	});
+	router.route('encodeMediaFileToRepoDefaults', async (socket: Socket, req: APIData) => {
+		await runChecklist(socket, req, 'admin', 'open');
+		try {
+			return await encodeMediaFileToRepoDefaults(
+				req.body.kid,
+				req.body.filename,
+				req.body.repo,
+				req.body.encodeOptions
+			);
+		} catch (err) {
+			const errMessageCode = (err instanceof ErrorKM && err.message) || 'ENCODE_MEDIA_ERROR';
+			errMessage(errMessageCode, err);
+			throw { code: err?.code || 500, message: APIMessage(errMessageCode) };
+		}
+	});
+	router.route('abortMediaEncoding', async (socket: Socket, req: APIData) => {
+		await runChecklist(socket, req, 'admin', 'open');
+		try {
+			return abortAllMediaEncodingProcesses();
+		} catch (err) {
+			const code = 'ENCODE_MEDIA_ERROR';
+			errMessage(code, err);
+			throw { code: err?.code || 500, message: APIMessage(code) };
 		}
 	});
 	router.route('previewHooks', async (socket: Socket, req: APIData) => {

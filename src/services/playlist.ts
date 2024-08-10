@@ -1,6 +1,5 @@
 // Utils
-import { copyFile } from 'node:fs/promises';
-
+import { promises as fs } from 'fs';
 import i18n from 'i18next';
 import { shuffle } from 'lodash';
 import { join } from 'path/posix';
@@ -51,7 +50,7 @@ import { OldJWTToken, User } from '../lib/types/user.js';
 import { getConfig, resolvedPathRepos } from '../lib/utils/config.js';
 import { date, now, time as time2 } from '../lib/utils/date.js';
 import { ErrorKM } from '../lib/utils/error.js';
-import { resolveFileInDirs } from '../lib/utils/files.js';
+import { fileExists, resolveFileInDirs } from '../lib/utils/files.js';
 import logger, { profile } from '../lib/utils/logger.js';
 import { generateM3uFileFromPlaylist } from '../lib/utils/m3u.js';
 import Task from '../lib/utils/taskManager.js';
@@ -82,6 +81,8 @@ import {
 import { getUser, getUsers, updateSongsLeft } from './user.js';
 
 const service = 'Playlist';
+
+let freeOrphanedSongsIntervalID;
 
 /** Test if basic playlists exist */
 export async function testPlaylists() {
@@ -374,10 +375,13 @@ export async function exportPlaylistMedia(
 				task.update({
 					subtext: kara.mediafile,
 				});
-				await copyFile(karaMediaPath[0], join(exportDir, kara.mediafile));
+				const exportPath = join(exportDir, kara.mediafile);
+				const existingFileSize = (await fileExists(exportPath)) && (await fs.stat(exportPath)).size;
+				if (!existingFileSize || existingFileSize !== kara.mediasize)
+					await fs.copyFile(karaMediaPath[0], exportPath);
 				if (karaLyricsPath[0]) {
 					// Kara can have no lyrics file
-					await copyFile(karaLyricsPath[0], join(exportDir, kara.subfile));
+					await fs.copyFile(karaLyricsPath[0], join(exportDir, kara.subfile));
 					task.update({
 						subtext: kara.subfile,
 					});
@@ -423,6 +427,7 @@ function currentHook(plaid: string, name: string) {
 	setState({ currentPlaid: plaid, introPlayed: false, introSponsorPlayed: false });
 	emitWS('currentPlaylistUpdated', plaid);
 	resetAllAcceptedPLCs();
+	writeStreamFiles('next_song_name_and_requester');
 	writeStreamFiles('current_kara_count');
 	writeStreamFiles('time_remaining_in_current_playlist');
 	downloadMediasInPlaylist(plaid);
@@ -538,7 +543,7 @@ export async function getPlaylistInfo(plaid: string, token?: OldJWTToken) {
 		const pl = (await selectPlaylists(false, plaid))[0];
 		// We're testing this here instead of in the above function
 		if (token) {
-			if (token.role === 'admin' || pl.flag_visible) return pl;
+			if (token.role === 'admin' || pl?.flag_visible) return pl;
 			throw new ErrorKM('UNKNOWN_PLAYLIST', 404, false);
 		}
 		return pl;
@@ -604,12 +609,7 @@ export async function getPlaylistContents(
 ) {
 	try {
 		profile('getPLC');
-		const plInfo = await getPlaylistInfo(plaid, token);
-		if (!plInfo) throw new ErrorKM('UNKNOWN_PLAYLIST', 404, false);
-		if (!plInfo.flag_visible && token.role !== 'admin') {
-			throw new ErrorKM('UNKNOWN_PLAYLIST', 404, false);
-		}
-
+		await getPlaylistInfo(plaid, token);
 		const pl = await selectPlaylistContents({
 			plaid,
 			username: token.username.toLowerCase(),
@@ -685,6 +685,13 @@ export async function addKaraToPlaylist(params: AddKaraParams) {
 		if (karasUnknown.length > 0 && params.throwOnMissingKara) {
 			throw new ErrorKM('UNKNOWN_SONG', 404, false);
 		}
+		const karasLeftToAdd = params.kids.filter(kid => !karasUnknown.includes(kid));
+		if (karasLeftToAdd.length === 0) {
+			logger.warn(`No song left to add to playlist ${pl.name || 'unknown'}. All songs supplied are unknown.`, {
+				service,
+			});
+			return;
+		}
 		profile('addKaraToPL-checkKIDExistence');
 		// Sort karas from our database by the list that was provided to this function, so songs are added in the correct order
 		profile('addKaraToPL-sort');
@@ -750,7 +757,6 @@ export async function addKaraToPlaylist(params: AddKaraParams) {
 						plContents.filter(plc => plc.username === requester)
 					: plContents;
 		karaList = karaList.filter(k => !duplicateCheckList.map(plc => plc.kid).includes(k.kid));
-
 		profile('addKaraToPL-checkDuplicates');
 		if (karaList.length === 0) {
 			throw new ErrorKM('PLAYLIST_MODE_ADD_SONG_ERROR_ALREADY_ADDED', 409, false);
@@ -828,6 +834,7 @@ export async function addKaraToPlaylist(params: AddKaraParams) {
 		const plc = await getPLCInfo(PLCsInserted[0].plcid, true, requester);
 		if (params.plaid === state.currentPlaid) {
 			checkMediaAndDownload(karas);
+			writeStreamFiles('next_song_name_and_requester');
 			writeStreamFiles('current_kara_count');
 			writeStreamFiles('time_remaining_in_current_playlist');
 			if (conf.Karaoke.Autoplay && (state.player?.mediaType === 'stop' || state.randomPlaying)) {
@@ -1046,6 +1053,7 @@ export async function removeKaraFromPlaylist(
 			}
 		}
 		await Promise.all([
+			writeStreamFiles('next_song_name_and_requester'),
 			writeStreamFiles('current_kara_count'),
 			writeStreamFiles('time_remaining_in_current_playlist'),
 			writeStreamFiles('public_kara_count'),
@@ -1221,6 +1229,7 @@ export async function editPLC(plc_ids: number[], params: PLCEditParams, refresh 
 			if (currentSong && currentSong.pos <= params.pos && plc.plaid === getState().currentPlaid) {
 				setState({ player: { currentSong: await getCurrentSong() } });
 			}
+			writeStreamFiles('next_song_name_and_requester');
 			writeStreamFiles('time_remaining_in_current_playlist');
 			songsLeftToUpdate.add({
 				username: plc.username,
@@ -1671,13 +1680,17 @@ async function freeOrphanedSongs() {
 /** Initialize playlist tasks */
 export async function initPlaylistSystem() {
 	profile('initPL');
-	setInterval(freeOrphanedSongs, 60 * 1000);
+	freeOrphanedSongsIntervalID = setInterval(freeOrphanedSongs, 60 * 1000);
 	const pls = await selectPlaylists(false);
 	pls.forEach(pl => reorderPlaylist(pl.plaid));
 	await testPlaylists();
 	updateAllSmartPlaylists();
 	logger.debug('Playlists initialized', { service });
 	profile('initPL');
+}
+
+export function stopPlaylistSystem() {
+	if (freeOrphanedSongsIntervalID) clearInterval(freeOrphanedSongsIntervalID);
 }
 
 /** Update all user quotas affected by a PLC getting freed/played */

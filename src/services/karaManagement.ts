@@ -1,6 +1,7 @@
 import { shell } from 'electron';
 import { promises as fs } from 'fs';
 import { copy } from 'fs-extra';
+import i18next from 'i18next';
 import { basename, extname, resolve } from 'path';
 
 import { getStoreChecksum, removeKaraInStore } from '../dao/dataStore.js';
@@ -9,22 +10,27 @@ import { removeParentInKaras } from '../dao/karafile.js';
 import { selectPlaylistContentsMicro } from '../dao/playlist.js';
 import { saveSetting } from '../lib/dao/database.js';
 import { refreshKarasDelete } from '../lib/dao/kara.js';
-import { formatKaraV4, getDataFromKaraFile, writeKara } from '../lib/dao/karafile.js';
+import { extractMediaTechInfos, formatKaraV4, getDataFromKaraFile, writeKara } from '../lib/dao/karafile.js';
 import { refreshTags } from '../lib/dao/tag.js';
 import { writeTagFile } from '../lib/dao/tagfile.js';
+import { APIMessage } from '../lib/services/frontend.js';
 import { refreshKarasAfterDBChange, updateTags } from '../lib/services/karaManagement.js';
+import { getRepoManifest } from '../lib/services/repo.js';
 import { DBKara, DBKaraTag } from '../lib/types/database/kara.js';
 import { DBTag } from '../lib/types/database/tag.js';
 import { KaraFileV4, KaraTag } from '../lib/types/kara.js';
 import { TagTypeNum } from '../lib/types/tag.js';
 import { ASSFileSetMediaFile } from '../lib/utils/ass.js';
-import { resolvedPathRepos } from '../lib/utils/config.js';
+import { resolvedPath, resolvedPathRepos } from '../lib/utils/config.js';
 import { getTagTypeName } from '../lib/utils/constants.js';
 import { ErrorKM } from '../lib/utils/error.js';
+import { embedCoverImage } from '../lib/utils/ffmpeg.js';
 import { fileExists, resolveFileInDirs } from '../lib/utils/files.js';
 import logger, { profile } from '../lib/utils/logger.js';
+import { encodeMediaToRepoDefault } from '../lib/utils/mediaInfoValidation.js';
 import { createImagePreviews } from '../lib/utils/previews.js';
 import Task from '../lib/utils/taskManager.js';
+import { emitWS } from '../lib/utils/ws.js';
 import { adminToken } from '../utils/constants.js';
 import sentry from '../utils/sentry.js';
 import { getState } from '../utils/state.js';
@@ -34,8 +40,6 @@ import { editKara } from './karaCreation.js';
 import { getRepo, getRepos } from './repo.js';
 import { updateAllSmartPlaylists } from './smartPlaylist.js';
 import { getTag } from './tag.js';
-import { APIMessage } from '../lib/services/frontend.js';
-import { emitWS } from '../lib/utils/ws.js';
 
 const service = 'KaraManager';
 
@@ -68,6 +72,8 @@ export async function removeKara(
 		const parents: Family[] = [];
 		const karas = await selectAllKaras({
 			q: `k:${kids.join(',')}`,
+			ignoreCollections: true,
+			blacklist: false,
 		});
 		if (karas.length === 0) throw new ErrorKM('UNKNOWN_SONG', 404, false);
 		for (const kara of karas) {
@@ -106,6 +112,8 @@ export async function removeKara(
 					parent: kara.kid,
 					children: await selectAllKaras({
 						q: `k:${kara.children.join(',')}`,
+						ignoreCollections: true,
+						blacklist: false,
 					}),
 				});
 			}
@@ -185,26 +193,31 @@ export async function copyKaraToRepo(kid: string, repoName: string) {
 	}
 }
 
-export async function batchEditKaras(plaid: string, action: 'add' | 'remove', tid: string, type: TagTypeNum) {
+export async function batchEditKaras(
+	plaid: string,
+	action: 'add' | 'remove' | 'fromDisplayType',
+	tid: string,
+	type: TagTypeNum
+) {
 	// Checks
 	const task = new Task({
 		text: 'EDITING_KARAS_BATCH_TAGS',
 	});
 	try {
 		const tagType = getTagTypeName(type);
-		if (!tagType) throw 'Type unknown';
+		if (!tagType && action !== 'fromDisplayType') throw 'Type unknown';
 		const pl = await selectPlaylistContentsMicro(plaid);
 		if (pl.length === 0) throw 'Playlist unknown or empty';
 		task.update({
 			value: 0,
 			total: pl.length,
 		});
-		if (action !== 'add' && action !== 'remove') throw 'Unkown action';
-		const tag = await getTag(tid);
+		if (action !== 'add' && action !== 'remove' && action !== 'fromDisplayType') throw 'Unkown action';
+		const karas = [];
 		logger.info(`Batch tag edit starting : adding ${tid} in type ${type} for all songs in playlist ${plaid}`, {
 			service,
 		});
-		const karas = [];
+
 		for (const plc of pl) {
 			profile('getKaraBatch');
 			const kara = await getKara(plc.kid, adminToken);
@@ -218,14 +231,25 @@ export async function batchEditKaras(plaid: string, action: 'add' | 'remove', ti
 				subtext: kara.karafile,
 			});
 			let modified = false;
-			if (kara[tagType].length > 0 && action === 'remove') {
-				if (kara[tagType].find((t: KaraTag) => t.tid === tid)) modified = true;
-				kara[tagType] = kara[tagType].filter((t: KaraTag) => t.tid !== tid);
+			// We also test if karaoke has elements in that tagtype when modifying the fromDisplayType
+			if (action === 'fromDisplayType' && kara.from_display_type !== tagType && kara[tagType].length > 0) {
+				modified = true;
+				kara.from_display_type = tagType;
 			}
-			if (action === 'add' && !kara[tagType].find((t: KaraTag) => t.tid === tid)) {
+			if (action === 'remove' && kara[tagType]?.length > 0) {
+				if (kara[tagType].find((t: KaraTag) => t.tid === tid)) {
+					modified = true;
+					kara[tagType] = kara[tagType].filter((t: KaraTag) => t.tid !== tid);
+					// We remove the from_display_type if kara[tagType] becomes empty
+					if (kara.from_display_type === tagType && kara[tagType].length === 0) {
+						kara.from_display_type = null;
+					}
+				}
+			}
+			if (action === 'add' && kara[tagType] && !kara[tagType].find((t: KaraTag) => t.tid === tid)) {
 				modified = true;
 				kara[tagType].push({
-					tid: tag.tid,
+					tid,
 				} as DBKaraTag);
 			}
 			if (modified) {
@@ -339,6 +363,67 @@ export async function deleteMediaFile(file: string, repo: string) {
 		logger.error(`Unable to delete media file ${file} from repository ${repo} : ${err}`, { service });
 		sentry.error(err);
 		throw new ErrorKM('MEDIA_DELETE_ERROR');
+	}
+}
+
+export async function embedAudioFileCoverArt(coverFilename: string, source: { kid?: string; tempFileName?: string }) {
+	if (!source.kid && !source.tempFileName)
+		throw new Error('Neither kid nor mediaFilename has been received but atleast one needs to be set');
+	const kara = source.kid && (await getKara(source.kid, adminToken));
+	const mediaFilePaths =
+		(source.tempFileName && [resolve(resolvedPath('Temp'), basename(source.tempFileName))]) ||
+		(await resolveFileInDirs(kara?.mediafile, resolvedPathRepos('Medias', kara?.repository)));
+	const coverFilePath = resolve(resolvedPath('Temp'), basename(coverFilename));
+	const newMediaPath = await embedCoverImage(mediaFilePaths[0], coverFilePath, resolvedPath('Temp'));
+	const mediaInfo = await extractMediaTechInfos(newMediaPath); // Shouldn't last long as it's audio only
+	return mediaInfo;
+}
+
+export async function encodeMediaFileToRepoDefaults(
+	kid?: string,
+	tempFileName?: string,
+	repo?: string,
+	encodeOptions?: { trim?: boolean },
+	task = new Task({
+		value: 0,
+	})
+) {
+	task.update({
+		text: 'CALCULATING_MEDIA_ENCODING_PARAMETERS',
+		value: 0,
+	});
+
+	try {
+		// It's okay to not have a kid (when we get a new karaoke)
+		const kara = kid ? await getKara(kid, adminToken) : null;
+		const mediaFilePaths =
+			(tempFileName && [resolve(resolvedPath('Temp'), basename(tempFileName))]) ||
+			(await resolveFileInDirs(kara.mediafile, resolvedPathRepos('Medias', kara.repository)));
+		const mediaFileExists = mediaFilePaths.length > 0 && (await fileExists(mediaFilePaths[0]));
+		if (!mediaFileExists) throw new Error('Mediafile not found');
+		const currentMediaInfo =
+			mediaFilePaths.length > 0 &&
+			(await fileExists(mediaFilePaths[0])) &&
+			(await extractMediaTechInfos(mediaFilePaths[0]));
+		task.update({
+			text: 'ENCODING_MEDIA',
+			subtext: kid ? kara.titles[kara.titles_default_language] : i18next.t('UNKNOWN'),
+			total: currentMediaInfo.duration,
+		});
+		const repoManifest = getRepoManifest(repo ?? kara.repository);
+		const encodedFileInfo = await encodeMediaToRepoDefault(mediaFilePaths[0], currentMediaInfo, repoManifest, {
+			trim: encodeOptions?.trim,
+			outputFolder: resolvedPath('Temp'),
+			onProgress: progress => {
+				task.update({
+					value: progress.timeSeconds,
+				});
+			},
+		});
+		const newMediaInfo = await extractMediaTechInfos(encodedFileInfo.newMediaFilePath, undefined, true);
+		return newMediaInfo;
+	} finally {
+		task.end();
 	}
 }
 
