@@ -244,16 +244,27 @@ ${path.basename(outputVideoFile)}
 	);
 
 	async function hlsFileVideo(outputFile: string, file: (i: number) => string) {
+		const segments: { duration: number; file: string }[] = [];
+		for (let i = 0; i < frames.length; i++) {
+			const next = frames[i + 1] || duration;
+			const segmentDuration = next - frames[i];
+			segments.push({
+				duration: segmentDuration,
+				file: file(i),
+			});
+		}
+		let maxSegmentDuration = Math.max(...segments.map(s => s.duration));
+
 		let out = `#EXTM3U
 #EXT-X-VERSION:3
-#EXT-X-TARGETDURATION:400
+#EXT-X-TARGETDURATION:${Math.ceil(maxSegmentDuration)}
 #EXT-X-MEDIA-SEQUENCE:0
 #EXT-X-PLAYLIST-TYPE:VOD
 `;
 
-		for (let i = 0; i < frames.length; i++) {
-			const next = frames[i + 1] || duration;
-			out += `#EXTINF:${next - frames[i]}, nodesc\n${file(i)}\n`;
+		for (const { duration, file } of segments) {
+			out += `#EXTINF:${duration}, nodesc\n`;
+			out += `${file}\n`;
 		}
 		out += '#EXT-X-ENDLIST\n';
 		await fs.writeFile(outputFile, out);
