@@ -1,14 +1,14 @@
 import i18next from 'i18next';
 import { debounce } from 'lodash';
 import { createElement, useCallback, useContext, useEffect, useState } from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client';
 import { Route, Routes } from 'react-router';
-
 import { useSearchParams } from 'react-router-dom';
-import TasksEvent from '../../TasksEvent';
+
 import { setPlaylistInfoLeft, setPlaylistInfoRight } from '../../store/actions/frontendContext';
 import { showModal } from '../../store/actions/modal';
 import GlobalContext from '../../store/context';
+import TasksEvent from '../../TasksEvent';
 import { commandBackend, getSocket } from '../../utils/socket';
 import { decodeCriteriaReason, displayMessage, is_touch_device, nonStandardPlaylists } from '../../utils/tools';
 import { KaraElement } from '../types/kara';
@@ -167,7 +167,9 @@ function AdminPage(props: IProps) {
 			getPlaylistList();
 		}
 		if (!context?.globalState.settings.data.user?.flag_tutorial_done) {
-			ReactDOM.render(createElement(Tutorial), document.getElementById('tuto'));
+			const container = document.getElementById('tuto');
+			const root = createRoot(container);
+			root.render(createElement(Tutorial, { unmount: () => root.unmount() }));
 		}
 		getSocket().on('playlistsUpdated', getPlaylistList);
 		getSocket().on('operatorNotificationInfo', operatorNotificationInfo);

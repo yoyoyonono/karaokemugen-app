@@ -112,29 +112,30 @@ export async function startDownloads() {
 }
 
 async function processDownload(download: KaraDownload) {
+	const downloadTask = new Task({
+		text: 'DOWNLOADING',
+		subtext: download.mediafile,
+		value: 0,
+		total: download.size,
+	});
 	try {
 		const freeSpace = await getRepoFreeSpace(download.repository);
-		if (freeSpace != null && download.size > freeSpace) {
+		if (freeSpace !== null && download.size > freeSpace) {
 			logger.warn('Not enough free space for download, aborting', { service });
 			emitWS('noFreeSpace');
 			pauseQueue();
 			throw new ErrorKM('NO_SPACE_LEFT_ON_DEVICE', 500, false);
 		}
-		const downloadTask = new Task({
-			text: 'DOWNLOADING',
-			subtext: download.mediafile,
-			value: 0,
-			total: download.size,
-		});
 		setDownloadStatus(download.uuid, 'DL_RUNNING');
 		updateDownloaded([download.kid], 'DOWNLOADING');
 		emitWS('KIDUpdated', [{ kid: download.kid, download_status: 'DOWNLOADING' }]);
 		const tempDir = resolvedPath('Temp');
 		const localMedia = resolve(resolvedPathRepos('Medias', download.repository)[0], download.mediafile);
 		const tempMedia = resolve(tempDir, download.mediafile);
+		const repo = getRepo(download.repository);
 		const downloadItem = {
 			filename: tempMedia,
-			url: `https://${download.repository}/downloads/medias/${fixedEncodeURIComponent(download.mediafile)}`,
+			url: `${repo.Secure ? 'https' : 'http'}://${download.repository}/downloads/medias/${fixedEncodeURIComponent(download.mediafile)}`,
 			id: download.name,
 		};
 		await downloadFile(downloadItem, downloadTask);
@@ -143,7 +144,6 @@ async function processDownload(download: KaraDownload) {
 		logger.info(`Media "${download.name}" downloaded`, { service });
 		await updateDownloaded([download.kid], 'DOWNLOADED');
 		emitWS('KIDUpdated', [{ kid: download.kid, download_status: 'DOWNLOADED' }]);
-		downloadTask.end();
 		downloadedKIDs.add(download.kid);
 		if (dq.length() > 0) logger.info(`${dq.length() - 1} items left in queue`, { service });
 		emitQueueStatus('updated');
@@ -155,6 +155,8 @@ async function processDownload(download: KaraDownload) {
 		logger.error(`Failed to process download ${download.mediafile} (${download.uuid})`, { service, obj: err });
 		Sentry.error(err);
 		throw err;
+	} finally {
+		downloadTask.end();
 	}
 }
 

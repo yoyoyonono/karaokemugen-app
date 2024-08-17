@@ -123,43 +123,44 @@ ${
 ${filterClauses.map(clause => `${filterType} (${clause})`).reduce((a, b) => `${a} ${b}`, '')}
 ${whereClauses}
 ${blacklistClauses}
-GROUP BY ${groupClauses} 
-	ak.pk_kid, 
-	pc.fk_kid, 
-	ak.titles, 
-	ak.titles_aliases, 
-	ak.titles_default_language, 
-	ak.comment, 
+GROUP BY ${groupClauses}
+	ak.pk_kid,
+	pc.fk_kid,
+	ak.titles,
+	ak.titles_aliases,
+	ak.titles_default_language,
+	ak.comment,
 	ak.announce_position_x,
 	ak.announce_position_y,
-	ak.songorder, 
-	ak.serie_singergroup_singer_sortable, 
-	ak.subfile, 
-	ak.year, 
-	ak.tags, 
-	ak.mediafile, 
-	ak.karafile, 
-	ak.duration, 
-	ak.loudnorm, 
-	ak.created_at, 
-	ak.modified_at, 
-	ak.mediasize, 
-	ak.repository, 
-	ak.songtypes_sortable, 
-	f.fk_kid, 
-	ak.tid, 
-	ak.languages_sortable, 
-	ak.download_status, 
-	ak.ignore_hooks, 
-	ak.titles_sortable, 
-	ak.from_display_type 
+	ak.songorder,
+	ak.serie_singergroup_singer_sortable,
+	ak.subfile,
+	ak.year,
+	ak.tags,
+	ak.mediafile,
+	ak.karafile,
+	ak.duration,
+	ak.loudnorm,
+	ak.created_at,
+	ak.modified_at,
+	ak.mediasize,
+	ak.repository,
+	ak.songtypes_sortable,
+	f.fk_kid,
+	ak.tid,
+	ak.languages_sortable,
+	ak.download_status,
+	ak.ignore_hooks,
+	ak.titles_sortable,
+	ak.from_display_type
 	${groupClauseEnd}
 ${havingClause}
-ORDER BY ${orderClauses} 
-	ak.serie_singergroup_singer_sortable, 
-	ak.songtypes_sortable DESC, 
-	ak.songorder, 
-	ak.languages_sortable, 
+ORDER BY ${orderClauses}
+	ak.serie_singergroup_singer_sortable,
+	ak.songtypes_sortable DESC,
+	ak.songorder,
+	ak.languages_sortable,
+	parents, 
 	ak.titles_sortable
 ${limitClause}
 ${offsetClause}
@@ -170,17 +171,16 @@ export const sqlgetAllKarasMicro = (
 	additionalFrom: string[],
 	collectionClauses: string[]
 ) => `SELECT
-  k.pk_kid AS kid,
-  k.duration AS duration,
-  k.mediafile AS mediafile,
-  k.mediasize AS mediasize,
-  k.repository AS repository,
-  k.subfile AS subfile,
-  k.karafile AS karafile,
-  k.from_display_type AS from_display_type,
-  k.download_status AS download_status
-FROM kara AS k
-${collectionClauses.length > 0 ? 'LEFT JOIN all_karas ak ON ak.pk_kid = k.pk_kid' : ''}
+  ak.pk_kid AS kid,
+  ak.duration AS duration,
+  ak.mediafile AS mediafile,
+  ak.mediasize AS mediasize,
+  ak.repository AS repository,
+  ak.subfile AS subfile,
+  ak.karafile AS karafile,
+  ak.from_display_type AS from_display_type,
+  ak.download_status AS download_status
+FROM all_karas AS ak
 ${additionalFrom.join('')}
 WHERE true
 ${

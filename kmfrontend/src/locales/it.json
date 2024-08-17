@@ -255,11 +255,11 @@
 			"STREAM_MODE_TOOLTIP": "Ci sarà una pausa (di durata configurabile) tra un brano e l'altro.",
 			"ALLOW_PUBLIC_DUPLICATES_OPTIONS": {
 				"ALLOWED": "Consenti",
-				"UPVOTES_ONLY": "Solo Voti",
+				"UPVOTES_ONLY": "Voti",
 				"DISALLOWED": "Non consentire"
 			},
 			"ALLOW_PUBLIC_DUPLICATES": "Consenti brani doppioni in playlist (pubblico)",
-			"ALLOW_PUBLIC_DUPLICATES_TOOLTIP": "Scegli se consentire al pubblico di aggiungere un brano più volte. Un utente non può aggiungere un brano già aggiunto da sé stesso, ma può aggiungerne uno già aggiunto da un altro utente. Selezionando \"Solo Voti\", gli utenti non potranno aggiungere doppioni ma potranno votare brani già presenti. \"Consenti\" va bene per un Karaoke classico, \"Solo Voti\" per un Karaoke pubblico.",
+			"ALLOW_PUBLIC_DUPLICATES_TOOLTIP": "Scegli se consentire al pubblico di aggiungere un brano più volte. Un utente non può aggiungere un brano già aggiunto da sé stesso, ma può aggiungerne uno già aggiunto da un altro utente. Selezionando \"Voti\", gli utenti non potranno aggiungere doppioni ma potranno votare brani già presenti. \"Consenti\" va bene per un Karaoke classico, \"Voti\" per un Karaoke pubblico.",
 			"FREE_ACCEPTED_SONGS": "Libera i brani accettati",
 			"FREE_ACCEPTED_SONGS_TOOLTIP": "I brani verranno liberati una volta accettati da un operatore della playlist pubblica. Il richiedente del brano riotterrà la quota spesa."
 		},
@@ -758,7 +758,9 @@
 				"BLUESKY": "Bluesky",
 				"ANILIST": "AniList",
 				"DISCORD_PLACEHOLDER": "Karak#1423",
-				"INSTAGRAM_PLACEHOLDER": "karaokemugen"
+				"INSTAGRAM_PLACEHOLDER": "karaokemugen",
+				"GITLAB": "Gitlab",
+				"GITLAB_PLACEHOLDER": "karaokemugen"
 			},
 			"INTERFACE_LANGUAGE": "Lingua dell'interfaccia",
 			"CHOOSE_ANIME_LIST": "Scegli una lista anime",
@@ -1148,7 +1150,6 @@
 		"USER_CREATE_ERROR_ONLINE_DISABLED": "Impossibile creare l'account: è necessaria la modalità online",
 		"DELETE_PLAYLIST_ERROR_WHITELIST": "Impossibile eliminare la whitelist. Imposta prima un'altra playlist come whitelist.",
 		"ERROR_READING_LOGS": "Impossibile leggere i log evento",
-		"BACKGROUND_FILE_DELETE_ERROR_IN_USE": "Errore durante la rimozione del file, è utilizzato dal lettore!",
 		"REPO_LIST_ERROR": "Errore durante il recupero della lista archivi",
 		"UPVOTE_ALREADY_DONE": "Hai già votato",
 		"REPO_GIT_DIFF_ERROR": "Errore durante il recupero delle differenze del file",
@@ -1158,7 +1159,13 @@
 		"C_AFTER_YEAR_CONFLICT": "Non puoi aggiungere un criterio \"Dopo l'anno\" minore del criterio \"Prima dell'anno\".",
 		"DATABASE_DISK_FULL": "Il disco che contiene il database è pieno! Libera subito un po' di spazio!",
 		"C_BEFORE_YEAR_CONFLICT": "Non puoi aggiungere un criterio \"Prima dell'anno\" maggiore del criterio \"Dopo l'anno\".",
-		"TYPE_SMART_CHANGE_CONFLICTING_CRITERIAS_ERROR": "Errore durante il cambiamento del tipo della playlist intelligente: hai impostato dei criteri in conflitto (anno/durata?). Rimuovili e riprova."
+		"TYPE_SMART_CHANGE_CONFLICTING_CRITERIAS_ERROR": "Errore durante il cambiamento del tipo della playlist intelligente: hai impostato dei criteri in conflitto (anno/durata?). Rimuovili e riprova.",
+		"REPOSITORY_MANIFEST_KARA_METADATA_RULE_VIOLATION_ERROR": "Errore: I metadata del karaoke violano una regola dell'archivio. Controlla il Log Eventi per informazioni aggiuntive.",
+		"REPOSITORY_MANIFEST_KARA_PARENTS_RULE_VIOLATION_ERROR": "Errore: La famiglia del karaoke viola una regola dell'archivio. Controlla il Log Eventi per informazioni aggiuntive.",
+		"ENCODE_MEDIA_ERROR": "Errore durante la codifica del file multimediale",
+		"MEDIA_ENCODING_ABORTED": "La codifica del file multimediale è stata annullata",
+		"MEDIA_VALIDATION_ERROR": "Impossibile validare le informazioni del file multimediale",
+		"UNKNOWN_PARENT_FROM_INBOX": "Versione principale di questo brano sconosciuta"
 	},
 	"KARA": {
 		"PAUSE_DOWNLOAD_QUEUE": "Sospendi",
@@ -1183,7 +1190,9 @@
 			"SELECT_ACTION": "Seleziona un'operazione:",
 			"SELECT_PLAYLIST": "Seleziona una playlist:",
 			"REMOVE_TAG": "Rimuovi tag",
-			"ADD_TAG": "Aggiungi tag"
+			"ADD_TAG": "Aggiungi tag",
+			"SELECT_TAG_TYPE": "Seleziona un tipo di tag:",
+			"EDIT_DISPLAY_TYPE": "Modifica in base al tipo di tag"
 		},
 		"MEDIA_IN_PROCESS": "Il file multimediale sta venendo processato, si prega di attendere la notifica del completamento.",
 		"FAMILIES_TOOLTIP": "Definisce il tipo di contenuto del video.",
@@ -1209,8 +1218,10 @@
 			"AUDIO_COVER_ART": "Copertina",
 			"VIDEO_ASPECT_RATIO": "Rapporto d'aspetto",
 			"WARNINGS": {
-				"LIBAVCODEC_ENCODER": "L'audio è codificato con il codificatore libavcodec (aac di riferimento di ffmpeg), conosciuto per la sua scarsa qualità. Si prega di utilizzare il codificatore libfdk_aac o altri come opus per ottenere la miglior qualità."
-			}
+				"LIBAVCODEC_ENCODER": "L'audio è codificato con il codificatore libavcodec (aac di riferimento di ffmpeg), il quale può creare difetti udibili. Si prega di utilizzare il codificatore libfdk_aac per aac o altri come opus per ottenere la miglior qualità possibile."
+			},
+			"AUDIO_SAMPLE_RATE": "Frequenza campionamento audio",
+			"DURATION": "Durata"
 		},
 		"COPY_SONG": "Copia brano in altro archivio",
 		"TAG_FILTER": "Filtra tag",
@@ -1256,7 +1267,6 @@
 		"PREVIEW_HOOKS_MODAL": "I seguenti cambiamenti verranno applicati alle tag di questo brano",
 		"FILTER_MEDIA_STATUS": "Stato file multimediale: ",
 		"DELETE_MEDIA_TOOLTIP": "Elimina i file multimediali del karaoke",
-		"APPLY_LYRICS_CLEANUP": "Pulisci file del testo dopo il salvataggio",
 		"IGNOREHOOKS": "Ignora tag automatiche",
 		"SINGERGROUPS_TOOLTIP": "Se i cantanti appartengono ad una band, inseriscili qui. La band verrà visualizzata al posto del singolo cantante nel lettore e nella playlist.",
 		"FRANCHISES_TOOLTIP": "Se la serie fa parte di un franchise (ad esempio Gundam, Mario, Zelda, Naruto, ecc...), indicalo qui.",
@@ -1283,7 +1293,6 @@
 		"GROUPS_TOOLTIP": "Gruppi di download per questo brano. Il brano sarà incluso in questi pacchetti",
 		"LYRICS_FILE_OPEN": "Apri file",
 		"VERSIONS_TOOLTIP": "Le versioni permettono di identificare meglio i brani con lo stesso titolo. Se nessuna versione corrisponde a questo brano perché troppo specifica (esempi: Ver. Futura o Ver. Chihaya) indicala nel titolo aggiungendo \" ~Ver. Chihaya\" alla fine.",
-		"APPLY_LYRICS_CLEANUP_TOOLTIP": "Pulisce il file del testo rimuovendo stili inutilizzati e i commenti e salva il titolo e l'autore del karaoke nelle proprietà",
 		"SINGERGROUPS_BY": "dalla band musicale",
 		"PREVIEW_HOOKS": "Controlla le tag aggiunte automaticamente",
 		"SERIES_SINGERS_REQUIRED": "Serie, Cantato da o Dalla band musicale non possono essere tutti vuoti.",
@@ -1305,7 +1314,24 @@
 		},
 		"ANNOUNCE_POSITION_TOOLTIP": "Sovrascrive la posizione predefinita degli annunci (banner e informazioni sul brano all'inizio o alla fine di un brano). Utile per evitare di sovrapporli al testo del brano se la posizione dei sottotitoli è diversa dal solito.",
 		"ANNOUNCE_POSITION": "Posizione degli annunci",
-		"MEDIA_REPOSITORY_RULES_UNMET": "Il file multimediale non soddisfa tutti i requisiti obbligatori dell'archivio. Si prega di codificare il file multimediale."
+		"MEDIA_REPOSITORY_RULES_UNMET": "Il file multimediale non soddisfa tutti i requisiti obbligatori dell'archivio. Si prega di codificare il file multimediale.",
+		"MEDIA_ENCODE": {
+			"OPTIONS": {
+				"TRIM_MEDIA_TOOLTIP": "Individua e rimuovi i fotogrammi neri e i momenti di silenzio all'inizio e alla fine del file multimediale",
+				"TRIM_MEDIA": "Inizio/fine taglio"
+			},
+			"LABEL": "Codifica file multimediali",
+			"TIMING_CHANGE_WARNING": "Le opzioni selezionate potrebbero cambiare l'inizio e la fine del file multimediale. Controlla la sincronizzazione del testo dopo la codifica e il salvataggio del file multimediale."
+		},
+		"FROM_DISPLAY_TYPE_COLUMN": "Da",
+		"REPOSITORY_DOCUMENTATION": "Vedi le regole {{instance}} qui",
+		"AUDIO_COVER": {
+			"UPLOAD_TOOLTIP": "Cambia l'immagine che verrà mostrata durante la riproduzione di questo karaoke",
+			"EMBED_COVER_SUCCESS": "La nuova immagine di copertina è stata caricata e allegata",
+			"UPLOAD": "Carica l'immagine di copertina",
+			"EMBED_COVER_ERROR": "Errore durante l'allegamento della nuova immagine di copertina",
+			"REPLACE": "Sostituisci l'immagine di copertina"
+		}
 	},
 	"SUCCESS_CODES": {
 		"DOWNLOADS_STARTED": "Avvio download",
@@ -1412,7 +1438,10 @@
 			"AUTHOR_TOOLTIP": "Nome visualizzato per i tuoi Commit",
 			"AUTHOR": "Identità Git",
 			"USERNAME": "Nome utente Git",
-			"PASSWORD": "Password Git (o token Gitlab/Github)"
+			"PASSWORD": "Password Git (o token Gitlab/Github)",
+			"COPY_SSH_KEY": "Copia la chiave SSH negli appunti",
+			"DELETE_SSH_KEY": "Elimina la chiave SSH",
+			"GENERATE_SSH_KEY": "Genera una chiave SSH"
 		},
 		"MOVE": "Definisci la priorità degli archivi",
 		"DELETE_ALL_MEDIAS": "Elimina tutti i file multimediali",
@@ -1477,7 +1506,9 @@
 		"GIT_SEE_MODIFIED_FILES": "Visualizza i file modificati",
 		"GIT_SQUASH_COMMITS": "Unisci i cambiamenti",
 		"GIT_SQUASH_MESSAGE": "Messaggio di Commit",
-		"GIT_TOO_MANY_CHANGES": "Pare che tu stia effettuando {{changes}} cambiamenti. Quando si effettuano molti cambiamenti dello stesso tipo, si consiglia di unirli tutti in un unico grande Commit."
+		"GIT_TOO_MANY_CHANGES": "Pare che tu stia effettuando {{changes}} cambiamenti. Quando si effettuano molti cambiamenti dello stesso tipo, si consiglia di unirli tutti in un unico grande Commit.",
+		"SECURE": "Sicuro",
+		"SECURE_TOOLTIP": "Abilita l'accesso HTTPS all'archivio"
 	},
 	"TAGS": {
 		"KITSU_SLUG_ERROR": "Kitsu Slug non valido",
@@ -2030,7 +2061,9 @@
 		"MERGING_TAGS_IN_PROGRESS": "Unendo le tag…",
 		"CREATING_TAG_IN_PROGRESS": "Creando la tag…",
 		"GENERATING_READING": "Leggendo i dati…",
-		"UPDATING_MEDIAS": "Aggiornando i file multimediali…"
+		"UPDATING_MEDIAS": "Aggiornando i file multimediali…",
+		"ENCODING_MEDIA": "Codificando il file multimediale…",
+		"CALCULATING_MEDIA_ENCODING_PARAMETERS": "Calcolando i parametri della codifica del file multimediale…"
 	},
 	"NOTIFICATION": {
 		"OPERATOR": {
@@ -2046,7 +2079,8 @@
 				"SHORTENER": "Errore durante l'abilitazione dell'ULR corto",
 				"POLL_ALREADY_STARTED": "Un sondaggio è già in corso",
 				"POLL_NOT_ENOUGH_SONGS": "Impossibile avviare il sondaggio: non sono disponibili abbastanza brani",
-				"PLAYLIST_FREE_ORPHANED_SONGS": "Impossibile liberare i brani orfani"
+				"PLAYLIST_FREE_ORPHANED_SONGS": "Impossibile liberare i brani orfani",
+				"STATS_PAYLOAD": "Errore durante l'invio delle statistiche al server"
 			},
 			"INFO": {
 				"POLL_WINNER": "Il pubblico ha votato un nuovo brano!",

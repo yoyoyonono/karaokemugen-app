@@ -9,6 +9,9 @@ App:
 Online:
   # Host for your KM Server
   Host: kara.moe
+  Secure: true
+  # Timeout (in ms) when calling the KM Server
+  Timeout: 2000
   # Should your instance sends stats? True/false. Non-existant means the app will ask the user a question if it wants to send stats to KM Server.
   #Stats: false
   # Should your instance sends error logs to sentry.io? True/false. Non-existant means the app will ask the user a question if it wants to send errors.
@@ -30,6 +33,8 @@ Online:
     DisplayActivity: true
   # Remote URL xxxx.kara.moe enabled ?
   Remote: true
+  # Remote token for online URL
+  RemoteToken: uuid_here
   # Fetch popular songs from remote repos ?
   FetchPopularSongs: true
   # Disallow ALL video downloads; We'll give you crepes if you keep this to true
@@ -237,6 +242,7 @@ System:
   Repositories:
     - Name: kara.moe
       Online: true
+      Secure: true
       Enabled: true
       Update: true
       Git:
@@ -254,8 +260,6 @@ System:
         BaseDir: storage/medias-otaku
       SendStats: true
       AutoMediaDownloads: updateOnly
-      # NEVER EVER download any media during playback/playlist making.
-      NoMediaDownloadsAtAll: false
       # AutoMediaDownloads determines when a song should be downloaded
       # 'none' = never
       # 'updateOnly' = only when the song has already been downloaded before and it's an update

@@ -1,12 +1,12 @@
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
 import { Avatar, Button, Checkbox, Divider, Input, Layout, Modal, Table } from 'antd';
-import Title from '../../components/Title';
 import i18next from 'i18next';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { User } from '../../../../../src/lib/types/user';
 import { commandBackend } from '../../../utils/socket';
+import Title from '../../components/Title';
 
 function UserList() {
 	const [users, setUsers] = useState([] as User[]);
@@ -106,6 +106,7 @@ function UserList() {
 	};
 	const deleteUser = async username => {
 		await commandBackend('deleteUser', { username }, true);
+		setDeleteModal(false);
 		refresh();
 	};
 
@@ -132,15 +133,18 @@ function UserList() {
 					dataSource={users.filter(user => user.login.includes(filter) || user.nickname.includes(filter))}
 					columns={columns}
 					rowKey="nickname"
+					scroll={{
+						x: true,
+					}}
+					expandable={{
+						showExpandColumn: false,
+					}}
 				/>
 				<Modal
 					title={i18next.t('USERS.USER_DELETED_CONFIRM')}
 					open={deleteModal}
 					onOk={() => deleteUser(user.login)}
-					onCancel={() => {
-						setDeleteModal(false);
-						setUser(null);
-					}}
+					onCancel={() => setDeleteModal(false)}
 					okText={i18next.t('YES')}
 					cancelText={i18next.t('NO')}
 				>

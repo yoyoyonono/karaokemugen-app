@@ -152,7 +152,7 @@
 		"CRITERIA_TYPE_1003": "Shorter than (mm:ss)",
 		"CRITERIA_TYPE_1006": "Hide songs unavailable offline",
 		"CRITERIA_TYPE_1007": "After (year included)",
-		"CRITERIA_TYPE_1008": "Before (year included)",		
+		"CRITERIA_TYPE_1008": "Before (year included)",
 		"LABEL": {
 			"TAG": "Songs {{verb}} {{tag}} are in the list.",
 			"TAG_VERBS": {
@@ -438,10 +438,10 @@
 			"ALLOW_DUPLICATES": "Allow duplicate songs in playlists (operator only)",
 			"ALLOW_DUPLICATES_TOOLTIP": "With this option, a playlist can contain the same song twice (or more). Only operators can add the same song more than once to a playlist.",
 			"ALLOW_PUBLIC_DUPLICATES": "Allow duplicate songs in playlists (public)",
-			"ALLOW_PUBLIC_DUPLICATES_TOOLTIP": "Allow or not the public to add a song multiple times. A user can't add a song they already added themselves, but can add one another user added before. Upvote only means users cannot add duplicates but can upvote songs already present. \"Allowed\" is good for Classic karaoke, \"Puvotes Only\" for Public karaoke.",
+			"ALLOW_PUBLIC_DUPLICATES_TOOLTIP": "Allow or not the public to add a song multiple times. A user can't add a song they already added themselves, but can add one another user added before. \"Upvotes\" means users cannot add duplicates but can upvote songs already present. \"Allowed\" is usually good for Classic karaoke, \"Upvotes\" for Public karaoke.",
 			"ALLOW_PUBLIC_DUPLICATES_OPTIONS": {
 				"ALLOWED": "Allowed",
-				"UPVOTES_ONLY": "Upvotes only",
+				"UPVOTES_ONLY": "Upvotes",
 				"DISALLOWED": "Disallowed"
 			},
 			"MEDIAS_SETTINGS": "Medias",
@@ -706,7 +706,9 @@
 				"ANILIST": "AniList",
 				"ANILIST_PLACEHOLDER": "karaokemugen",
 				"KITSU": "Kitsu",
-				"KITSU_PLACEHOLDER": "karaokemugen"
+				"KITSU_PLACEHOLDER": "karaokemugen",
+				"GITLAB": "Gitlab",
+				"GITLAB_PLACEHOLDER": "karaokemugen"
 			},
 			"ANIME_LIST_TO_FETCH": "Anime list provider to use",
 			"REFRESH_ANIME_LIST": "Refresh anime list",
@@ -968,6 +970,7 @@
 	"NOTIFICATION": {
 		"OPERATOR": {
 			"ERROR": {
+				"STATS_PAYLOAD": "Error sending stats to server",
 				"DOWNLOAD": "Song download error",
 				"SHORTENER": "Error enabling URL shortener",
 				"PLAYER_PLAY": "Unable to play song",
@@ -1018,6 +1021,13 @@
 		"MEDIA_FILE": "Media file",
 		"MEDIA_FILE_TOOLTIP": "Supported file formats: {{formats}}",
 		"MEDIA_REQUIRED": "Media file is required",
+		"AUDIO_COVER": {
+			"UPLOAD": "Upload cover art",
+			"REPLACE": "Replace cover art",
+			"UPLOAD_TOOLTIP": "Change the picture that will be shown as background when playing this karaoke",
+			"EMBED_COVER_SUCCESS": "New cover art has been uploaded and embedded",
+			"EMBED_COVER_ERROR": "Error while embedding a new cover art"
+		},
 		"MEDIA_IN_PROCESS": "The media file is being processed, please wait for the success notification.",
 		"MEDIA_REPOSITORY_RULES_UNMET": "The media file does not meet all mandatory repository requirements. Please encode the media first.",
 		"MEDIA_FILE_INFO": {
@@ -1025,21 +1035,29 @@
 			"FILE_SIZE": "File size",
 			"FILE_FORMAT": "File format",
 			"VIDEO_CODEC": "Video codec",
+			"DURATION": "Duration",
 			"VIDEO_RESOLUTION": "Resolution",
 			"VIDEO_ASPECT_RATIO": "Aspect ratio",
 			"VIDEO_COLORSPACE": "Colorspace",
 			"VIDEO_FRAMERATE": "Framerate",
 			"AUDIO_CODEC": "Audio codec",
+			"AUDIO_SAMPLE_RATE": "Audio sample rate",
 			"AUDIO_COVER_ART": "Cover art",
-			"WARNINGS":  {
-				"LIBAVCODEC_ENCODER": "The audio is encoded with the libavcodec (ffmpeg reference aac) encoder, which is known to result in bad quality. Please make sure to use the libfdk_aac encoder or another codec like opus, to get the best quality."
+			"WARNINGS": {
+				"LIBAVCODEC_ENCODER": "The audio is encoded with the libavcodec (ffmpeg reference aac) encoder, which can create audible artifacts and is discouraged to utilize. Please use the libfdk_aac encoder for aac or another codec like opus, to get the best possible quality."
 			}
+		},
+		"MEDIA_ENCODE": {
+			"LABEL": "Encode media",
+			"OPTIONS": {
+				"TRIM_MEDIA": "Trim start/end",
+				"TRIM_MEDIA_TOOLTIP": "Detect and remove black frames and silence at the beginning and end of the media"
+			},
+			"TIMING_CHANGE_WARNING": "The selected options might change the start and end time of the media. Check the lyrics timings after the media is encoded and saved."
 		},
 		"LYRICS_FILE": "Lyrics file",
 		"LYRICS_FILE_TOOLTIP": "Supported file formats: {{formats}}",
 		"LYRICS_FILE_OPEN": "Open file",
-		"APPLY_LYRICS_CLEANUP": "Cleanup lyrics file after saving",
-		"APPLY_LYRICS_CLEANUP_TOOLTIP": "Cleans lyrics file up from unused styles & comments and saves the title & author of the kara in the properties",
 		"ADD_FILE_SUCCESS": "{{name}} file added successfully",
 		"ADD_FILE_MEDIA_ERROR": "{{name}} is not a media file",
 		"ADD_FILE_LYRICS_ERROR": "{{name}} is not a subtitle file",
@@ -1104,10 +1122,12 @@
 		"BATCH_EDIT": {
 			"ADD_TAG": "Add tag",
 			"REMOVE_TAG": "Remove tag",
+			"EDIT_DISPLAY_TYPE": "Edit from tag type display",
 			"CREATE_PLAYLIST": "First, you need to create a playlist in the operator panel.",
 			"SELECT_PLAYLIST": "Select a playlist:",
 			"SELECT_ACTION": "Select an operation:",
 			"SELECT_TAG": "Select a tag:",
+			"SELECT_TAG_TYPE": "Select a tag type :",
 			"EDIT": "Batch edit",
 			"SELECT": "Select"
 		},
@@ -1139,12 +1159,14 @@
 		"COLLECTIONS_TOOLTIP": "Select the collections in which the karaoke should appear",
 		"FROM_DISPLAY_TYPE": "From tag type display",
 		"FROM_DISPLAY_TYPE_TOOLTIP": "Select tag type to used when displaying the song",
+		"FROM_DISPLAY_TYPE_COLUMN": "From",
 		"ANNOUNCE_POSITION": "Announce position",
 		"ANNOUNCE_POSITION_TOOLTIP": "Overrides the default announce position (banner and song infos at the beginning and end of a song). Useful to prevent overlapping with the song text, if the subtitle position is different than usual.",
 		"ANNOUNCE_POSITION_SELECTION": {
 			"SET": "Override default position",
 			"UNSET": "Remove custom position"
-		}
+		},
+		"REPOSITORY_DOCUMENTATION": "See {{instance}}'s rules here"
 	},
 	"KARAOKE_IMPORT": {
 		"CONFIGURATION": "Configuration",
@@ -1406,6 +1428,8 @@
 		"NEW_REPOSITORY": "New repository",
 		"ONLINE": "Online",
 		"ENABLED": "Enabled",
+		"SECURE": "Secure",
+		"SECURE_TOOLTIP": "Enable HTTPS access to the repository",
 		"SENDSTATS": "Send statistics",
 		"UPDATE": "Automatic updates",
 		"UPDATE_TOOLTIP": "If disabled, the application will not update the repository anymore.",
@@ -1448,7 +1472,10 @@
 			"AUTHOR": "Git Identity",
 			"AUTHOR_TOOLTIP": "Name displayed for your commits",
 			"EMAIL": "Git E-Mail",
-			"EMAIL_TOOLTIP": "Email associated with your commits"
+			"EMAIL_TOOLTIP": "Email associated with your commits",
+			"COPY_SSH_KEY": "Copy the SSH key in clipboard",
+			"GENERATE_SSH_KEY": "Generate a SSH key",
+			"DELETE_SSH_KEY": "Delete the SSH key"
 		},
 		"FTP": {
 			"HOST": "FTP Host",
@@ -1553,6 +1580,8 @@
 		"REFRESHING_DATA": "Refreshing data…",
 		"UPLOADING_FTP": "Uploading to the FTP…",
 		"EXPORTING_PLAYLIST_MEDIA": "Exporting media from playlist…",
+		"CALCULATING_MEDIA_ENCODING_PARAMETERS": "Calculating media encoding parameters…",
+		"ENCODING_MEDIA": "Encoding media file…",
 		"IMPORTING_PLAYLIST": "Importing playlist…",
 		"DUMMY_TASK": "No ongoing tasks"
 	},
@@ -1593,6 +1622,8 @@
 		"REPO_GIT_DIFF_ERROR": "Error getting diff for file",
 		"TAG_REPOSITORY_INVALID_CHANGE": "You can't change a tag's repository. Use the copy function instead",
 		"GET_MEDIA_INFO_ERROR": "Failed to retrieve media information",
+		"MEDIA_VALIDATION_ERROR": "Unable to validate media info",
+		"MEDIA_ENCODING_ABORTED": "Media encoding was cancelled",
 		"INBOX_VIEW_FORBIDDEN_ERROR": "You don't have permission to view the song inbox",
 		"INBOX_VIEW_ERROR": "Unable to fetch karaokes from inbox",
 		"INBOX_DOWNLOAD_ERROR": "Unable to download karaoke from inbox",
@@ -1645,6 +1676,8 @@
 		"KARA_EDIT_ERROR_UNMOVABLE_LYRICS": "Unable to rename lyrics. Is the file busy in another app?",
 		"KARA_EDIT_ERROR_UNMOVABLE_MEDIA": "Unable to rename media. Is the file busy in another app?",
 		"KARA_EDITED_ERROR": "Error editing song",
+		"REPOSITORY_MANIFEST_KARA_METADATA_RULE_VIOLATION_ERROR": "Error : Karaoke metadata violates a rule from its repository. Check the Event Log for more information.",
+		"REPOSITORY_MANIFEST_KARA_PARENTS_RULE_VIOLATION_ERROR": "Error : Karaoke family violates a rule from its repository. Check the Event Log for more information.",
 		"TIME_PARADOX": "Time Paradox Detected ! A song cannot be its own parent!",
 		"PIME_TARADOX": "Pime Taradox Detected ! A song's parent cannot be its own child as well!",
 		"PLAYLIST_MODE_ADD_SONG_ERROR_ALREADY_ADDED": "This song has already been added.",
@@ -1660,7 +1693,6 @@
 		"FILES_VALIDATED_ERROR": "Error validating files",
 		"DATABASE_DUMPED_ERROR": "Error dumping database",
 		"DATABASE_RESTORED_ERROR": "Error restoring database",
-		"BACKGROUND_FILE_DELETE_ERROR_IN_USE": "Unable to remove file, it's in use by the player!",
 		"FS_ERROR": "Error browsing filesystem",
 		"USER_DELETE_ADMIN_DAMEDESU": "You can't remove the admin user!",
 		"USER_NOT_ALLOWED_TO_SING": "User not allowed to start the song",
@@ -1767,6 +1799,7 @@
 		"LYRICS_FOLDER_OPEN_ERROR": "Error opening lyrics folder",
 		"COLLECTIONS_GET_ERROR": "Error fetching collections",
 		"UPLOADED_MEDIA_ERROR": "Error when uploading media",
+		"ENCODE_MEDIA_ERROR": "Error when encoding media",
 		"REPOSITORY_UNREACHABLE": "Repository unreachable. Did you misspell its name?",
 		"CANNOT_INSTALL_REPO_AT_WINDOWS_ROOT_DRIVE": "Repository cannot be installed at the root of a Windows drive.",
 		"REFRESH_ANIME_LIST_ERROR": "Error refreshing anime list",
@@ -1787,7 +1820,8 @@
 		"QUIZZ_GET_GAMES_ERROR": "Error when getting games",
 		"QUIZZ_GET_GAME_SCORES_ERROR": "Error when getting game scores",
 		"PLAYER_DISABLED_IN_TEST_MODE_SORRYMASEN_PLEASE_UNDERSTAND": "Player is disabled in test mode",
-		"MEDIAS_FOLDER_OPEN_ERROR": "Failed to open media folder"
+		"MEDIAS_FOLDER_OPEN_ERROR": "Failed to open media folder",
+		"UNKNOWN_PARENT_FROM_INBOX": "Unknown parent for this inbox song"
 	},
 	"SUCCESS_CODES": {
 		"DOWNLOADS_QUEUED": "Added {{data}} downloads to the queue",

@@ -4,17 +4,24 @@ import { basename, extname, resolve } from 'path';
 
 import { applyKaraHooks } from '../lib/dao/hook.js';
 import { extractVideoSubtitles, trimKaraData, verifyKaraData, writeKara } from '../lib/dao/karafile.js';
+import { getKaraFamily } from '../lib/services/kara.js';
 import { defineFilename, determineMediaAndLyricsFilenames, processSubfile } from '../lib/services/karaCreation.js';
+import {
+	checkKaraMetadata,
+	checkKaraParents,
+	convertDBKarasToKaraFiles,
+	createKarasMap,
+} from '../lib/services/karaValidation.js';
 import { EditedKara } from '../lib/types/kara.d.js';
 import { ASSFileCleanup } from '../lib/utils/ass.js';
-import { getConfig, resolvedPath, resolvedPathRepos } from '../lib/utils/config.js';
+import { resolvedPath, resolvedPathRepos } from '../lib/utils/config.js';
 import { ErrorKM } from '../lib/utils/error.js';
 import { replaceExt, resolveFileInDirs, smartMove } from '../lib/utils/files.js';
 import logger, { profile } from '../lib/utils/logger.js';
 import Task from '../lib/utils/taskManager.js';
 import { adminToken } from '../utils/constants.js';
 import sentry from '../utils/sentry.js';
-import { getKara } from './kara.js';
+import { getKara, getKaras } from './kara.js';
 import { integrateKaraFile } from './karaManagement.js';
 import { checkDownloadStatus } from './repo.js';
 import { consolidateTagsInRepo } from './tag.js';
@@ -31,20 +38,39 @@ export async function editKara(editedKara: EditedKara, refresh = true) {
 	// No sentry triggered if validation fails
 	try {
 		verifyKaraData(kara);
-
+		try {
+			checkKaraMetadata([kara]);
+		} catch (err) {
+			throw new ErrorKM('REPOSITORY_MANIFEST_KARA_METADATA_RULE_VIOLATION_ERROR', 400, false);
+		}
+		// Let's find out which songs are in our family.
+		// Since we have possibly new parents we'll add them to the mix
+		const karas = await getAllKarasInFamily(
+			kara.data.parents ? [...kara.data.parents, kara.data.kid] : [kara.data.kid]
+		);
 		if (kara.data.parents) {
 			if (kara.data.parents.includes(kara.data.kid)) {
-				throw new ErrorKM('TIME_PARADOX', 409, false);
 				// Did you just try to make a song its own parent?
+				throw new ErrorKM('TIME_PARADOX', 409, false);
 			}
-			const DBKara = await getKara(kara.data.kid, adminToken);
+			// We need to update the edited kara's parents in our set.
+			const DBKaraIndex = karas.content.findIndex(k => k.kid === kara.data.kid);
+			karas.content[DBKaraIndex].parents = kara.data.parents;
+			const DBKara = karas.content[DBKaraIndex];
 			if (DBKara.children.some(k => kara.data.parents.includes(k))) {
-				throw new ErrorKM('PIME_TARADOX', 409, false);
 				// Did you just try to destroy the universe by making a circular dependency?
+				throw new ErrorKM('PIME_TARADOX', 409, false);
+			}
+			const karaFiles = convertDBKarasToKaraFiles(karas.content);
+			try {
+				checkKaraParents(createKarasMap(karaFiles));
+			} catch (err) {
+				throw new ErrorKM('REPOSITORY_MANIFEST_KARA_PARENTS_RULE_VIOLATION_ERROR', 400, false);
 			}
 		}
 		profile('editKaraFile');
-		const oldKara = await getKara(kara.data.kid, adminToken);
+		// Karas should contain our old kara.
+		const oldKara = karas.content.find(k => k.kid === kara.data.kid);
 		if (!oldKara) {
 			logger.error(`Old Kara not found when editing! KID: ${kara.data.kid}`, { service });
 			throw new ErrorKM('UNKNOWN_SONG', 404, false);
@@ -56,8 +82,14 @@ export async function editKara(editedKara: EditedKara, refresh = true) {
 			resolvedPathRepos('Karaokes', kara.data.repository)[0],
 			`${karaFile}.kara.json`
 		);
-		if (karaJsonFileOld !== karaJsonFileDest && (await exists(karaJsonFileDest)))
+		if (karaJsonFileOld !== karaJsonFileDest && (await exists(karaJsonFileDest))) {
+			logger.error(`Cannot save kara since it would overwrite the existing file ${karaJsonFileDest}`, {
+				service,
+				karaJsonFileDest,
+				karaJsonFileOld,
+			});
 			throw new ErrorKM('KARA_FILE_EXISTS_ERROR', 409, false);
+		}
 		const filenames = determineMediaAndLyricsFilenames(kara, karaFile);
 		const mediaDest = resolve(resolvedPathRepos('Medias', kara.data.repository)[0], filenames.mediafile);
 		let oldMediaPath: string;
@@ -78,7 +110,7 @@ export async function editKara(editedKara: EditedKara, refresh = true) {
 			try {
 				const extractFile = await extractVideoSubtitles(mediaPath, kara.data.kid);
 				if (extractFile) {
-					if (kara.medias[0].lyrics == null) {
+					if (kara.medias[0] && !kara.medias[0].lyrics) {
 						kara.medias[0].lyrics = [];
 					}
 					kara.medias[0].lyrics[0] = {
@@ -154,13 +186,7 @@ export async function editKara(editedKara: EditedKara, refresh = true) {
 		const newKara = await getKara(kara.data.kid, adminToken);
 
 		// ASS file post processing
-		if (
-			editedKara.applyLyricsCleanup === true ||
-			(typeof editedKara.applyLyricsCleanup !== 'boolean' && // Fallback to setting when no value is sent
-				getConfig().Maintainer.ApplyLyricsCleanupOnKaraSave === true)
-		) {
-			if (kara.medias[0].lyrics?.[0]?.filename) await ASSFileCleanup(subDest, newKara);
-		}
+		if (kara.medias[0].lyrics?.[0]?.filename) await ASSFileCleanup(subDest, newKara);
 	} catch (err) {
 		logger.error('Error while editing kara', { service, obj: err });
 		sentry.addErrorInfo('args', JSON.stringify(arguments, null, 2));
@@ -182,6 +208,24 @@ export async function createKara(editedKara: EditedKara, tempDir?: string) {
 	try {
 		// Write kara file in place
 		verifyKaraData(kara);
+		try {
+			checkKaraMetadata([kara]);
+		} catch (err) {
+			throw new ErrorKM('REPOSITORY_MANIFEST_KARA_METADATA_RULE_VIOLATION_ERROR', 400, false);
+		}
+		if (kara.data.parents) {
+			// Let's find out which songs are in our family.
+			// Since we don't have a KID we grab all parents.
+			// We then only get karaoke data of these songs.
+			const karas = await getAllKarasInFamily(kara.data.parents);
+			const karaFiles = convertDBKarasToKaraFiles(karas.content);
+			karaFiles.push(kara);
+			try {
+				checkKaraParents(createKarasMap(karaFiles));
+			} catch (err) {
+				throw new ErrorKM('REPOSITORY_MANIFEST_KARA_PARENTS_RULE_VIOLATION_ERROR', 400, false);
+			}
+		}
 		if (!kara.data.ignoreHooks) await applyKaraHooks(kara);
 		const karaFile = await defineFilename(kara);
 		const karaJsonFileDest = resolve(
@@ -194,7 +238,7 @@ export async function createKara(editedKara: EditedKara, tempDir?: string) {
 		try {
 			const extractFile = await extractVideoSubtitles(mediaPath, kara.data.kid);
 			if (extractFile) {
-				if (kara.medias[0].lyrics == null) {
+				if (kara.medias[0] && !kara.medias[0].lyrics) {
 					kara.medias[0].lyrics = [];
 				}
 				kara.medias[0].lyrics[0] = {
@@ -228,13 +272,7 @@ export async function createKara(editedKara: EditedKara, tempDir?: string) {
 		const newKara = await getKara(kara.data.kid, adminToken);
 
 		// ASS file post processing
-		if (
-			editedKara.applyLyricsCleanup === true ||
-			(typeof editedKara.applyLyricsCleanup !== 'boolean' && // Fallback to setting when no value is sent
-				getConfig().Maintainer.ApplyLyricsCleanupOnKaraSave === true)
-		) {
-			if (kara.medias[0].lyrics?.[0]?.filename) await ASSFileCleanup(subDest, newKara);
-		}
+		if (kara.medias[0].lyrics?.[0]?.filename) await ASSFileCleanup(subDest, newKara);
 	} catch (err) {
 		logger.error('Error while creating kara', { service, obj: err });
 		sentry.addErrorInfo('args', JSON.stringify(arguments, null, 2));
@@ -244,4 +282,19 @@ export async function createKara(editedKara: EditedKara, tempDir?: string) {
 	} finally {
 		task.end();
 	}
+}
+
+async function getAllKarasInFamily(kidsToSearch: string[]) {
+	const family = await getKaraFamily(kidsToSearch);
+	const kids = new Set();
+	for (const relation of family) {
+		kids.add(relation.kid);
+		kids.add(relation.parent_kid);
+	}
+	// Flatten the result so we get it in a neat table
+	const karas = await getKaras({
+		ignoreCollections: true,
+		q: `k:${[...kids.values()].join(',')}`,
+	});
+	return karas;
 }

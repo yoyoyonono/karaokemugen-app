@@ -29,15 +29,23 @@ import { BackgroundType } from '../types/backgrounds.js';
 import { MpvCommand } from '../types/mpvIPC.js';
 import { PlayerState, SongModifiers } from '../types/player.js';
 import { CurrentSong } from '../types/playlist.js';
-import { initializationCatchphrases, mpvRegex, requiredMPVVersion } from '../utils/constants.js';
+import {
+	FFmpegRegex,
+	initializationCatchphrases,
+	mpvRegex,
+	requiredMPVFFmpegMasterVersion,
+	requiredMPVFFmpegVersion,
+	requiredMPVVersion,
+} from '../utils/constants.js';
 import { setDiscordActivity } from '../utils/discordRPC.js';
 import sentry from '../utils/sentry.js';
 import { getState, setState } from '../utils/state.js';
 import { isShutdownInProgress } from './engine.js';
 import Timeout = NodeJS.Timeout;
 import { getSongSeriesSingers, getSongTitle } from '../lib/services/kara.js';
+import { getRepoManifest } from '../lib/services/repo.js';
 import { getTagNameInLanguage } from '../lib/services/tag.js';
-import { getRepoManifest } from '../services/repo.js';
+import { getRepo } from '../services/repo.js';
 import { Player } from './mpv/player.js';
 
 type PlayerType = 'main' | 'monitor';
@@ -73,15 +81,16 @@ export const playerState: PlayerState = {
 	speed: 100,
 };
 
-async function resolveMediaURL(file: string, repo: string): Promise<string> {
+async function resolveMediaURL(file: string, repoName: string): Promise<string> {
 	const conf = getConfig();
+	const repo = getRepo(repoName);
 	let up = false;
 	let mediaFile = `${conf.Online.MediasHost}/${fixedEncodeURIComponent(file)}`;
 	// We test if the MediasHost allows us to reach a file. If not we try the song's repository.
 	if (conf.Online.MediasHost) {
 		if (await HTTP.head(mediaFile)) up = true;
 	} else {
-		mediaFile = `https://${repo}/downloads/medias/${fixedEncodeURIComponent(file)}`;
+		mediaFile = `${repo.Secure ? 'https' : 'http'}://${repoName}/downloads/medias/${fixedEncodeURIComponent(file)}`;
 		if (await HTTP.head(mediaFile)) up = true;
 	}
 	if (up) {
@@ -354,7 +363,13 @@ async function checkMpv() {
 		logger.debug(`mpv stdout: ${output.stdout}`, { service });
 		const mpv = semver.valid(mpvRegex.exec(output.stdout)[1]);
 		mpvVersion = mpv.split('-')[0];
+
+		const ffmpegVersion = FFmpegRegex.exec(output.stdout)[1];
+		setState({ player: { ...getState().player, version: mpvVersion, ffmpegVersion } });
+		playerState.version = mpvVersion;
+		playerState.ffmpegVersion = ffmpegVersion;
 		logger.debug(`mpv version: ${mpvVersion}`, { service });
+		logger.debug(`ffmpeg version in mpv: ${ffmpegVersion}`, { service });
 	} catch (err) {
 		logger.warn('Unable to determine mpv version. Will assume this is a recent one', {
 			service,
@@ -370,6 +385,15 @@ async function checkMpv() {
 		logger.error(`mpv binary: ${state.binPath.mpv}`, { service });
 		logger.error('Not starting due to obsolete mpv version', { service });
 		throw new Error('Obsolete mpv version');
+	}
+}
+
+function isScaleAvailable(): boolean {
+	// Either it's a semver or a N-xxxxx-xxxx version number
+	if (playerState.ffmpegVersion.startsWith('N')) {
+		return parseInt(playerState.ffmpegVersion.split('-')[1]) >= requiredMPVFFmpegMasterVersion;
+	} else {
+		return semver.satisfies(semver.coerce(playerState.ffmpegVersion), requiredMPVFFmpegVersion);
 	}
 }
 
@@ -397,9 +421,18 @@ export class Players {
 
 		// Avatar
 		const shouldDisplayAvatar =
-			showVideo && song.avatar && getConfig().Player.Display.SongInfo && getConfig().Player.Display.Avatar;
+			showVideo &&
+			song.avatar &&
+			getConfig().Player.Display.SongInfo &&
+			getConfig().Player.Display.Avatar &&
+			!(playerState.ffmpegVersion.includes('.') && semver.satisfies(playerState.ffmpegVersion, '7.0.x'));
 		const cropRatio = shouldDisplayAvatar ? Math.floor((await getAvatarResolution(song.avatar)) * 0.5) : 0;
 		let avatar = '';
+
+		// Checking if ffmpeg's version in mpv is either a semver or a version revision and if it's better or not than the required versions we have.
+		// This is a fix for people using mpvs with ffmpeg < 7.1 or a certain commit version.
+		const scaleAvailable = isScaleAvailable();
+
 		if (shouldDisplayAvatar) {
 			// Again, lavfi-complex expert @nah comes to the rescue!
 			avatar = [
@@ -407,9 +440,12 @@ export class Players {
 					'\\',
 					'/'
 				)}\\',format=yuva420p,geq=lum='p(X,Y)':a='if(gt(abs(W/2-X),W/2-${cropRatio})*gt(abs(H/2-Y),H/2-${cropRatio}),if(lte(hypot(${cropRatio}-(W/2-abs(W/2-X)),${cropRatio}-(H/2-abs(H/2-Y))),${cropRatio}),255,0),255)'[logo]`,
+				scaleAvailable ? '[vid1]split[v_in1][base]' : '',
 				isMP3 ? `nullsrc=size=1x1:duration=${song.duration}[emp]` : undefined,
 				isMP3 ? '[base][emp]overlay[ovrl]' : undefined,
-				'[logo][vid1]scale2ref=w=(ih*.128):h=(ih*.128)[logo1][base]',
+				scaleAvailable
+					? '[logo][v_in1]scale=w=(rh*.128):h=(rh*.128)[logo1]'
+					: '[logo][vid1]scale2ref=w=(ih*.128):h=(ih*.128)[logo1][base]',
 				`[${isMP3 ? 'ovrl' : 'base'}][logo1]overlay=x='if(between(t,0,8)+between(t,${song.duration - 8},${
 					song.duration
 				}),W-(W*29/300),NAN)':y=H-(H*29/200)[vo]`,
@@ -592,9 +628,15 @@ export class Players {
 	}
 
 	private genLavfiComplexQRCode(): string {
+		// Disable this for mpvs with ffmpeg version 7.0
+		if (playerState.ffmpegVersion.includes('.') && semver.satisfies(playerState.ffmpegVersion, '7.0.x')) return '';
+		const scaleAvailable = isScaleAvailable();
 		return [
 			`movie=\\'${resolve(resolvedPath('Temp'), 'qrcode.png').replaceAll('\\', '/')}\\'[logo]`,
-			'[logo][vid1]scale2ref=w=(ih*.256):h=(ih*.256)[logo1][base]',
+			scaleAvailable ? '[vid1]split[v_in1][base]' : '',
+			scaleAvailable
+				? '[logo][v_in1]scale=w=(rh*.256):h=(rh*.256)[logo1]'
+				: '[logo][vid1]scale2ref=w=(ih*.256):h=(ih*.256)[logo1][base]',
 			'[base][logo1]overlay=x=W-(W*50/300):y=H*20/300[vo]',
 		]
 			.filter(x => !!x)
@@ -638,6 +680,7 @@ export class Players {
 					command: [
 						...options,
 						'replace',
+						'0',
 						{
 							'force-media-title': 'Background',
 							'audio-files-set': background.music[0],
@@ -652,6 +695,7 @@ export class Players {
 					command: [
 						...options,
 						'replace',
+						'0',
 						{
 							'force-media-title': 'Background',
 							'loop-file': 'inf',
@@ -716,7 +760,7 @@ export class Players {
 	async quit() {
 		if (this.players.main.isRunning || this.players.monitor?.isRunning) {
 			// needed to wait for lock release
-			// eslint-disable-next-line no-return-await
+
 			return this.exec('destroy', undefined, undefined, true, true).catch(err => {
 				// Non fatal. Idiots sometimes close mpv instead of KM, this avoids an uncaught exception.
 				logger.warn('Failed to quit mpv', { service, obj: err });
@@ -759,6 +803,7 @@ export class Players {
 
 	async play(song: CurrentSong, modifiers?: SongModifiers, start = 0): Promise<PlayerState> {
 		logger.debug('Play event triggered', { service });
+		await this.ensureRunning();
 		playerState.playing = true;
 		profile('mpvPlay');
 		let mediaFile: string;
@@ -923,7 +968,7 @@ export class Players {
 				playerState.currentSong = null;
 				playerState.mediaType = mediaType;
 				playerState.currentMedia = media;
-				await retry(() => this.exec({ command: ['loadfile', media.filename, 'replace', options] }), {
+				await retry(() => this.exec({ command: ['loadfile', media.filename, 'replace', '0', options] }), {
 					retries: 3,
 					onFailedAttempt: error => {
 						logger.warn(

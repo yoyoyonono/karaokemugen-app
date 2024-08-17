@@ -8,7 +8,6 @@ import frFR from 'antd/es/locale/fr_FR';
 import idID from 'antd/es/locale/id_ID';
 import itIT from 'antd/es/locale/it_IT';
 import ptPT from 'antd/es/locale/pt_PT';
-
 import i18next from 'i18next';
 import { Component } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';

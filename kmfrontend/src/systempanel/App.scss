@@ -112,5 +112,12 @@
 .wrap-label {
 	.ant-form-item-label {
 		white-space: normal;
+		label {
+			height: 100%;
+		}
 	}
+}
+
+.rc-virtual-list-scrollbar-thumb {
+	background: grey !important;
 }

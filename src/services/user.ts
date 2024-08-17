@@ -324,7 +324,6 @@ export async function createUser(
 			if (user.password.length < 8 && !opts.noPasswordCheck) {
 				throw new ErrorKM('PASSWORD_TOO_SHORT', 411, false);
 			}
-			user.password = await hashPasswordbcrypt(user.password);
 		}
 		if (user.login.includes('@')) {
 			if (user.login.split('@')[0] === 'admin') {
@@ -337,13 +336,17 @@ export async function createUser(
 			}
 			if (opts.createRemote) await createRemoteUser(user);
 		}
+
+		if (user.password) {
+			user.password = await hashPasswordbcrypt(user.password);
+		}
 		await insertUser(user);
 		userCache.set(user.login, user);
 		if (user.type < 2) logger.info(`Created user ${user.login}`, { service });
 		delete user.password;
 		return true;
 	} catch (err) {
-		logger.error(`Error creating user : ${err}`, { service });
+		logger.error(`Error creating user : ${err.message ? err.message : err}`, { service });
 		sentry.error(err);
 		throw err instanceof ErrorKM ? err : new ErrorKM('USER_CREATE_ERROR');
 	}
@@ -351,14 +354,13 @@ export async function createUser(
 
 /** Checks if a user can be created */
 async function newUserIntegrityChecks(user: User) {
-	if (!asciiRegexp.test(user.login)) throw { code: 400, msg: 'USER_ASCII_CHARACTERS_ONLY' };
-	if (user.type < 2 && !user.password) throw { code: 400, msg: 'USER_EMPTY_PASSWORD' };
-	if (user.type === 2 && user.password) throw { code: 400, msg: 'GUEST_WITH_PASSWORD' };
-
+	if (!asciiRegexp.test(user.login)) throw new ErrorKM('USER_ASCII_CHARACTERS_ONLY', 400, false);
+	if (user.type < 2 && !user.password) throw new ErrorKM('USER_EMPTY_PASSWORD', 400, false);
+	if (user.type === 2 && user.password) throw new ErrorKM('GUEST_WITH_PASSWORD', 400, false);
 	// Check if login already exists.
 	if ((await selectUsers({ singleUser: user.login }))[0] || (await checkNicknameExists(user.login))) {
 		logger.error(`User/nickname ${user.login} already exists, cannot create it`, { service });
-		throw { code: 409, msg: 'USER_ALREADY_EXISTS', data: { username: user.login } };
+		throw new ErrorKM('USER_ALREADY_EXISTS', 409, false);
 	}
 }
 
@@ -456,7 +458,7 @@ async function checkGuestAvatars() {
 
 export async function createTemporaryGuest(name: string) {
 	const user = {
-		login: deburr(name),
+		login: sanitizeLogin(name),
 		nickname: name,
 		type: 2,
 		flag_temporary: true,

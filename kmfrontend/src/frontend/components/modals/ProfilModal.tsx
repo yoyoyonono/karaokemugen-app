@@ -2,7 +2,7 @@ import './ProfilModal.scss';
 
 import i18next from 'i18next';
 import { useContext, useEffect, useMemo, useState } from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client';
 
 import { DBKara } from '../../../../../src/lib/types/database/kara';
 import { User } from '../../../../../src/lib/types/user';
@@ -25,6 +25,7 @@ import { callModal, displayMessage } from '../../../utils/tools';
 import Autocomplete from '../generic/Autocomplete';
 import CropAvatarModal from './CropAvatarModal';
 import OnlineProfileModal from './OnlineProfileModal';
+
 interface IProps {
 	scope?: 'public' | 'admin';
 	closeProfileModal?: () => void;
@@ -157,10 +158,9 @@ function ProfilModal(props: IProps) {
 	const importAvatar = e => {
 		if (e.target.files?.length > 0) {
 			setCropAvatarModalOpen(true);
-			ReactDOM.render(
-				<CropAvatarModal src={e.target.files[0]} saveAvatar={saveAvatar} />,
-				document.getElementById('import-avatar')
-			);
+			const container = document.getElementById('import-avatar');
+			const root = createRoot(container);
+			root.render(<CropAvatarModal src={e.target.files[0]} saveAvatar={saveAvatar} />);
 		}
 	};
 
@@ -271,8 +271,8 @@ function ProfilModal(props: IProps) {
 				data.titles[user.main_series_lang]
 					? data.titles[user.main_series_lang]
 					: data.titles[user.fallback_series_lang]
-					? data.titles[user.fallback_series_lang]
-					: data.titles[data.titles_default_language]
+						? data.titles[user.fallback_series_lang]
+						: data.titles[data.titles_default_language]
 			} ${version}`;
 		};
 		const getExampleForLinguisticsPreference = async () => {
@@ -541,6 +541,21 @@ function ProfilModal(props: IProps) {
 									type="text"
 									placeholder={i18next.t('MODAL.PROFILE_MODAL.SOCIAL_NETWORKS.TWITCH_PLACEHOLDER')}
 									defaultValue={user.social_networks.twitch}
+									onKeyUp={onChange}
+									onChange={onChange}
+									autoComplete="off"
+								/>
+							</div>
+							<div className="profileLine">
+								<div className="profileLabel">
+									<i className="fab fa-fw fa-gitlab" />
+									<label>{i18next.t('MODAL.PROFILE_MODAL.SOCIAL_NETWORKS.GITLAB')}</label>
+								</div>
+								<input
+									name="social_networks.gitlab"
+									type="text"
+									placeholder={i18next.t('MODAL.PROFILE_MODAL.SOCIAL_NETWORKS.GITLAB_PLACEHOLDER')}
+									defaultValue={user.social_networks.gitlab}
 									onKeyUp={onChange}
 									onChange={onChange}
 									autoComplete="off"

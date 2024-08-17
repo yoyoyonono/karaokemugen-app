@@ -1,15 +1,177 @@
-v v7.1.57 - 10/03/2024
+# [8.0.10] - 2024-06-29
+
+This is mainly a bugfix release.
+
+## Added
+
+-   [Users] Added Japanese translation (partial)
+-   [Operators] Added configurable timeout for communication with KMServer (see config sample)
+-   [Maintainers] Added editing display type in batch edit mode for karaokes (#1625)
+-   [Maintainers] Added `docsURL` to manifest (#1623)
+
+## Changed
+
+-   [Users] Changed karaoke list order so karaokes without parents come first (#1621)
+-   [Users] Restored Sakuya Splendide's wallpaper
+-   [Users] Updated Spanish translation (78.4%)
+-   [Operators] Enabled remote access by default because getting an IP address was confusing everyone.
+-   [Operators] Navigation isn't blocked anymore when generation is in progress
+-   [Operators] Added border on single tasks
+-   [Maintainers] A shallow clone is now made when cloning the repository for the first time to make it lighter and faster (#1620)
+-   [Maintainers] Allowed 3 different version tags in filenames (GLORY TO UUIDs!)
+-   [Maintainers] Repository selector in tag form now only contains maintainable repositories
+-   [Developers] Removed download progress trick now that Axios has a built-in event for Node
+-   [Developers] Updated to React 18 syntax for rendering (#1612)
+-   [Developers] Upgraded backend dependencies
+
+## Fixed
+
+-   [Users] Fixed online user creation : password was incorrectly sent to Karaoke Mugen Server, resulting in people not being able to log in to their newly created accounts from elsewhere.
+-   [Users] Fixed login with users having `%` in their password.
+-   [Users] Removed tildes (`~`) in searches because they were breaking and not retrieving good results
+-   [Operators] Fixed some menu links
+-   [Operators] Fixed closing tutorial on mobile
+-   [Operators] Fixed error when creating user logs
+-   [Operators] Fixed certain mpvs crashing with qR Code/Avatar display on Linux (#1635)
+-   [Operators] Fixed download task not ending properly when media download failed (#1636)
+-   [Maintainers] Fixed some missing GIT locales
+-   [Maintainers] Fixed overwriting media files with same names when editing a song
+
+# [8.0.5] - 2024-06-02
+
+This is a bugfix version, but also a version in memory of Axel's cat Shami who sadly passed away two weeks ago. We will miss you.
+
+## Changed
+
+-   [Maintainers] Add type in TagsForm
+-   [Maintainers] Add rule to filter kara with parents with maxParentDepth equal to 1 in manifest
+-   [Operators] Upgraded backend deps
+
+## Fixed
+
+-   [Users] Fix filter by tag for children karaoke
+-   [Operators] Fixed unhandled exception for writeStreamFiles on next song when playlist is empty
+
+# [8.0.3] - 2024-05-29
+
+This is a major version, but a minor one compared to 7.1.66. Please read previous changelogs for more information on what's changed since the last major version (7.1)
+
+Changelog format changes from now on. See [https://keepachangelog.com/](Keep A Changelog) for details.
+
+## Added
+
+-   [Users] New wallpaper we commissioned.
+-   [Operators] Added new streamer text files for next song and who requested it (#1606)
+-   [Maintainers] The alpha character has been added to sanitized filenames.
+-   [Maintainers] Media can be reencoded from Karaoke Mugen if it doesn't meet the repository standards. (#1354)
+
+## Changed
+
+-   [Users] Upgraded frontend and backend dependencies
+-   [Operators] mpv has been updated to 0.38
+-   [Operators] Electron has been updated to version 30.
+-   [Operators] Flatpak versions of Karaoke Mugen now force use of their bundled binaries (ignores config) (#1604)
+-   [Maintainers] The entire karaoke base isn't validated anymore when a new song is added (#1602)
+-   [Maintainers] Repository description isn't mandatory anymore
+-   [Maintainers] Logged karafile overwrite errors
+-   [Developers] Inbox errors do not trigger a Sentry call anymore
+-   [Developers] Updated README with better info on PostgreSQL authentification
+-   [Developers] ESLint has been updated to 9.0.0 (#1595)
+-   [Developers] Merged linux packaging jobs in CI
+
+## Removed
+
+-   [Operators] Removed platforms from karaoke lists. They can still be seen in karaoke details.
+-   [Developers] Removed SAST CI jobs for now
+
+## Fixed
+
+-   [Users] Fixed image previews for local karaokes
+-   [Users] Public interface should now work on some older browsers/phones (added polyfills)
+-   [Users] Fixed "from display type" being empty/invalid returning empty data
+-   [Users] Fixed singer groups not being sorted correctly with singers and series (#1589)
+-   [Operators] Mitigated a bug in ffmpeg >7.0 that prevents the scale2ref filter from working. This filter allows us to display QR Codes and avatars. Depending on the ffmpeg version mpv has been compiled against, scale2ref or scale filter is used. scale only works with master ffmpeg versions as of writing this. (#1608)
+-   [Operators] Fixed deleting a song from the database (#1613)
+-   [Operators] Fixed closing delete user modal
+-   [Maintainers] Fixed custom binary git errors
+-   [Maintainers] Fixed the family line check when using a song from another repository as parent (#1609)
+-   [Maintainers] Fixed editing karaokes with multiple parents
+-   [Maintainers] Fixed display issue in karaoke list on system panel (#1600)
+-   [Maintainers] Fixed icon display in karaoke form (#1599)
+-   [Maintainers] Fixed repository manifests with no rules set
+-   [Maintainers] Fixed getAllKarasMicro in some cases
+
+## Security
+
+-   [Users] Removed passwords from logs when erroring out on userOnlineAuth
+-   [Developers] Removed useless packages and files
+
+# v7.1.66 - 22/04/2024
+
+This is a bug fix release.
+
+## Fixes
+
+-   [Maintainers] Fixed validation across collections on kara creation (#1601)
+
+# v7.1.65 - 22/04/2024
+
+## New features
+
+-   [Operators] Added before/after year criteria for smart playlists (#1585)
+-   [Users] Remote token (which assigns URLs to your Karaoke Mugen app) is now editable in the Advanced Configuration page in system panel.
+
+## Changes
+
+-   [Operators] Added proper validation when editing smart playlist criterias
+-   [Users] Change scrollbars to grey to be more visible
+-   [Users] ~~Improved stability and performance~~ Added a users cache so checkValidUser doesn't flood the database engine
+-   [Maintainers] Collections are now ignored when checking karaoke parent rules
+-   [Maintainers] Repository rules are now checked when adding/editing a karaoke
+-   [Maintainers] Disabled open lyrics button while media file is being uploaded
+-   [Maintainers] All files will be unstaged before trying to create commits (#1588)
+-   [Maintainers] Karaoke family line is now checked during generation and when added/edited (#1557 and #1556)
+
+## Fixes
+
+-   [Operators] Fixed incompatibility with mpv 0.38 and up (#1598)
+-   [Operators] Fixed "Allow Duplicates" option not working properly (#1597)
+-   [Operators] Fixed download and upload button display
+-   [Operators] Fixed getplaylistinfo without PLAIDs.
+-   [Operators] Fixed multiple smart playlist edits (#1586)
+-   [Operators] Smart playlist type should properly change now when hitting the switch button (#1586)
+-   [Operators] Fixed database deadlocks with smart playlists (#1577)
+-   [Users] Fixed typos
+-   [Users] Updated custom nickname/username requirements not being clear enough on the login screen (#1596)
+-   [Users] Do not display link to current playlist if not visible
+-   [Users] Fixed unhandled exceptions on startup for updateBase.
+-   [Users] Database "disk full" errors are now caught properly
+-   [Maintainers] Fixed media info card size in karaoke form
+-   [Maintainers] Fixed overall bitrate calculation (#1583)
+-   [Maintainers] Fixed checkbox display when there's a description for a tag in kara form
+-   [Maintainers] Fixed FTP file differences detection when pushing to a new base.
+-   [Devs] Fixed mpv options log (and other logs)
+
+## Misc
+
+-   Updated backend and frontend dependencies
+-   Updated italian translation (100%)
+-   Updated german translation (99.2%)
+-   Updated node requirement to 20.x
+-   Ignored some errors from Sentry
+
+# v7.1.57 - 10/03/2024
 
 Mainly bugfixes and a few new features.
 
-# New features
+## New features
 
 -   [Operators] Added a public/current list selector on the top bar for easier playlist changes
 -   [Maintainers] Added warning about libavcodec's aac encoder
 -   [Maintainers] Added ability to squash (merge) commits into one when there are many commits to make
 -   [Maintainers] Current commit is now displayed in git page in system panel
 
-# Changes
+## Changes
 
 -   [Users] Updated italian translation
 -   [Users] Better responsive design layout
@@ -20,7 +182,7 @@ Mainly bugfixes and a few new features.
 -   [Maintainers] Tag types are now sorted in tag files. It would create false modifications for some tag files during commits
 -   [Maintainers] FTP renames and deletes are now done AFTER a succesfull push.
 
-# Fixes
+## Fixes
 
 -   [Users] Fixed mpv on some Windows versions
 -   [Users] Fixed first song played not having subtitles sometimes (thanks @sorc278!)

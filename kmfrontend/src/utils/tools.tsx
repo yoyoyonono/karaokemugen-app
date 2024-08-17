@@ -2,8 +2,8 @@ import { EventEmitter } from 'events';
 import i18next from 'i18next';
 import { createElement, Dispatch, ReactNode } from 'react';
 import { toast, ToastPosition, TypeOptions } from 'react-toastify';
-import { DBKara } from '../../../src/lib/types/database/kara';
 
+import { DBKara } from '../../../src/lib/types/database/kara';
 import { Criteria } from '../../../src/lib/types/playlist';
 import nanamiCryPNG from '../assets/nanami-cry.png';
 import nanamiCryWebP from '../assets/nanami-cry.webp';
@@ -212,6 +212,11 @@ export function isRepoOnline(context: GlobalContextInterface, repoName: string):
 	return repo.Online;
 }
 
+export function isRepoOnlineAndMaintainer(context: GlobalContextInterface, repoName: string): boolean {
+	const repo = context.globalState.settings.data.config.System.Repositories.find(r => r.Name === repoName);
+	return repo.Online && repo.MaintainerMode;
+}
+
 export async function decodeCriteriaReason(settings: SettingsStoreData, criteria: Criteria) {
 	const args: [string, Record<string, string>] = ['', {}];
 	switch (criteria.type) {
@@ -326,4 +331,10 @@ export function PLCCallback(response, context: GlobalContextInterface, kara: DBK
 			response.plc.plcid
 		);
 	}
+}
+
+export function getProtocolForOnline(context: GlobalContextInterface, repository: string) {
+	return context.globalState.settings.data.config.System.Repositories.find(value => value.Name === repository).Secure
+		? 'https'
+		: 'http';
 }

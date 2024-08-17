@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable no-unused-vars */
 const yaml = require('js-yaml');
 const xml = require('xml-js');
 const path = require('path');
@@ -7,14 +9,11 @@ const { mainModule } = require('process');
 
 const [
 	_,
+	// eslint-disable-next-line no-redeclare
 	__,
 	sentrycliVersion,
 	sentrycliX64SHA,
 	sentrycliARM64SHA,
-	sharpVersion,
-	sharpSHA,
-	libvipsVersion,
-	libvipsSHA,
 ] = process.argv;
 
 const yamlFile = 'moe.karaokes.mugen/moe.karaokes.mugen.yml';
@@ -42,22 +41,6 @@ async function main() {
 	sentryCliX64Source.url = `https://downloads.sentry-cdn.com/sentry-cli/${sentrycliVersion}/sentry-cli-Linux-x86_64`;
 	sentryCliX64Source.sha256 = sentrycliX64SHA;
 	sentryCliX64Source['only-arches'] = '[x86_64]';
-
-	// Sharp dependencies (for QR Code) need to be download and not built, so we're editing the manifest
-	karaokemugenModule['build-options'].env.LIBVIPS_VERSION = libvipsVersion;
-	const libvipsSource = karaokemugenModule.sources.find(e => e.url && e.url.includes('sharp-libvips'));
-
-	libvipsSource.url = `https://github.com/lovell/sharp-libvips/releases/download/v${libvipsVersion}/libvips-${libvipsVersion}-linux-x64.tar.br`;
-	libvipsSource.sha256 = libvipsSHA;
-	libvipsSource['only-arches'] = '[x86_64]';
-
-	const sharpSource = karaokemugenModule.sources.find(
-		e => e.url && e.url.includes('https://github.com/lovell/sharp/releases')
-	);
-
-	sharpSource.url = `https://github.com/lovell/sharp/releases/download/v${sharpVersion}/sharp-v${sharpVersion}-napi-v7-linux-x64.tar.gz`;
-	sharpSource.sha256 = sharpSHA;
-	sharpSource['only-arches'] = '[x86_64]';
 
 	/** Not tested yet
 	const sentryCliARM64Source = karaokemugenModule.sources.find(
