@@ -636,6 +636,23 @@ function AdminHeader(props: IProps) {
 								]}
 							/>
 						</li>
+						<li>
+							<span
+								style={{
+									display: 'flex',
+									justifyContent: 'center',
+									alignContent: 'center',
+									gap: '10px',
+								}}
+							>
+								<div>
+									{i18next.t('Restrict interface at')}
+									&nbsp;
+									<i className="far fa-question-circle" />
+								</div>
+								<input type="time" placeholder="22:00"></input>
+							</span>
+						</li>
 						{context?.globalState.settings.data.config?.Karaoke?.StreamerMode?.Twitch?.Enabled ? (
 							<li title={i18next.t('SETTINGS.PLAYER.LIVE_COMMENTS_TOOLTIP')}>
 								<label>
