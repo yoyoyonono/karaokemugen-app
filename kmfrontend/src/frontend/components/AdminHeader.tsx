@@ -4,6 +4,7 @@ import { createElement, useContext, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { useLocation, useNavigate } from 'react-router';
 
+import dayjs, { Dayjs } from 'dayjs';
 import { PublicPlayerState } from '../../../../src/types/state';
 import KLogo from '../../assets/Klogo.png';
 import { logout } from '../../store/actions/auth';
@@ -21,8 +22,6 @@ import QuizModal from './modals/QuizModal';
 import Tutorial from './modals/Tutorial';
 import UsersModal from './modals/UsersModal';
 import PlayerControls from './PlayerControls';
-import dayjs, { Dayjs } from 'dayjs';
-import { TimePicker } from 'antd/lib';
 
 interface IProps {
 	currentPlaylist: PlaylistElem;

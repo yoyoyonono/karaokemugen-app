@@ -1395,9 +1395,8 @@ export async function checkCurrentPlaylistRestrictInterfaceTime(currentPlaylist?
 	const restrictionTime = getConfig()?.Karaoke?.RestrictInterfaceAtTime;
 	if (restrictionTime) {
 		currentPlaylist = currentPlaylist || (await getPlaylistInfo(currentPlaid));
-		const currentEndingDatetime = new Date(new Date().getTime() + currentPlaylist.time_left);
-		// console.debug({ currentEnd: currentEndingDatetime, restrictionTime });
-		if (currentPlaylist.time_left && dayjs(currentEndingDatetime).isAfter(restrictionTime))
+		const currentEndingDatetime = dayjs().add(currentPlaylist.time_left, 'seconds');
+		if (currentPlaylist.time_left && currentEndingDatetime.isAfter(restrictionTime))
 			await editSetting({ Karaoke: { RestrictInterfaceAtTime: null }, Frontend: { Mode: 1 } });
 	}
 }
