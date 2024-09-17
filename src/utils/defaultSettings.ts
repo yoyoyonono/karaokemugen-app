@@ -111,6 +111,7 @@ export const defaults: Config = {
 				Enabled: false,
 			},
 		},
+		RestrictInterfaceAtTime: null,
 	},
 	Player: {
 		Display: {

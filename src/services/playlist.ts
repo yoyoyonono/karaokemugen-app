@@ -79,6 +79,8 @@ import {
 	whitelistHook,
 } from './smartPlaylist.js';
 import { getUser, getUsers, updateSongsLeft } from './user.js';
+import dayjs from 'dayjs';
+import { editSetting } from '../utils/config.js';
 
 const service = 'Playlist';
 
@@ -842,6 +844,7 @@ export async function addKaraToPlaylist(params: AddKaraParams) {
 				await setPlaying(PLCsInserted[0].plcid, getState().currentPlaid);
 				await playPlayer(true);
 			}
+			await checkCurrentPlaylistRestrictInterfaceTime();
 		}
 		if (params.plaid === state.publicPlaid) {
 			emitWS(
@@ -1383,6 +1386,19 @@ export async function importPlaylist(playlist: PlaylistExport, username: string,
 		throw err instanceof ErrorKM ? err : new ErrorKM('PL_IMPORT_ERROR');
 	} finally {
 		task.end();
+	}
+}
+
+export async function checkCurrentPlaylistRestrictInterfaceTime(currentPlaylist?: DBPL) {
+	const currentPlaid = getState().currentPlaid;
+	if (currentPlaylist && currentPlaylist?.plaid !== currentPlaid) return;
+	const restrictionTime = getConfig()?.Karaoke?.RestrictInterfaceAtTime;
+	if (restrictionTime) {
+		currentPlaylist = currentPlaylist || (await getPlaylistInfo(currentPlaid));
+		const currentEndingDatetime = new Date(new Date().getTime() + currentPlaylist.time_left);
+		// console.debug({ currentEnd: currentEndingDatetime, restrictionTime });
+		if (currentPlaylist.time_left && dayjs(currentEndingDatetime).isAfter(restrictionTime))
+			await editSetting({ Karaoke: { RestrictInterfaceAtTime: null }, Frontend: { Mode: 1 } });
 	}
 }
 

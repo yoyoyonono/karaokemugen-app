@@ -21,6 +21,8 @@ import QuizModal from './modals/QuizModal';
 import Tutorial from './modals/Tutorial';
 import UsersModal from './modals/UsersModal';
 import PlayerControls from './PlayerControls';
+import dayjs, { Dayjs } from 'dayjs';
+import { TimePicker } from 'antd/lib';
 
 interface IProps {
 	currentPlaylist: PlaylistElem;
@@ -102,6 +104,30 @@ function AdminHeader(props: IProps) {
 
 	const changePublicInterfaceMode = (value: number) => {
 		const data = expand('Frontend.Mode', value);
+		commandBackend('updateSettings', { setting: data }).catch(() => {});
+	};
+
+	const getRestrictInterfaceAtTime = () =>
+		context?.globalState.settings.data.config?.Karaoke?.RestrictInterfaceAtTime
+			? dayjs(context?.globalState.settings.data.config?.Karaoke?.RestrictInterfaceAtTime).format('HH:mm')
+			: null;
+	const changeRestrictInterfaceAtTime = (timeString?: string | null) => {
+		let dateWithTime: Dayjs | null = null;
+		if (timeString) {
+			try {
+				const [hours, minutes] = timeString?.split(':').map(s => Number(s));
+				dateWithTime = dayjs()
+					.set('hours', hours)
+					.set('minutes', minutes)
+					.set('seconds', 0)
+					.set('milliseconds', 0);
+				if (dateWithTime.isBefore(dayjs())) dateWithTime = dateWithTime.add(1, 'day');
+			} catch (e) {
+				// Invalid time format, reset
+				dateWithTime = null;
+			}
+		} else dateWithTime = null;
+		const data = expand('Karaoke.RestrictInterfaceAtTime', dateWithTime?.toDate());
 		commandBackend('updateSettings', { setting: data }).catch(() => {});
 	};
 
@@ -650,7 +676,12 @@ function AdminHeader(props: IProps) {
 									&nbsp;
 									<i className="far fa-question-circle" />
 								</div>
-								<input type="time" placeholder="22:00"></input>
+								<input
+									type="time"
+									defaultValue={getRestrictInterfaceAtTime()}
+									onBlur={event => changeRestrictInterfaceAtTime(event.target.value)}
+									onChange={event => changeRestrictInterfaceAtTime(event.target.value)}
+								></input>
 							</span>
 						</li>
 						{context?.globalState.settings.data.config?.Karaoke?.StreamerMode?.Twitch?.Enabled ? (
