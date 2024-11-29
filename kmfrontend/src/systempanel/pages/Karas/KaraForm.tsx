@@ -36,7 +36,6 @@ import {
 } from 'antd';
 import { useForm } from 'antd/es/form/Form';
 import { Flex, Spin } from 'antd/lib';
-import { CheckboxChangeEvent } from 'antd/lib/checkbox';
 import { DefaultOptionType, SelectValue } from 'antd/lib/select';
 import { filesize } from 'filesize';
 import i18next from 'i18next';
@@ -48,7 +47,6 @@ import { DBKara } from '../../../../../src/lib/types/database/kara';
 import { KaraFileV4, MediaInfo, MediaInfoValidationResult } from '../../../../../src/lib/types/kara';
 import type { RepositoryManifestV2 } from '../../../../../src/lib/types/repo';
 import { blobToBase64 } from '../../../../../src/lib/utils/filesCommon';
-import { Config } from '../../../../../src/types/config';
 import GlobalContext from '../../../store/context';
 import { buildKaraTitle, getPreviewLink, getPreviewPath, getTagInLocale } from '../../../utils/kara';
 import { commandBackend } from '../../../utils/socket';
@@ -103,7 +101,6 @@ function KaraForm(props: KaraFormProps) {
 	);
 	const [mediafileIsTouched, setMediafileIsTouched] = useState(false);
 	const [subfileIsTouched, setSubfileIsTouched] = useState(false);
-	const [applyLyricsCleanup, setApplyLyricsCleanup] = useState(false);
 	const [mediaInfo, setMediaInfo] = useState<MediaInfo>(null);
 	const [mediaInfoValidationResults, setMediaInfoValidationResults] = useState<MediaInfoValidationResult[]>([]);
 	const [isEncodingMedia, setIsEncodingMedia] = useState(false);
@@ -146,9 +143,7 @@ function KaraForm(props: KaraFormProps) {
 		updateDisplayTypeOptions();
 		getParents();
 		loadMediaInfo();
-		setApplyLyricsCleanup(context.globalState.settings.data.config?.Maintainer?.ApplyLyricsCleanupOnKaraSave);
 		return () => {
-			// i18next.t('KARA.MEDIA_ENCODE.LEAVE_PAGE') // No detection for unsaved changes yet
 			if (isEncodingMediaRef.current) abortEncoding();
 		};
 	}, []);
@@ -309,6 +304,7 @@ function KaraForm(props: KaraFormProps) {
 				format: (value: number) => `${value} fps`,
 			},
 			{ name: 'audioCodec', title: 'KARA.MEDIA_FILE_INFO.AUDIO_CODEC' },
+			{ name: 'audioChannelLayout', title: 'KARA.MEDIA_FILE_INFO.AUDIO_CHANNEL_LAYOUT' },
 			{
 				name: 'audioSampleRate',
 				title: 'KARA.MEDIA_FILE_INFO.AUDIO_SAMPLE_RATE',
@@ -468,11 +464,6 @@ function KaraForm(props: KaraFormProps) {
 		setRepositoriesValue(res.filter(repo => repo.MaintainerMode || !repo.Online).map(repo => repo.Name));
 	};
 
-	const saveApplyLyricsCleanupSetting = (enabled: boolean) =>
-		commandBackend('updateSettings', {
-			setting: { Maintainer: { ApplyLyricsCleanupOnKaraSave: enabled } } as Partial<Config>,
-		}).catch(() => {});
-
 	const previewHooks = async () => {
 		if (!defaultLanguage || !titles || Object.keys(titles).length === 0 || !titles[defaultLanguage]) {
 			message.error(i18next.t('KARA.TITLE_REQUIRED'));
@@ -599,7 +590,6 @@ function KaraForm(props: KaraFormProps) {
 			kara: karaFile,
 			modifiedLyrics: subfileIsTouched,
 			modifiedMedia: mediafileIsTouched,
-			applyLyricsCleanup: applyLyricsCleanup,
 		};
 	};
 
@@ -677,7 +667,6 @@ function KaraForm(props: KaraFormProps) {
 	};
 
 	const onAudioCoverUploadChange = async info => {
-		const fileList = info.fileList.slice(-1);
 		try {
 			if (info.file.status === 'uploading') {
 				setCoverImageEmbedRunning(true);
@@ -768,24 +757,17 @@ function KaraForm(props: KaraFormProps) {
 	};
 
 	const applyFieldsFromKara = async (kid: string) => {
-		const karas = await commandBackend('getKaras', {
-			q: 'k:' + kid,
-			size: 1,
-			ignoreCollections: true,
-		});
-		const parentKara = karas && (karas.content[0] as DBKara);
-		if (parentKara && parentKara.kid === kid) {
-			// Check if user has already started doing input, or if it's an edit of existing kara
-			if (
-				!props.kara?.kid &&
-				titlesIsTouched !== true &&
-				form.isFieldsTouched(['versions', 'series', 'language']) !== true
-			) {
-				setTitles(parentKara.titles);
-				setDefaultLanguage(parentKara.titles_default_language);
-				setParentKara(parentKara);
-				onChangeSingersSeries();
-			}
+		const parentKara = await commandBackend('getKara', { kid });
+		// Check if user has already started doing input, or if it's an edit of existing kara
+		if (
+			!props.kara?.kid &&
+			titlesIsTouched !== true &&
+			form.isFieldsTouched(['versions', 'series', 'language']) !== true
+		) {
+			setTitles(parentKara.titles);
+			setDefaultLanguage(parentKara.titles_default_language);
+			setParentKara(parentKara);
+			onChangeSingersSeries();
 		}
 	};
 
@@ -907,7 +889,7 @@ function KaraForm(props: KaraFormProps) {
 									onlineAuthorization: localStorage.getItem('kmOnlineToken'),
 								}}
 								action="/api/importFile"
-								accept="video/*,audio/*,.mkv"
+								accept="video/*,audio/*,.mkv,.aac"
 								multiple={false}
 								onChange={onMediaUploadChange}
 								fileList={mediafile as any[]}
@@ -1052,20 +1034,6 @@ function KaraForm(props: KaraFormProps) {
 							</Upload>
 						</Form.Item>
 
-						{subfile?.length > 0 && (
-							<Checkbox
-								checked={applyLyricsCleanup}
-								onChange={(e: CheckboxChangeEvent) => {
-									saveApplyLyricsCleanupSetting(e.target.checked);
-									setApplyLyricsCleanup(e.target.checked);
-								}}
-							>
-								{i18next.t('KARA.APPLY_LYRICS_CLEANUP')}&nbsp;
-								<Tooltip title={i18next.t('KARA.APPLY_LYRICS_CLEANUP_TOOLTIP')}>
-									<QuestionCircleOutlined />
-								</Tooltip>
-							</Checkbox>
-						)}
 						{subfile?.length > 0 && props.kara?.kid && !mediafileIsTouched && (
 							<div style={{ marginTop: '1em' }}>
 								<OpenLyricsFileButton kara={props.kara} />

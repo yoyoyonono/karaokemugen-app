@@ -5,7 +5,7 @@ import { basename, extname, resolve } from 'path';
 import { applyKaraHooks } from '../lib/dao/hook.js';
 import { extractVideoSubtitles, trimKaraData, verifyKaraData, writeKara } from '../lib/dao/karafile.js';
 import { getKaraFamily } from '../lib/services/kara.js';
-import { defineFilename, determineMediaAndLyricsFilenames, processSubfile } from '../lib/services/karaCreation.js';
+import { defineSongname, determineMediaAndLyricsFilenames, processSubfile } from '../lib/services/karaCreation.js';
 import {
 	checkKaraMetadata,
 	checkKaraParents,
@@ -14,7 +14,7 @@ import {
 } from '../lib/services/karaValidation.js';
 import { EditedKara } from '../lib/types/kara.d.js';
 import { ASSFileCleanup } from '../lib/utils/ass.js';
-import { getConfig, resolvedPath, resolvedPathRepos } from '../lib/utils/config.js';
+import { resolvedPath, resolvedPathRepos } from '../lib/utils/config.js';
 import { ErrorKM } from '../lib/utils/error.js';
 import { replaceExt, resolveFileInDirs, smartMove } from '../lib/utils/files.js';
 import logger, { profile } from '../lib/utils/logger.js';
@@ -76,11 +76,12 @@ export async function editKara(editedKara: EditedKara, refresh = true) {
 			throw new ErrorKM('UNKNOWN_SONG', 404, false);
 		}
 		if (!kara.data.ignoreHooks) await applyKaraHooks(kara);
-		const karaFile = await defineFilename(kara, oldKara);
+		const { sanitizedFilename, songname } = await defineSongname(kara, oldKara);
+		kara.data.songname = songname;
 		const karaJsonFileOld = resolve(resolvedPathRepos('Karaokes', oldKara.repository)[0], oldKara.karafile);
 		const karaJsonFileDest = resolve(
 			resolvedPathRepos('Karaokes', kara.data.repository)[0],
-			`${karaFile}.kara.json`
+			`${sanitizedFilename}.kara.json`
 		);
 		if (karaJsonFileOld !== karaJsonFileDest && (await exists(karaJsonFileDest))) {
 			logger.error(`Cannot save kara since it would overwrite the existing file ${karaJsonFileDest}`, {
@@ -90,7 +91,7 @@ export async function editKara(editedKara: EditedKara, refresh = true) {
 			});
 			throw new ErrorKM('KARA_FILE_EXISTS_ERROR', 409, false);
 		}
-		const filenames = determineMediaAndLyricsFilenames(kara, karaFile);
+		const filenames = determineMediaAndLyricsFilenames(kara, sanitizedFilename);
 		const mediaDest = resolve(resolvedPathRepos('Medias', kara.data.repository)[0], filenames.mediafile);
 		let oldMediaPath: string;
 		if (editedKara.modifiedMedia || oldKara.mediafile !== filenames.mediafile) {
@@ -118,7 +119,7 @@ export async function editKara(editedKara: EditedKara, refresh = true) {
 						default: true,
 						version: 'Default',
 					};
-					filenames.lyricsfile = karaFile + extname(kara.medias[0].lyrics[0].filename);
+					filenames.lyricsfile = sanitizedFilename + extname(kara.medias[0].lyrics[0].filename);
 					editedKara.modifiedLyrics = true;
 				}
 			} catch (err) {
@@ -140,6 +141,7 @@ export async function editKara(editedKara: EditedKara, refresh = true) {
 				await smartMove(oldMediaPath, mediaDest);
 			} catch (err) {
 				// Most probable error is that media is unmovable since busy
+				logger.error('Error while moving file', { service, obj: err });
 				throw new ErrorKM('KARA_EDIT_ERROR_UNMOVABLE_MEDIA', 409, false);
 			}
 		}
@@ -158,6 +160,7 @@ export async function editKara(editedKara: EditedKara, refresh = true) {
 				try {
 					await smartMove(subPath, subDest, { overwrite: true });
 				} catch (err) {
+					logger.error('Error while moving file', { service, obj: err });
 					throw new ErrorKM('KARA_EDIT_ERROR_UNMOVABLE_LYRICS', 409, false);
 				}
 			}
@@ -172,6 +175,7 @@ export async function editKara(editedKara: EditedKara, refresh = true) {
 				try {
 					await smartMove(oldSubPath, subDest, { overwrite: true });
 				} catch (err) {
+					logger.error('Error while moving file', { service, obj: err });
 					throw new ErrorKM('KARA_EDIT_ERROR_UNMOVABLE_LYRICS', 409, false);
 				}
 			}
@@ -186,13 +190,7 @@ export async function editKara(editedKara: EditedKara, refresh = true) {
 		const newKara = await getKara(kara.data.kid, adminToken);
 
 		// ASS file post processing
-		if (
-			editedKara.applyLyricsCleanup === true ||
-			(typeof editedKara.applyLyricsCleanup !== 'boolean' && // Fallback to setting when no value is sent
-				getConfig().Maintainer.ApplyLyricsCleanupOnKaraSave === true)
-		) {
-			if (kara.medias[0].lyrics?.[0]?.filename) await ASSFileCleanup(subDest, newKara);
-		}
+		if (kara.medias[0].lyrics?.[0]?.filename) await ASSFileCleanup(subDest, newKara);
 	} catch (err) {
 		logger.error('Error while editing kara', { service, obj: err });
 		sentry.addErrorInfo('args', JSON.stringify(arguments, null, 2));
@@ -233,10 +231,11 @@ export async function createKara(editedKara: EditedKara) {
 			}
 		}
 		if (!kara.data.ignoreHooks) await applyKaraHooks(kara);
-		const karaFile = await defineFilename(kara);
+		const { sanitizedFilename, songname } = await defineSongname(kara);
+		kara.data.songname = songname;
 		const karaJsonFileDest = resolve(
 			resolvedPathRepos('Karaokes', kara.data.repository)[0],
-			`${karaFile}.kara.json`
+			`${sanitizedFilename}.kara.json`
 		);
 		if (await exists(karaJsonFileDest)) throw new ErrorKM('KARA_FILE_EXISTS_ERROR', 409, false);
 
@@ -256,7 +255,7 @@ export async function createKara(editedKara: EditedKara) {
 		} catch (err) {
 			// Not lethal
 		}
-		const filenames = determineMediaAndLyricsFilenames(kara, karaFile);
+		const filenames = determineMediaAndLyricsFilenames(kara, sanitizedFilename);
 		const mediaDest = resolve(resolvedPathRepos('Medias', kara.data.repository)[0], filenames.mediafile);
 		let subDest: string;
 		if (kara.medias[0].lyrics?.[0]?.filename) {
@@ -278,13 +277,7 @@ export async function createKara(editedKara: EditedKara) {
 		const newKara = await getKara(kara.data.kid, adminToken);
 
 		// ASS file post processing
-		if (
-			editedKara.applyLyricsCleanup === true ||
-			(typeof editedKara.applyLyricsCleanup !== 'boolean' && // Fallback to setting when no value is sent
-				getConfig().Maintainer.ApplyLyricsCleanupOnKaraSave === true)
-		) {
-			if (kara.medias[0].lyrics?.[0]?.filename) await ASSFileCleanup(subDest, newKara);
-		}
+		if (kara.medias[0].lyrics?.[0]?.filename) await ASSFileCleanup(subDest, newKara);
 	} catch (err) {
 		logger.error('Error while creating kara', { service, obj: err });
 		sentry.addErrorInfo('args', JSON.stringify(arguments, null, 2));
