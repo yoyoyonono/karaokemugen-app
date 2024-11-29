@@ -43,6 +43,8 @@ import UnusedList from '../pages/UnusedList';
 import UserEdit from '../pages/Users/UserEdit';
 import UserList from '../pages/Users/UserList';
 import KMMenu from './KMMenu';
+import TagNew from '../pages/Tags/TagsNew';
+import KaraNew from '../pages/Karas/KaraNew';
 
 class KMSystem extends Component<unknown, unknown> {
 	componentDidMount() {
@@ -60,13 +62,13 @@ class KMSystem extends Component<unknown, unknown> {
 	}
 
 	operatorNotificationInfo = (data: { code: string; data: string }) =>
-		displayMessage('info', i18next.t(data.code, { data: data }));
+		displayMessage('info', i18next.t(data.code, data.data));
 	operatorNotificationError = (data: { code: string; data: string }) =>
-		displayMessage('error', i18next.t(data.code, { data: data }));
+		displayMessage('error', i18next.t(data.code, data.data));
 	operatorNotificationWarning = (data: { code: string; data: string }) =>
-		displayMessage('warning', i18next.t(data.code, { data: data }));
+		displayMessage('warning', i18next.t(data.code, data.data));
 	operatorNotificationSuccess = (data: { code: string; data: string }) =>
-		displayMessage('success', i18next.t(data.code, { data: data }));
+		displayMessage('success', i18next.t(data.code, data.data));
 
 	getLocale() {
 		let locale = enUS;
@@ -116,17 +118,17 @@ class KMSystem extends Component<unknown, unknown> {
 							<Route path="/unused" element={<UnusedList />} />
 							<Route path="/backgrounds" element={<Background />} />
 
-							<Route path="/sessions/new" element={<SessionsEdit />} />
+							<Route path="/sessions/create" element={<SessionsEdit />} />
 							<Route path="/sessions/:seid" element={<SessionsEdit />} />
 							<Route path="/sessions" element={<SessionsList />} />
 
-							<Route path="/repositories/new" element={<RepositoriesEdit />} />
+							<Route path="/repositories/create" element={<RepositoriesEdit />} />
 							<Route path="/repositories/:name" element={<RepositoriesEdit />} />
 							<Route path="/repositories" element={<RepositoriesList />} />
 
 							<Route path="/karas/download/queue" element={<QueueDownload />} />
 							<Route path="/karas/download" element={<KaraDownload />} />
-							<Route path="/karas/create" element={<KaraEdit />} />
+							<Route path="/karas/create" element={<KaraNew />} />
 							<Route path="/karas/history" element={<KaraHistory />} />
 							<Route path="/karas/ranking" element={<KaraRanking />} />
 							<Route path="/karas/viewcounts" element={<KaraViewcounts />} />
@@ -135,7 +137,7 @@ class KMSystem extends Component<unknown, unknown> {
 							<Route path="/karas" element={<KaraListPage />} />
 
 							<Route path="/tags/duplicate" element={<TagsDuplicate />} />
-							<Route path="/tags/new" element={<TagsEdit />} />
+							<Route path="/tags/create" element={<TagNew />} />
 							<Route path="/tags/:tid" element={<TagsEdit />} />
 							<Route path="/tags" element={<TagsList />} />
 
