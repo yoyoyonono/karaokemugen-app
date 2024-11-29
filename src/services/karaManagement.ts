@@ -14,6 +14,7 @@ import { extractMediaTechInfos, formatKaraV4, getDataFromKaraFile, writeKara } f
 import { refreshTags } from '../lib/dao/tag.js';
 import { writeTagFile } from '../lib/dao/tagfile.js';
 import { APIMessage } from '../lib/services/frontend.js';
+import { defineSongname } from '../lib/services/karaCreation.js';
 import { refreshKarasAfterDBChange, updateTags } from '../lib/services/karaManagement.js';
 import { getRepoManifest } from '../lib/services/repo.js';
 import { DBKara, DBKaraTag } from '../lib/types/database/kara.js';
@@ -336,7 +337,7 @@ export async function integrateKaraFile(
 		checkMediaAndDownload(
 			[
 				{
-					name: karaData.data.titles[karaData.data.titles_default_language],
+					name: (await defineSongname(karaData)).songname,
 					kid: karaData.data.kid,
 					mediafile: karaData.medias[0].filename,
 					repository: karaData.data.repository,

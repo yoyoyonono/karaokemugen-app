@@ -12,10 +12,11 @@ import { deleteRepo, insertRepo, updateRepo } from '../dao/repo.js';
 import { getSettings, refreshAll, saveSetting } from '../lib/dao/database.js';
 import { initHooks } from '../lib/dao/hook.js';
 import { refreshKaras } from '../lib/dao/kara.js';
-import { parseKara, writeKara } from '../lib/dao/karafile.js';
+import { formatKaraV4, parseKara, writeKara } from '../lib/dao/karafile.js';
 import { selectRepos } from '../lib/dao/repo.js';
 import { APIMessage } from '../lib/services/frontend.js';
 import { readAllKaras } from '../lib/services/generation.js';
+import { defineSongname } from '../lib/services/karaCreation.js';
 import { getRepoManifest } from '../lib/services/repo.js';
 import { DBTag } from '../lib/types/database/tag.js';
 import { KaraMetaFile } from '../lib/types/downloads.js';
@@ -1229,13 +1230,13 @@ export async function generateCommits(repoName: string) {
 		// Added songs
 		const [karas, tags] = await Promise.all([getKaras({ ignoreCollections: true }), getTags({})]);
 		for (const file of addedSongs) {
-			const kara = karas.content.find(k => k.karafile === basename(file));
 			// We need to find out if some tags have been added or modified and add them to our commit
+			const kara = karas.content.find(k => k.karafile === basename(file));
 			if (!kara) {
 				logger.warn(`File "${file}" does not seem to be in database? Skipping`, { service });
 				continue;
 			}
-			const song = kara.titles[kara.titles_default_language];
+			const song = (await defineSongname(formatKaraV4(kara))).songname;
 			const commit: Commit = {
 				addedFiles: [file],
 				removedFiles: [],
@@ -1286,7 +1287,7 @@ export async function generateCommits(repoName: string) {
 				logger.warn(`File "${file}" does not seem to be in database? Skipping`, { service });
 				continue;
 			}
-			const song = kara.titles[kara.titles_default_language];
+			const song = (await defineSongname(formatKaraV4(kara))).songname;
 			const commit: Commit = {
 				addedFiles: [file],
 				removedFiles: [],
