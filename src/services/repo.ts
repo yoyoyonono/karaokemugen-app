@@ -1115,55 +1115,6 @@ export async function movingMediaRepo(repoName: string, newPath: string) {
 	}
 }
 
-export async function linkingMediaRepo() {
-	const task = new Task({
-		text: 'LINKING_MEDIAS_REPO',
-	});
-	try {
-		for (const repo of getRepos()) {
-			const repoName = repo.Name;
-			await checkRepoPaths(repo);
-			const linkTasks = [];
-			const [karas, mediaFiles, lyricFiles, tags] = await Promise.all([
-				getKaras({ ignoreCollections: true }),
-				listAllFiles('Medias', repoName),
-				listAllFiles('Lyrics', repoName),
-				getTags({}),
-			]);
-			for (const kara of karas.content) {
-				const karaFileData: KaraFileV4 = formatKaraV4(kara);
-				const karaFile = await defineOldFilename(karaFileData, null, tags.content);
-				const filenames = determineMediaAndLyricsFilenames(karaFileData, karaFile);
-
-				// We test if the media has been downloaded before attempting anything.
-				const mediaFileKaraPath = mediaFiles.find(file => kara.mediafile === basename(file));
-				const lyricFileKaraPath = lyricFiles.find(file => kara.subfile === basename(file));
-
-				if (mediaFileKaraPath) {
-					const newMediasPath = `${path.dirname(mediaFileKaraPath)}-links`;
-					await fs.mkdir(newMediasPath, { recursive: true });
-
-					linkTasks.push(link(mediaFileKaraPath, resolve(newMediasPath, filenames.mediafile)));
-				}
-				if (lyricFileKaraPath) {
-					const newLyricsPath = `${path.dirname(lyricFileKaraPath)}-links`;
-					await fs.mkdir(newLyricsPath, { recursive: true });
-
-					linkTasks.push(link(lyricFileKaraPath, resolve(newLyricsPath, filenames.mediafile)));
-				}
-			}
-			await Promise.all(linkTasks);
-		}
-	} catch (err) {
-		logger.error(`Error linking medias for repos : ${err}`, { service });
-		sentry.error(err);
-		emitWS('operatorNotificationError', APIMessage('ERROR_CODES.LINKING_MEDIAS_ERROR'));
-		throw err instanceof ErrorKM ? err : new ErrorKM('LINKING_MEDIAS_ERROR');
-	} finally {
-		task.end();
-	}
-}
-
 export async function getRepoFreeSpace(repoName: string) {
 	try {
 		const repo = getRepo(repoName);
