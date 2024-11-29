@@ -5,8 +5,8 @@ import parallel from 'p-map';
 import { basename, parse, resolve } from 'path';
 import { TopologicalSort } from 'topological-sort';
 
-import { baseChecksum, editKaraInStore, getStoreChecksum, sortKaraStore } from '../dao/dataStore.js';
 import { compareKarasChecksum, generateDB } from '../dao/database.js';
+import { baseChecksum, editKaraInStore, getStoreChecksum, sortKaraStore } from '../dao/dataStore.js';
 import { updateDownloaded } from '../dao/download.js';
 import { deleteRepo, insertRepo, updateRepo } from '../dao/repo.js';
 import { getSettings, refreshAll, saveSetting } from '../lib/dao/database.js';
@@ -1229,7 +1229,7 @@ export async function generateCommits(repoName: string) {
 		// Added songs
 		const [karas, tags] = await Promise.all([getKaras({ ignoreCollections: true }), getTags({})]);
 		for (const file of addedSongs) {
-			const kara = karas.content.find(k => k.karafile === `${basename(file)}.kara.json`);
+			const kara = karas.content.find(k => k.karafile === basename(file));
 			// We need to find out if some tags have been added or modified and add them to our commit
 			if (!kara) {
 				logger.warn(`File "${file}" does not seem to be in database? Skipping`, { service });
