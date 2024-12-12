@@ -337,7 +337,7 @@ export async function integrateKaraFile(
 		checkMediaAndDownload(
 			[
 				{
-					name: (await defineSongname(karaData)).songname,
+					songname: (await defineSongname(karaData)).songname,
 					kid: karaData.data.kid,
 					mediafile: karaData.medias[0].filename,
 					repository: karaData.data.repository,
