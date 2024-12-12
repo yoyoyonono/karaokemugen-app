@@ -303,7 +303,9 @@
 			"REQUIRE_USER_CREATION_CODE": "Richiedi un codice per la creazione utente",
 			"REQUIRE_USER_CREATION_CODE_TOOLTIP": "Agli utenti sarà richiesto un codice per creare nuovi account che solo gli operatori potranno vedere e comunicargli. Il codice verrà mostrato nella schermata Utenti del menu K.",
 			"PUBLIC_PLAYER_CONTROLS_TOOLTIP": "I comandi Riproduci/Sospendi, Interrompi, Precedente e Successivo saranno visibili nell'interfaccia pubblica, consentendo agli utenti di controllare il lettore multimediale dai loro dispositivi. Da utilizzare solo in piccoli gruppi!"
-		}
+		},
+		"FILTER_SETTINGS": "Cerca impostazioni",
+		"FILTER_SETTINGS_TOOLTIP": "Trova rapidamente l'impostazione che ti serve tramite questa barra di ricerca."
 	},
 	"KAROULETTE": {
 		"PLAYLIST_REMAINING_other": "Tempo rimanente di questa lista: {{count}} minuti",
@@ -1301,7 +1303,7 @@
 		"PREVIEW_HOOKS": "Controlla le tag aggiunte automaticamente",
 		"SERIES_SINGERS_REQUIRED": "Serie, Cantato da o Dalla band musicale non possono essere tutti vuoti.",
 		"REPOSITORY": "Archivio",
-		"PARENTS_TOOLTIP": "Se un brano principale è definito, questo brano verrà mostrato come variante della versione principale selezionata. Si prega di selezionare l'archivio corretto prima di compilare questo campo per prevenire l'aggiunta di brani da altri archivi.",
+		"PARENTS_TOOLTIP": "Se un brano principale è definito, questo brano verrà mostrato come sua variante. Si prega di selezionare l'archivio corretto prima di compilare questo campo per prevenire l'aggiunta di brani da altri archivi.",
 		"SYNC_WARNING_DESCRIPTION": "Sincronizzando i file multimediali, tutti i file multimediali contenuti in collezioni disabilitate verranno rimossi. Ciò potrebbe eliminare molti file se hai disabilitato temporaneamente una collezione che usi spesso.",
 		"QUEUE_LABEL_SONGS": "({{numberSongs}} brani):",
 		"ONLINE_REPOSITORIES": "Alcuni dei tuoi brani vengono da archivi remoti (come il server kara.moe) e non sono modificabili tramite questa interfaccia, così da mantenere sincronizzati gli archivi. Puoi abilitare la \"modalità mantenitore\" nelle impostazioni archivio, così facendo non riceverai più aggiornamenti ma potrai modificare o eliminare i brani.",
@@ -2097,7 +2099,8 @@
 	},
 	"ABOUT": {
 		"DONATORS": "Grazie a <1>{{donators}}</1> per aver donato a Karaoke Mugen",
-		"DESCRIPTION": "Un lettore karaoke ed un organizzatore di feste, tra amici o in pubblico. Licenza MIT.",
+		"DESCRIPTION": "Un lettore karaoke ed un organizzatore di feste, tra amici o in pubblico.",
+		"LICENSE": "Licenza MIT.",
 		"CONTRIBUTORS": "I karaoke sono stati creati da persone meravigliose, come <1>{{contributors}}</1>, per esempio."
 	},
 	"SEARCH_FILTER": "Cerca filtro",
