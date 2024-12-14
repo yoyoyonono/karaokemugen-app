@@ -6,6 +6,7 @@ import { APIMessage } from '../lib/services/frontend.js';
 import { DBMedia } from '../lib/types/database/kara.js';
 import { getConfig, resolvedPathRepos } from '../lib/utils/config.js';
 import { mediaFileRegexp } from '../lib/utils/constants.js';
+import { ErrorKM } from '../lib/utils/error.js';
 import { resolveFileInDirs } from '../lib/utils/files.js';
 import HTTP from '../lib/utils/http.js';
 import logger, { profile } from '../lib/utils/logger.js';
@@ -15,8 +16,7 @@ import { emitWS } from '../lib/utils/ws.js';
 import { File, UpdateMediasResult } from '../types/download.js';
 import Sentry from '../utils/sentry.js';
 import { addDownloads } from './download.js';
-import { checkDownloadStatus, getRepo, getRepos } from './repo.js';
-import { ErrorKM } from '../lib/utils/error.js';
+import { checkDownloadStatus, checkRepoMediaPaths, getRepo, getRepos } from './repo.js';
 
 const service = 'MediasUpdater';
 
@@ -164,6 +164,21 @@ async function removeFiles(files: string[], dir: string): Promise<void> {
 
 /** Updates medias for all repositories */
 export async function updateAllMedias(repoNames?: string[], dryRun = false): Promise<UpdateMediasResult[]> {
+	const checkMediaPathErrors = checkRepoMediaPaths();
+	if (checkMediaPathErrors.reposWithSameMediaPath.length > 0) {
+		logger.error(
+			`Multiple repositories share the same media path, which will cause sync errors: ${checkMediaPathErrors.reposWithSameMediaPathText}`,
+			{ service }
+		);
+		emitWS(
+			'operatorNotificationError',
+			APIMessage('ERROR_CODES.UPDATING_MEDIAS_MULTIPLE_USED_MEDIA_PATH_ERROR', {
+				repos: checkMediaPathErrors.reposWithSameMediaPathText,
+			})
+		);
+		return;
+	}
+
 	const results = [];
 	for (const repo of getRepos(repoNames).filter(r => r.Online && r.Enabled)) {
 		try {

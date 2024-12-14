@@ -795,7 +795,8 @@
 	"ABOUT": {
 		"CONTRIBUTORS": "Karaoke dibuat oleh orang-orang yang hebat, seperti <1>{{contributors}}</1> misalnya.",
 		"DONATORS": "Terima kasih kepada <1>{{donators}}</1> untuk donasinya ke Karaoke Mugen",
-		"DESCRIPTION": "Pemutar karaoke dan pengelola pesta, antar teman atau di publik. Dilisensikan MIT."
+		"DESCRIPTION": "Pemutar karaoke dan pengelola pesta, antar teman atau di publik.",
+		"LICENSE": " Dilisensikan MIT."
 	},
 	"SETUP_PAGE": {
 		"SAVE_PARAMETER": "Simpan",
@@ -1283,7 +1284,6 @@
 		"GUESTS_NOT_ALLOWED": "Akun tamu tidak diperbolehkan",
 		"DELETE_PLAYLIST_ERROR_PUBLIC": "Tidak bisa menghapus daftar putar publik. Buat dulu daftar putar publik lain.",
 		"DELETE_PLAYLIST_ERROR_BLACKLIST": "Tidak dapat menghapus daftar hitam. Jadikan daftar putar lain sebagai daftar hitam terlebih dahulu.",
-		"BACKGROUND_FILE_DELETE_ERROR_IN_USE": "Tidak dapat menghapus file, file sedang digunakan oleh pemutar!",
 		"PREVIEW_HOOKS_ERROR": "Galat pratinjau kait"
 	},
 	"SUCCESS_CODES": {
@@ -1543,7 +1543,7 @@
 		"ANILIST_ID": "URL/ID Anilist",
 		"ANILIST_ID_TOOLTIP": "Jika ini adalah anime, indikasikan ID-nya di anilist.co",
 		"KITSU_ID": "URL/ID Kitsu",
-		"KITSU_ID_TOOLTIP": "Jika ini adalah anime, indikasikan ID-nya di kitsu.io",
+		"KITSU_ID_TOOLTIP": "Jika ini adalah anime, indikasikan ID-nya di kitsu.app",
 		"NOT_MAL_URL_ERROR": "Ini adalah URL MyAnimeList",
 		"NOT_ANILIST_URL_ERROR": "Ini adalah URL Anilist",
 		"NOT_KITSU_URL_ERROR": "Ini adalah URL Kitsu",

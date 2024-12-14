@@ -147,7 +147,7 @@ export async function mergeTags(tid1: string, tid2: string) {
 			karafile_tag: tag1.karafile_tag || tag2.karafile_tag,
 			priority: tag1.priority,
 			external_database_ids:
-				tag1.external_database_ids == null && tag2.external_database_ids == null
+				!tag1.external_database_ids && !tag2.external_database_ids
 					? null
 					: { ...tag1.external_database_ids, ...tag2.external_database_ids },
 		};
@@ -525,13 +525,13 @@ export async function checkCollections() {
 						}
 					} catch (err) {
 						// Fallback to what the repository has locally
-						const tags = await getTags({ type: tagTypes.collections });
+						const tags = await getTags({ type: [tagTypes.collections] });
 						for (const tag of tags.content) {
 							if (!availableCollections.find(t => t.tid === tag.tid)) availableCollections.push(tag);
 						}
 					}
 				} else {
-					const tags = await getTags({ type: tagTypes.collections });
+					const tags = await getTags({ type: [tagTypes.collections] });
 					for (const tag of tags.content) {
 						if (!availableCollections.find(t => t.tid === tag.tid)) availableCollections.push(tag);
 					}

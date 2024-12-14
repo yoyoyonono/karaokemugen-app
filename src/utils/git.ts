@@ -1,5 +1,3 @@
-import { execa } from 'execa';
-import { readFile, unlink, writeFile } from 'fs/promises';
 import i18next from 'i18next';
 import { resolve } from 'path';
 import { DefaultLogFields, ListLogLine, SimpleGit, simpleGit, SimpleGitProgressEvent } from 'simple-git';
@@ -12,8 +10,8 @@ import logger from '../lib/utils/logger.js';
 import Task from '../lib/utils/taskManager.js';
 import { getRepo } from '../services/repo.js';
 import { Commit } from '../types/repo.js';
+import { getKeyFileName, getKnownHostsFileName, updateKnownHostsFile } from './ssh.js';
 import { getState } from './state.js';
-import { resolvedPath } from '../lib/utils/config.js';
 
 const service = 'Git';
 
@@ -56,8 +54,6 @@ export default class Git {
 			password: opts.password,
 			repoName: opts.repoName,
 		};
-		this.keyFile = resolve(resolvedPath('SSHKeys'), `id_rsa_KaraokeMugen_${opts.repoName}`);
-		this.knownHostsFile = resolve(resolvedPath('SSHKeys'), `known_hosts_KaraokeMugen_${opts.repoName}`);
 	}
 
 	progressHandler({ method, stage, progress }: SimpleGitProgressEvent) {
@@ -74,6 +70,7 @@ export default class Git {
 	}
 
 	isSshUrl() {
+		/* eslint security/detect-unsafe-regex: 0 */
 		return /^(?:([a-z_][a-z0-9_]{0,30})@)?((?:[a-z0-9-_]+\.)+[a-z0-9]+)(?::([0-9]{0,5}))?([^\0\n]+)?$/.test(
 			this.opts.url.toLowerCase()
 		);
@@ -91,7 +88,7 @@ export default class Git {
 	}
 
 	/** Prepare git instance */
-	async setup(configChanged = false) {
+	async setup(configChanged = false, cloning = false) {
 		this.git = simpleGit({
 			baseDir: this.opts.baseDir,
 			binary: await getGitPath(),
@@ -100,6 +97,21 @@ export default class Git {
 			},
 			progress: this.progressHandler.bind(this),
 		});
+		const url = this.getFormattedURL();
+		if (this.isSshUrl()) {
+			this.keyFile = getKeyFileName(this.opts.repoName);
+			this.knownHostsFile = getKnownHostsFileName(this.opts.repoName);
+		}
+		// Config can't be done if cloning is in effect.
+		if ((await fileExists(this.keyFile)) && !cloning) {
+			await this.git.addConfig(
+				'core.sshCommand',
+				`ssh -o UserKnownHostsFile="${this.knownHostsFile}" -i "${this.keyFile}"`
+			);
+			await updateKnownHostsFile(url, this.opts.repoName);
+		} else {
+			if (!cloning) await this.git.raw(['config', '--unset', 'core.sshCommand']);
+		}
 		if (configChanged) {
 			logger.info('Setting up git repository settings', { service });
 			// Set email and stuff
@@ -111,35 +123,12 @@ export default class Git {
 			// Check if Remote is correctly configured
 			const remotes = await this.git.getRemotes(true);
 			const origin = remotes.find(r => r.name === 'origin');
-			const url = this.getFormattedURL();
 			if (!origin) await this.git.addRemote('origin', url);
 			if (origin && (origin.refs.fetch !== url || origin.refs.push !== url)) {
 				logger.debug(`${this.opts.repoName}: Rebuild remote`, { service });
 				await this.setRemote();
 				await this.git.branch(['--set-upstream-to=origin/master', 'master']);
 			}
-			if (this.isSshUrl() && (await fileExists(this.keyFile))) {
-				await this.git.addConfig(
-					'core.sshCommand',
-					`ssh -o UserKnownHostsFile="${this.knownHostsFile}" -i "${this.keyFile}"`
-				);
-				await this.updateKnownHostsFile(url);
-			} else {
-				await this.git.raw(['config', '--unset', 'core.sshCommand']);
-			}
-		}
-	}
-
-	async updateKnownHostsFile(repoURL: string) {
-		const host = repoURL.split('@')[1].split(':')[0];
-		try {
-			await execa('ssh-keygen', ['-q', '-f', this.knownHostsFile, '-F', host]);
-		} catch (_) {
-			logger.debug(`Scanning key for host ${host}`, { service });
-			const { stdout } = await execa('ssh-keyscan', ['-t', 'rsa', host]);
-			const hostSignature = stdout;
-			logger.debug(`Finished scanning key for host ${host}`);
-			await writeFile(this.knownHostsFile, hostSignature, 'utf-8');
 		}
 	}
 
@@ -147,36 +136,6 @@ export default class Git {
 	async getCurrentCommit() {
 		const show = await this.git.show();
 		return show.split('\n')[0].split(' ')[1];
-	}
-
-	async generateSSHKey() {
-		await this.removeSSHKey();
-		try {
-			await execa('ssh-keygen', ['-b', '2048', '-t', 'rsa', '-f', this.keyFile, '-q', '-N', '']);
-		} catch (err) {
-			logger.error(`Unable to generate SSH keypair : ${err}`, { service, obj: err });
-			logger.error(`ssh-keygen STDERR: ${err.stderr}`, { service });
-			logger.error(`ssh-keygen STDOUT: ${err.stdout}`, { service });
-			throw err;
-		}
-	}
-
-	async removeSSHKey() {
-		logger.debug(`Trying to remove ${this.keyFile}`, { service });
-		if (await fileExists(this.keyFile, true)) {
-			await unlink(this.keyFile);
-			logger.debug(`Removed ${this.keyFile}`, { service });
-		}
-		logger.debug(`Trying to remove ${this.keyFile}.pub`, { service });
-		if (await fileExists(`${this.keyFile}.pub`, true)) {
-			await unlink(`${this.keyFile}.pub`);
-			logger.debug(`Removed ${this.keyFile}.pub`, { service });
-		}
-	}
-
-	async getSSHPubKey(): Promise<string> {
-		const pubKey = await readFile(`${this.keyFile}.pub`, 'utf-8');
-		return pubKey;
 	}
 
 	async wipeChanges() {

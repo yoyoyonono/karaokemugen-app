@@ -38,7 +38,7 @@ export async function insertKara(kara: KaraFileV4): Promise<KaraOldData> {
 		yesql(sqlinsertKara)({
 			karafile: kara.meta.karaFile,
 			mediafile: kara.medias[0].filename,
-			subfile: kara.medias[0].lyrics?.[0]?.filename || null,
+			lyrics_infos: JSON.stringify(kara.medias[0].lyrics),
 			titles: kara.data.titles,
 			titles_aliases: JSON.stringify(kara.data.titles_aliases || []),
 			titles_default_language: kara.data.titles_default_language || 'eng',
@@ -57,6 +57,7 @@ export async function insertKara(kara: KaraFileV4): Promise<KaraOldData> {
 			announce_position_x: kara.medias[0].lyrics[0]?.announcePositionX || null,
 			announce_position_y: kara.medias[0].lyrics[0]?.announcePositionY || null,
 			ignoreHooks: kara.data.ignoreHooks || false,
+			songname: kara.data.songname || null,
 		})
 	);
 	return data.rows[0];
@@ -219,13 +220,13 @@ export function organizeTagsInKara<T extends DBKara>(row: T & { tags: any }): T 
 	for (const tagType of Object.keys(tagTypes)) {
 		rowWithoutTags[tagType] = [];
 	}
-	if (tags == null) {
+	if (tags === null) {
 		return <any>rowWithoutTags;
 	}
 	for (const tag of tags) {
-		if (tag?.type_in_kara == null) continue;
+		if (tag?.type_in_kara === null) continue;
 		const type = getTagTypeName(tag.type_in_kara);
-		if (type == null) continue;
+		if (!type) continue;
 		rowWithoutTags[type].push(tag);
 	}
 	return <any>rowWithoutTags;

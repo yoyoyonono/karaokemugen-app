@@ -1,12 +1,12 @@
 import { DeleteOutlined, EditOutlined, FileExcelOutlined, PlusOutlined } from '@ant-design/icons';
 import { Button, Checkbox, Divider, Layout, Modal, Table } from 'antd';
-import Title from '../../components/Title';
 import i18next from 'i18next';
 import { Component } from 'react';
 import { Link } from 'react-router-dom';
 
 import { Session, SessionExports } from '../../../../../src/types/session';
 import { commandBackend } from '../../../utils/socket';
+import Title from '../../components/Title';
 
 interface SessionListState {
 	sessions: Session[];
@@ -81,7 +81,7 @@ class SessionList extends Component<unknown, SessionListState> {
 					description={i18next.t('HEADERS.SESSIONS.DESCRIPTION')}
 				/>
 				<Layout.Content>
-					<Link to={'/system/sessions/new'}>
+					<Link to={'/system/sessions/create'}>
 						<Button style={{ margin: '0.75em' }} type="primary">
 							{i18next.t('SESSIONS.NEW_SESSION')}
 							<PlusOutlined />

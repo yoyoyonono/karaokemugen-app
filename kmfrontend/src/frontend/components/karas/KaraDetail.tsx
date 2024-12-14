@@ -5,6 +5,7 @@ import { Fragment, MouseEvent, ReactNode, useContext, useEffect, useState } from
 import { createPortal } from 'react-dom';
 import { useParams } from 'react-router-dom';
 
+import { ASSLine } from '../../../../../src/lib/types/ass';
 import { lastplayed_ago } from '../../../../../src/lib/types/database/kara';
 import { DBPLCInfo } from '../../../../../src/types/database/playlist';
 import { KaraDownloadRequest } from '../../../../../src/types/download';
@@ -23,13 +24,12 @@ import {
 import { commandBackend, getSocket } from '../../../utils/socket';
 import { YEARS } from '../../../utils/tagTypes';
 import { is_touch_device, secondsTimeSpanToHMS } from '../../../utils/tools';
+import AddKaraButton from '../generic/buttons/AddKaraButton';
 import MakeFavButton from '../generic/buttons/MakeFavButton';
 import ShowVideoButton from '../generic/buttons/ShowVideoButton';
-import InlineTag from './InlineTag';
-import AddKaraButton from '../generic/buttons/AddKaraButton';
-import VideoPreview from '../generic/VideoPreview';
 import UpvoteKaraButton from '../generic/buttons/UpvoteKaraButton';
-import { ASSLine } from '../../../../../src/lib/types/ass';
+import VideoPreview from '../generic/VideoPreview';
+import InlineTag from './InlineTag';
 
 interface IProps {
 	kid?: string;
@@ -184,7 +184,7 @@ export default function KaraDetail(props: IProps) {
 
 	useDeferredEffect(() => {
 		setBg();
-		if (kara?.subfile) fetchLyrics();
+		if (kara?.lyrics_infos[0]) fetchLyrics();
 	}, [kara]);
 
 	useEffect(() => {
@@ -353,7 +353,7 @@ export default function KaraDetail(props: IProps) {
 			</a>
 		) : null;
 
-		const lyricsKara = kara.subfile ? (
+		const lyricsKara = kara.lyrics_infos[0] ? (
 			<div className="lyricsKara detailsKaraLine">
 				{lyrics?.length > 0 ? (
 					<div className="boldDetails">

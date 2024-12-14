@@ -54,7 +54,6 @@
 	"MENU_HELP_DONATIONS": "&Memberikan Donasi",
 	"MENU_HELP_WEBSITE": "&Situs web",
 	"MENU_HELP_DISCORD": "Discord",
-	"MENU_HELP_TWITTER": "&𝕏",
 	"MENU_HELP_MASTODON": "M&astodon",
 	"MENU_HELP_BLUESKY": "&Bluesky",
 	"MENU_HELP_CHANGELOG": "&Catatan Rilis",
@@ -174,8 +173,8 @@
 		"TITLE": "Repositori tidak diketahui",
 		"MESSAGE": "Kamu baru saja akan menambahkan repositori {{repoName}} ke Karaoke Mugen. Apakah kamu yakin?"
 	},
-	"GENERATING_READING": "Langkah 1/2 - Membaca data…",
-	"GENERATING_DATABASE": "Langkah 2/2 - Memperbarui basis data…",
+	"GENERATING_READING": "Langkah 1 / 2 - Membaca data…",
+	"GENERATING_DATABASE": "Langkah 2 / 2 - Memperbarui basis data…",
 	"TWITCH": {
 		"CHAT": {
 			"VOTE": "Cara memberikan suara baru: gunakan !vote x, dengan x merupakan nomor lagu:",
@@ -211,7 +210,6 @@
 	"SUGGEST_SONGS": "Sarankan lagu!",
 	"MENU_HELP_FORUM": "&Forum",
 	"MENU_OPTIONS_SYSTEMCONFIG": "&Pengaturan Sistem",
-	"UPDATE_CHECK_ERROR": "Error terjadi ketika mencoba memeriksa pembaharuan Karaoke Mugen",
 	"MENU_VIEW_ZOOMOUT": "&Perkecil",
 	"MENU_EDIT_CUT": "&Potong",
 	"MENU_GOTO_OPERATOR": "&Tampilan Operator",

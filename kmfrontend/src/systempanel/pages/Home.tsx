@@ -12,13 +12,13 @@ import {
 	SettingOutlined,
 } from '@ant-design/icons';
 import { Button, Card, Col, Layout, Row } from 'antd';
-import Title from '../components/Title';
 import i18next from 'i18next';
 import { useContext } from 'react';
 import { Link } from 'react-router-dom';
 
 import GlobalContext from '../../store/context';
 import { displayMessage } from '../../utils/tools';
+import Title from '../components/Title';
 
 function Home() {
 	const context = useContext(GlobalContext);
@@ -116,7 +116,7 @@ function Home() {
 						<Card title={i18next.t('MENU.TAGS')}>
 							{i18next.t('HOME.TAGS_DESCRIPTION')}
 							<div className="km-system-btn-group">
-								<Link to="/system/tags/new">
+								<Link to="/system/tags/create">
 									<Button block type="primary">
 										<PlusOutlined /> {i18next.t('HOME.TAGS.CREATE')}
 									</Button>

@@ -43,10 +43,11 @@ import { getState, setState } from '../utils/state.js';
 import { isShutdownInProgress } from './engine.js';
 import Timeout = NodeJS.Timeout;
 import { getSongSeriesSingers, getSongTitle } from '../lib/services/kara.js';
+import { getRepoManifest } from '../lib/services/repo.js';
 import { getTagNameInLanguage } from '../lib/services/tag.js';
 import { getRepo } from '../services/repo.js';
+import { writeStreamFiles } from '../utils/streamerFiles.js';
 import { Player } from './mpv/player.js';
-import { getRepoManifest } from '../lib/services/repo.js';
 
 type PlayerType = 'main' | 'monitor';
 
@@ -320,6 +321,7 @@ function quickDiff() {
 
 export function emitPlayerState() {
 	setState({ player: quickDiff() });
+	writeStreamFiles('player_status');
 }
 
 export function defineMPVEnv() {
@@ -364,7 +366,7 @@ async function checkMpv() {
 		const mpv = semver.valid(mpvRegex.exec(output.stdout)[1]);
 		mpvVersion = mpv.split('-')[0];
 
-		let ffmpegVersion = FFmpegRegex.exec(output.stdout)[1];
+		const ffmpegVersion = FFmpegRegex.exec(output.stdout)[1];
 		setState({ player: { ...getState().player, version: mpvVersion, ffmpegVersion } });
 		playerState.version = mpvVersion;
 		playerState.ffmpegVersion = ffmpegVersion;
@@ -421,6 +423,8 @@ export class Players {
 
 		// Avatar
 		const shouldDisplayAvatar =
+			// Does not work on macOS at the moment (November 2024) due to mpv versions not including a good ffmpeg.
+			process.platform !== 'darwin' &&
 			showVideo &&
 			song.avatar &&
 			getConfig().Player.Display.SongInfo &&
@@ -429,11 +433,11 @@ export class Players {
 		const cropRatio = shouldDisplayAvatar ? Math.floor((await getAvatarResolution(song.avatar)) * 0.5) : 0;
 		let avatar = '';
 
-		// Checking if ffmpeg's version in mpv is either a semver or a version revision and if it's better or not than the required versions we have.
-		// This is a fix for people using mpvs with ffmpeg < 7.1 or a certain commit version.
-		const scaleAvailable = isScaleAvailable();
-
 		if (shouldDisplayAvatar) {
+			// Checking if ffmpeg's version in mpv is either a semver or a version revision and if it's better or not than the required versions we have.
+			// This is a fix for people using mpvs with ffmpeg < 7.1 or a certain commit version.
+			const scaleAvailable = isScaleAvailable();
+
 			// Again, lavfi-complex expert @nah comes to the rescue!
 			avatar = [
 				`movie=\\'${song.avatar.replaceAll(
@@ -629,7 +633,12 @@ export class Players {
 
 	private genLavfiComplexQRCode(): string {
 		// Disable this for mpvs with ffmpeg version 7.0
-		if (playerState.ffmpegVersion.includes('.') && semver.satisfies(playerState.ffmpegVersion, '7.0.x')) return '';
+		// Also disable for macOS as of November 2024 no mpv version seems to work with this.
+		if (
+			process.platform === 'darwin' ||
+			(playerState.ffmpegVersion.includes('.') && semver.satisfies(playerState.ffmpegVersion, '7.0.x'))
+		)
+			return '';
 		const scaleAvailable = isScaleAvailable();
 		return [
 			`movie=\\'${resolve(resolvedPath('Temp'), 'qrcode.png').replaceAll('\\', '/')}\\'[logo]`,
@@ -760,7 +769,7 @@ export class Players {
 	async quit() {
 		if (this.players.main.isRunning || this.players.monitor?.isRunning) {
 			// needed to wait for lock release
-			// eslint-disable-next-line no-return-await
+
 			return this.exec('destroy', undefined, undefined, true, true).catch(err => {
 				// Non fatal. Idiots sometimes close mpv instead of KM, this avoids an uncaught exception.
 				logger.warn('Failed to quit mpv', { service, obj: err });
@@ -826,13 +835,13 @@ export class Players {
 					// At least, loudnorm
 					options['lavfi-complex'] = '[aid1]loudnorm[ao]';
 				}),
-			resolveFileInDirs(song.subfile, resolvedPathRepos('Lyrics', song.repository))
+			resolveFileInDirs(song.lyrics_infos[0]?.filename, resolvedPathRepos('Lyrics', song.repository))
 				.then(res => (subFile = res[0]))
 				.catch(err => {
-					if (song.subfile) {
+					if (song.lyrics_infos[0]?.filename) {
 						// No need to log if there's no subfile to begin with, not an error.
 						logger.debug('Error while resolving subs path', { service, obj: err });
-						logger.warn(`Subs NOT FOUND : ${song.subfile}`, { service });
+						logger.warn(`Subs NOT FOUND : ${song.lyrics_infos[0].filename}`, { service });
 					}
 					subFile = '';
 				}),
@@ -875,7 +884,8 @@ export class Players {
 		if (mediaFile.endsWith('.mp3') && !onlineMedia) {
 			id3tags = await id3.read(mediaFile);
 		}
-		if (!id3tags?.image) {
+
+		if (id3tags && !id3tags.image) {
 			const defaultImageFile = (await getBackgroundAndMusic('pause')).pictures[0];
 			options['external-file'] = defaultImageFile.replaceAll('\\', '/');
 			options['force-window'] = 'yes';
@@ -1360,11 +1370,14 @@ export class Players {
 		// Song playing
 		const manifest = getRepoManifest(playerState.currentSong.repository);
 		const X =
-			playerState.currentSong.announce_position_x || manifest?.rules?.lyrics?.defaultAnnouncePositionX || 'Left';
+			playerState.currentSong.lyrics_infos[0]?.announce_position_x ??
+			manifest?.rules?.lyrics?.defaultAnnouncePositionX ??
+			'Left';
 		const Y =
-			playerState.currentSong.announce_position_y ||
-			manifest?.rules?.lyrics?.defaultAnnouncePositionY ||
+			playerState.currentSong.lyrics_infos[0]?.announce_position_y ??
+			manifest?.rules?.lyrics?.defaultAnnouncePositionY ??
 			'Bottom';
+
 		// We lower pos if X pos isn't right or Y pos isn't top since 9 is top right already.
 		if (X === 'Center') pos -= 1;
 		if (X === 'Left') pos -= 2;

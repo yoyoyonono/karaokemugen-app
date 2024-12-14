@@ -2,10 +2,10 @@ import { useContext } from 'react';
 import { useAsyncMemo } from 'use-async-memo';
 
 import { DBKara } from '../../../../../src/lib/types/database/kara';
-import { isRemote } from '../../../utils/socket';
-import { Scope } from '../../types/scope';
-import { getProtocolForOnline, isRepoOnline } from '../../../utils/tools';
 import GlobalContext from '../../../store/context';
+import { isRemote } from '../../../utils/socket';
+import { getProtocolForOnline, isRepoOnline } from '../../../utils/tools';
+import { Scope } from '../../types/scope';
 
 interface Props {
 	show: boolean;
@@ -24,7 +24,7 @@ export default function VideoPreview(props: Props) {
 				).then(r => r.json());
 				return props.kara.mediasize !== mediasize
 					? videoLink
-					: `${getProtocolForOnline(context, props.kara.repository)}://${props.kara.repository}/hardsubs/${props.kara.kid}.${props.kara.mediasize}.${subchecksum}.mp4`;
+					: `${getProtocolForOnline(context, props.kara.repository)}://${props.kara.repository}/hardsubs/${props.kara.kid}.${props.kara.mediasize}.${subchecksum || 'no_ass_file'}.mp4`;
 			} else {
 				return videoLink;
 			}

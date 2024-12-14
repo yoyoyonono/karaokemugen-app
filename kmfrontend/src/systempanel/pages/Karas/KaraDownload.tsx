@@ -7,7 +7,6 @@ import {
 	WarningTwoTone,
 } from '@ant-design/icons';
 import { Button, Cascader, Col, Input, Layout, Modal, Radio, Row, Select, Table } from 'antd';
-import Title from '../../components/Title';
 import i18next from 'i18next';
 import prettyBytes from 'pretty-bytes';
 import { Component } from 'react';
@@ -29,6 +28,8 @@ import {
 import { commandBackend, getSocket } from '../../../utils/socket';
 import { tagTypes } from '../../../utils/tagTypes';
 import { getProtocolForOnline } from '../../../utils/tools';
+import Title from '../../components/Title';
+import { KaraList } from '../../../../../src/lib/types/kara';
 interface KaraDownloadState {
 	karas: DBKara[];
 	i18nTag: any;
@@ -112,7 +113,7 @@ class KaraDownload extends Component<unknown, KaraDownloadState> {
 		const p = Math.max(0, this.state.currentPage - 1);
 		const psz = this.state.currentPageSize;
 		const pfrom = p * psz;
-		const response = await commandBackend(
+		const response: KaraList = await commandBackend(
 			'getKaras',
 			{
 				filter: this.state.filter,
@@ -130,7 +131,7 @@ class KaraDownload extends Component<unknown, KaraDownloadState> {
 				mediafile: kara.mediafile,
 				kid: kara.kid,
 				size: kara.mediasize,
-				name: kara.karafile.replace('.kara.json', ''),
+				name: kara.songname,
 				repository: kara.repository,
 			});
 		}
@@ -211,6 +212,7 @@ class KaraDownload extends Component<unknown, KaraDownloadState> {
 				option.children.push({
 					value: tag.tid,
 					label: getTagInLocale(this.context?.globalState.settings.data, tag as unknown as DBKaraTag).i18n,
+					search: [tag.name].concat(tag.aliases, Object.values(tag.i18n)),
 				});
 			}
 			return option;
@@ -233,7 +235,9 @@ class KaraDownload extends Component<unknown, KaraDownloadState> {
 	};
 
 	filterTagCascaderFilter = function (inputValue, path) {
-		return path.some(option => option.label.toLowerCase().indexOf(inputValue.toLowerCase()) > -1);
+		return path.some((option: { search: string[] }) => {
+			return option.search?.filter(value => value.toLowerCase().includes(inputValue.toLowerCase())).length > 0;
+		});
 	};
 
 	// START karas download queue

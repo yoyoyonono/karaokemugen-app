@@ -1,9 +1,9 @@
 import { profile } from 'console';
 import Postgrator from 'postgrator';
 
-import { compareKarasChecksum, generateDB } from './database.js';
 import { db, getSettings } from '../lib/dao/database.js';
 import { setConfig } from '../lib/utils/config.js';
+import { compareKarasChecksum, generateDB } from './database.js';
 
 export async function postMigrationTasks(migrations: Postgrator.Migration[], didGeneration: boolean) {
 	profile('postMigrationTasks');
@@ -35,6 +35,14 @@ export async function postMigrationTasks(migrations: Postgrator.Migration[], did
 					setConfig({ App: { InstanceID: settings.instanceID } });
 					await db().query("DELETE FROM settings WHERE option = 'instanceID'");
 				}
+				break;
+			// 9.0 migrations
+			// UUIDs Medias rename
+			case 'addSongname':
+				if (!didGeneration) doGenerate = true;
+				break;
+			case 'migrateLyricInfos':
+				if (!didGeneration) doGenerate = true;
 				break;
 			default:
 		}

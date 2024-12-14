@@ -8,6 +8,7 @@ import {
 	insertPlaylist,
 	selectCriterias,
 	selectKarasFromCriterias,
+	selectPlaylists,
 	truncateCriterias,
 	updatePlaylistLastEditTime,
 } from '../dao/playlist.js';
@@ -17,6 +18,7 @@ import { ErrorKM } from '../lib/utils/error.js';
 import logger, { profile } from '../lib/utils/logger.js';
 import { isNumber } from '../lib/utils/validators.js';
 import { emitWS } from '../lib/utils/ws.js';
+import { DBPL } from '../types/database/playlist.js';
 import { adminToken } from '../utils/constants.js';
 import Sentry from '../utils/sentry.js';
 import { getState, setState } from '../utils/state.js';
@@ -31,7 +33,6 @@ import {
 	removeKaraFromPlaylist,
 } from './playlist.js';
 import { getTag, getTags } from './tag.js';
-import { DBPL } from '../types/database/playlist.js';
 
 const service = 'SmartPlaylist';
 
@@ -377,8 +378,7 @@ async function translateCriterias(cList: Criteria[], lang: string): Promise<Crit
 
 export async function createProblematicSmartPlaylist() {
 	try {
-		const tags = await getTags({ type: 15 });
-		const plaid = await insertPlaylist({
+		const playlist: DBPL = {
 			name: i18next.t('PROBLEMATIC_SONGS'),
 			created_at: new Date(),
 			modified_at: new Date(),
@@ -386,7 +386,14 @@ export async function createProblematicSmartPlaylist() {
 			flag_smart: true,
 			username: 'admin',
 			type_smart: 'UNION',
-		});
+		};
+		const tags = await getTags({ type: [15] });
+		const allPlaylists = await selectPlaylists();
+		const existingProblematicPlaylist = allPlaylists.find(
+			pl =>
+				pl.name === playlist.name && pl.username === playlist.username && pl.flag_smart === playlist.flag_smart
+		);
+		const plaid = existingProblematicPlaylist?.plaid || (await insertPlaylist(playlist));
 		const blcs: Criteria[] = [];
 
 		for (const tag of tags.content) {

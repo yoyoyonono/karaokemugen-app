@@ -7,16 +7,16 @@ import {
 	QuestionCircleOutlined,
 } from '@ant-design/icons';
 import { Button, Checkbox, Col, Divider, Layout, Row, Table, Tooltip } from 'antd';
-import Title from '../../components/Title';
+import { ColumnsType } from 'antd/es/table';
 import i18next from 'i18next';
 import { Component } from 'react';
 import { Link } from 'react-router-dom';
 
+import { Repository } from '../../../../../src/lib/types/repo';
 import { commandBackend } from '../../../utils/socket';
 import { displayMessage } from '../../../utils/tools';
+import Title from '../../components/Title';
 import CollectionsActivation from './CollectionsActivation';
-import { Repository } from '../../../../../src/lib/types/repo';
-import { ColumnsType } from 'antd/es/table';
 
 interface RepositoryListState {
 	repositories: Repository[];
@@ -85,7 +85,7 @@ class RepositoryList extends Component<unknown, RepositoryListState> {
 				/>
 				<Layout.Content>
 					<CollectionsActivation />
-					<Link to={'/system/repositories/new'}>
+					<Link to={'/system/repositories/create'}>
 						<Button style={{ margin: '0.75em' }} type="primary">
 							{i18next.t('REPOSITORIES.NEW_REPOSITORY')}
 							<PlusOutlined />

@@ -5,6 +5,8 @@ import i18next from 'i18next';
 import { useContext, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import { Repository } from '../../../../src/lib/types/repo';
+import { Tag } from '../../../../src/lib/types/tag';
 import { DBStats } from '../../../../src/types/database/database';
 import { Feed } from '../../../../src/types/feeds';
 import { Session } from '../../../../src/types/session';
@@ -15,16 +17,14 @@ import GlobalContext from '../../store/context';
 import TasksEvent from '../../TasksEvent';
 import { useLocalSearch } from '../../utils/hooks';
 import { commandBackend, getSocket } from '../../utils/socket';
+import { secondsTimeSpanToHMS } from '../../utils/tools';
 import { News } from '../types/news';
+import { RemoteStatusData } from '../types/remote';
 import Autocomplete from './generic/Autocomplete';
 import OnlineStatsModal from './modals/OnlineStatsModal';
 import ProfilModal from './modals/ProfilModal';
 import RestartDownloadsModal from './modals/RestartDownloadsModal';
 import WelcomePageArticle from './WelcomePageArticle';
-import { Tag } from '../../../../src/lib/types/tag';
-import { Repository } from '../../../../src/lib/types/repo';
-import { RemoteStatusData } from '../types/remote';
-import { secondsTimeSpanToHMS } from '../../utils/tools';
 
 function WelcomePage() {
 	const context = useContext(GlobalContext);
@@ -113,14 +113,19 @@ function WelcomePage() {
 			const mast = data.find(d => d.name === 'mastodon');
 			const system = data.find(d => d.name === 'system');
 			const news: News[] = [];
-			if (base?.body && appli?.body) {
+			if (base?.body) {
 				base.body = JSON.parse(base.body);
-				appli.body = JSON.parse(appli.body);
-				news.push(
-					{
-						html: base.body.feed.entry[0].content._text,
-						date: base.body.feed.entry[0].updated._text,
-						dateStr: new Date(base.body.feed.entry[0].updated._text).toLocaleDateString(),
+				if (base.body.feed.entry[0].summary?._text) {
+					// Gitlab's feed doesn't report date anymore so we have to calculate it. We name base tags with the previous month as in 'the situation at the end of this month'. So when we have a tagname of 202410, the date it's created is actually 2024-11-01.
+					const date = base.body.feed.entry[0].title._text;
+					const year = date.substring(0, 4);
+					const month = date.substring(4);
+					const dateObj = new Date(`${year}-${month}-01`);
+					const realDate = new Date(dateObj.setMonth(dateObj.getMonth() + 1));
+					news.push({
+						html: base.body.feed.entry[0].summary._text,
+						date,
+						dateStr: realDate.toLocaleDateString(),
 						title:
 							i18next.t('WELCOME_PAGE.BASE_UPDATE') +
 							' : ' +
@@ -128,25 +133,30 @@ function WelcomePage() {
 							(base.body.feed.entry[0].summary._text
 								? ' - ' + base.body.feed.entry[0].summary._text
 								: ''),
-						link: base.body.feed.entry[0].link._attributes.href,
+						link: (base.body.feed.entry[0].link._attributes.href as string)
+							.replace('tags', 'blob')
+							.concat('/CHANGELOG.md'),
 						type: 'base',
-					},
-					{
-						html: appli.body.feed.entry[0].content._text,
-						date: appli.body.feed.entry[0].updated._text,
-						dateStr: new Date(appli.body.feed.entry[0].updated._text).toLocaleDateString(),
-						title:
-							i18next.t('WELCOME_PAGE.APP_UPDATE') +
-							' : ' +
-							appli.body.feed.entry[0].title._text +
-							(appli.body.feed.entry[0].summary._text
-								? ' - ' + appli.body.feed.entry[0].summary._text
-								: ''),
-						link: appli.body.feed.entry[0].link._attributes.href,
-						type: 'app',
-					}
-				);
+					});
+				}
 			}
+
+			if (appli?.body) {
+				appli.body = JSON.parse(appli.body);
+				news.push({
+					html: appli.body.feed.entry[0].content._text,
+					date: appli.body.feed.entry[0].updated._text,
+					dateStr: new Date(appli.body.feed.entry[0].updated._text).toLocaleDateString(),
+					title:
+						i18next.t('WELCOME_PAGE.APP_UPDATE') +
+						' : ' +
+						appli.body.feed.entry[0].title._text +
+						(appli.body.feed.entry[0].summary._text ? ' - ' + appli.body.feed.entry[0].summary._text : ''),
+					link: appli.body.feed.entry[0].link._attributes.href,
+					type: 'app',
+				});
+			}
+
 			if (mast?.body) {
 				mast.body = JSON.parse(mast.body);
 				const max = mast.body.rss.channel.item.length > 3 ? 3 : mast.body.rss.channel.item.length;

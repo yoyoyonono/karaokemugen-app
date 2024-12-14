@@ -1,6 +1,7 @@
 import './Login.scss';
 
 import i18next from 'i18next';
+import { debounce } from 'lodash';
 import { FormEvent, useCallback, useContext, useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
@@ -13,7 +14,6 @@ import { isElectron } from '../electron';
 import { langSupport } from '../isoLanguages';
 import { commandBackend } from '../socket';
 import { callModal, displayMessage, lastLocation } from '../tools';
-import { debounce } from 'lodash';
 
 interface UserApi extends User {
 	role: 'admin' | 'user';
@@ -43,7 +43,7 @@ function Login() {
 	const isAdminPath = lastLocation && lastLocation !== '/' && !lastLocation.includes('/public');
 
 	useEffect(() => {
-		if (context.globalState.settings.data.config.Frontend.RequireSecurityCodeForNewAccounts && login)
+		if (context.globalState.settings.data.config?.Frontend.RequireSecurityCodeForNewAccounts && login)
 			debounceExistingOnlineAccountLocally(login);
 	}, [login]);
 
@@ -393,8 +393,8 @@ function Login() {
 
 				<div className="versionKM">
 					<div>Karaoke Mugen</div>
-					<div>{`${i18next.t('VERSION')} ${context.globalState.settings.data.version.number} - ${
-						context.globalState.settings.data.version.name
+					<div>{`${i18next.t('VERSION')} ${context.globalState.settings.data.version?.number} - ${
+						context.globalState.settings.data.version?.name
 					}`}</div>
 				</div>
 			</div>

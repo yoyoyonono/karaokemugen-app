@@ -1,6 +1,7 @@
 import { shell } from 'electron';
 import { promises as fs } from 'fs';
 import { copy } from 'fs-extra';
+import i18next from 'i18next';
 import { basename, extname, resolve } from 'path';
 
 import { getStoreChecksum, removeKaraInStore } from '../dao/dataStore.js';
@@ -14,6 +15,7 @@ import { refreshTags } from '../lib/dao/tag.js';
 import { writeTagFile } from '../lib/dao/tagfile.js';
 import { APIMessage } from '../lib/services/frontend.js';
 import { refreshKarasAfterDBChange, updateTags } from '../lib/services/karaManagement.js';
+import { getRepoManifest } from '../lib/services/repo.js';
 import { DBKara, DBKaraTag } from '../lib/types/database/kara.js';
 import { DBTag } from '../lib/types/database/tag.js';
 import { KaraFileV4, KaraTag } from '../lib/types/kara.js';
@@ -22,6 +24,7 @@ import { ASSFileSetMediaFile } from '../lib/utils/ass.js';
 import { resolvedPath, resolvedPathRepos } from '../lib/utils/config.js';
 import { getTagTypeName } from '../lib/utils/constants.js';
 import { ErrorKM } from '../lib/utils/error.js';
+import { embedCoverImage } from '../lib/utils/ffmpeg.js';
 import { fileExists, resolveFileInDirs } from '../lib/utils/files.js';
 import logger, { profile } from '../lib/utils/logger.js';
 import { encodeMediaToRepoDefault } from '../lib/utils/mediaInfoValidation.js';
@@ -37,9 +40,6 @@ import { editKara } from './karaCreation.js';
 import { getRepo, getRepos } from './repo.js';
 import { updateAllSmartPlaylists } from './smartPlaylist.js';
 import { getTag } from './tag.js';
-import i18next from 'i18next';
-import { embedCoverImage } from '../lib/utils/ffmpeg.js';
-import { getRepoManifest } from '../lib/services/repo.js';
 
 const service = 'KaraManager';
 
@@ -95,13 +95,21 @@ export async function removeKara(
 				} catch (err) {
 					logger.warn(`Non fatal: Removing karafile ${kara.karafile} failed`, { service, obj: err });
 				}
-				if (kara.subfile) {
+				if (kara.lyrics_infos[0].filename) {
 					try {
 						await fs.unlink(
-							(await resolveFileInDirs(kara.subfile, resolvedPathRepos('Lyrics', kara.repository)))[0]
+							(
+								await resolveFileInDirs(
+									kara.lyrics_infos[0].filename,
+									resolvedPathRepos('Lyrics', kara.repository)
+								)
+							)[0]
 						);
 					} catch (err) {
-						logger.warn(`Non fatal: Removing subfile ${kara.subfile} failed`, { service, obj: err });
+						logger.warn(`Non fatal: Removing subfile ${kara.lyrics_infos[0].filename} failed`, {
+							service,
+							obj: err,
+						});
 					}
 				}
 			}
@@ -166,10 +174,13 @@ export async function copyKaraToRepo(kid: string, repoName: string) {
 		tasks.push(
 			copy(mediaFiles[0], resolve(resolvedPathRepos('Medias', repoName)[0], kara.mediafile), { overwrite: true })
 		);
-		if (kara.subfile) {
-			const lyricsFiles = await resolveFileInDirs(kara.subfile, resolvedPathRepos('Lyrics', oldRepoName));
+		if (kara.lyrics_infos[0].filename) {
+			const lyricsFiles = await resolveFileInDirs(
+				kara.lyrics_infos[0].filename,
+				resolvedPathRepos('Lyrics', oldRepoName)
+			);
 			tasks.push(
-				copy(lyricsFiles[0], resolve(resolvedPathRepos('Lyrics', repoName)[0], kara.subfile), {
+				copy(lyricsFiles[0], resolve(resolvedPathRepos('Lyrics', repoName)[0], kara.lyrics_infos[0].filename), {
 					overwrite: true,
 				})
 			);
@@ -231,13 +242,20 @@ export async function batchEditKaras(
 				subtext: kara.karafile,
 			});
 			let modified = false;
-			if (action === 'fromDisplayType' && kara.from_display_type !== tagType) {
+			// We also test if karaoke has elements in that tagtype when modifying the fromDisplayType
+			if (action === 'fromDisplayType' && kara.from_display_type !== tagType && kara[tagType].length > 0) {
 				modified = true;
 				kara.from_display_type = tagType;
 			}
-			if (kara[tagType]?.length > 0 && action === 'remove') {
-				if (kara[tagType].find((t: KaraTag) => t.tid === tid)) modified = true;
-				kara[tagType] = kara[tagType].filter((t: KaraTag) => t.tid !== tid);
+			if (action === 'remove' && kara[tagType]?.length > 0) {
+				if (kara[tagType].find((t: KaraTag) => t.tid === tid)) {
+					modified = true;
+					kara[tagType] = kara[tagType].filter((t: KaraTag) => t.tid !== tid);
+					// We remove the from_display_type if kara[tagType] becomes empty
+					if (kara.from_display_type === tagType && kara[tagType].length === 0) {
+						kara.from_display_type = null;
+					}
+				}
 			}
 			if (action === 'add' && kara[tagType] && !kara[tagType].find((t: KaraTag) => t.tid === tid)) {
 				modified = true;
@@ -422,8 +440,8 @@ export async function encodeMediaFileToRepoDefaults(
 
 export async function openLyricsFile(kid: string) {
 	try {
-		const { subfile, repository, mediafile } = await getKara(kid, adminToken);
-		const lyricsPath = resolve(resolvedPathRepos('Lyrics', repository)[0], subfile);
+		const { lyrics_infos, repository, mediafile } = await getKara(kid, adminToken);
+		const lyricsPath = resolve(resolvedPathRepos('Lyrics', repository)[0], lyrics_infos[0]?.filename);
 		if (extname(lyricsPath) === '.ass' && mediafile) {
 			for (const repo of resolvedPathRepos('Medias', repository)) {
 				const mediaPath = resolve(repo, mediafile);
@@ -443,8 +461,8 @@ export async function openLyricsFile(kid: string) {
 
 export async function showLyricsInFolder(kid: string) {
 	try {
-		const { subfile, repository } = await getKara(kid, adminToken);
-		const lyricsPath = resolve(resolvedPathRepos('Lyrics', repository)[0], subfile);
+		const { lyrics_infos, repository } = await getKara(kid, adminToken);
+		const lyricsPath = resolve(resolvedPathRepos('Lyrics', repository)[0], lyrics_infos[0]?.filename);
 		shell.showItemInFolder(lyricsPath);
 	} catch (err) {
 		logger.error('Failed to open lyrics folder', { service });

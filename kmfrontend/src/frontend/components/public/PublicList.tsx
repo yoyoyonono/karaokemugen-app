@@ -3,16 +3,16 @@ import { debounce } from 'lodash';
 import { useContext, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
-import KmAppHeaderDecorator from '../decorators/KmAppHeaderDecorator';
+import { setFilterValue, setIndexKaraDetail, setPlaylistInfoLeft } from '../../../store/actions/frontendContext';
 import { showModal } from '../../../store/actions/modal';
 import GlobalContext from '../../../store/context';
-import PollModal from '../modals/PollModal';
-import KmAppBodyDecorator from '../decorators/KmAppBodyDecorator';
-import TagsList from './TagsList';
-import Playlist from '../karas/Playlist';
-import { setFilterValue, setIndexKaraDetail, setPlaylistInfoLeft } from '../../../store/actions/frontendContext';
-import { KaraElement } from '../../types/kara';
 import { nonStandardPlaylists } from '../../../utils/tools';
+import { KaraElement } from '../../types/kara';
+import KmAppBodyDecorator from '../decorators/KmAppBodyDecorator';
+import KmAppHeaderDecorator from '../decorators/KmAppHeaderDecorator';
+import Playlist from '../karas/Playlist';
+import PollModal from '../modals/PollModal';
+import TagsList from './TagsList';
 
 interface Props {
 	sort: 'search' | 'recent' | 'requested'; // Affects basic search, favorites has local sort state
@@ -143,8 +143,6 @@ export default function PublicList(props: Props) {
 						openKara={openKara}
 						searchValue={tid || year}
 						searchCriteria={tid || year ? (tid ? 'tag' : 'year') : null}
-						indexKaraDetail={context.globalState.frontendContext.indexKaraDetail}
-						clearIndexKaraDetail={() => setIndexKaraDetail(context.globalDispatch, 0)}
 						searchType={props.plaid === nonStandardPlaylists.favorites ? favoritesSort : props.sort}
 					/>
 				)}
