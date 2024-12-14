@@ -855,7 +855,7 @@ async function setupGit(repo: Repository, configChanged = false, clone = false) 
 		password: repo.Git.Password,
 		repoName: repo.Name,
 	});
-	await git.setup(configChanged);
+	await git.setup(configChanged, true);
 	return git;
 }
 
@@ -1267,8 +1267,8 @@ export async function generateCommits(repoName: string) {
 					modifiedTags = modifiedTags.filter(f => basename(f) !== tagfile);
 				}
 			}
-			if (kara.subfile) {
-				const lyricsFile = addedLyrics.find(f => basename(f) === kara.subfile);
+			if (kara.lyrics_infos[0]) {
+				const lyricsFile = addedLyrics.find(f => basename(f) === kara.lyrics_infos[0].filename);
 				addedLyrics = addedLyrics.filter(f => f !== lyricsFile);
 				// Didn't search that much, but if the .ass was cleaned up it wouldn't end up here...
 				if (lyricsFile) {
@@ -1331,19 +1331,22 @@ export async function generateCommits(repoName: string) {
 					modifiedTags = modifiedTags.filter(f => basename(f) !== tagfile);
 				}
 			}
-			if (kara.subfile) {
+			if (kara.lyrics_infos[0]) {
 				// For modified songs, we check first for added lyrics, then for modified lyrics.
-				let lyricsFile = addedLyrics.find(f => basename(f) === kara.subfile);
+				let lyricsFile = addedLyrics.find(f => basename(f) === kara.lyrics_infos[0].filename);
 				if (lyricsFile) {
 					addedLyrics = addedLyrics.filter(f => f !== lyricsFile);
 					commit.addedFiles.push(lyricsFile);
 				} else {
 					// Checking modified lyrics. If none is found then lyrics have not been modified
-					lyricsFile = modifiedLyrics.find(f => basename(f) === kara.subfile);
+					lyricsFile = modifiedLyrics.find(f => basename(f) === kara.lyrics_infos[0].filename);
 					if (lyricsFile) {
 						modifiedLyrics = modifiedLyrics.filter(f => f !== lyricsFile);
 						if (repoManifest?.rules?.lyrics?.cleanup) {
-							const lyricsPath = resolve(resolvedPathRepos('Lyrics', repoName)[0], kara.subfile);
+							const lyricsPath = resolve(
+								resolvedPathRepos('Lyrics', repoName)[0],
+								kara.lyrics_infos[0].filename
+							);
 							await ASSFileCleanup(lyricsPath, kara);
 						}
 						commit.addedFiles.push(lyricsFile);

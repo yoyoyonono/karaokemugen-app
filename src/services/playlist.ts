@@ -366,7 +366,7 @@ export async function exportPlaylistMedia(
 					resolvedPathRepos('Medias', kara.repository)
 				);
 				const karaLyricsPath = await resolveFileInDirs(
-					kara.subfile,
+					kara.lyrics_infos[0]?.filename,
 					resolvedPathRepos('Lyrics', kara.repository)
 				);
 				const destBaseFile = sanitizeFile(
@@ -382,7 +382,10 @@ export async function exportPlaylistMedia(
 					await fs.copyFile(karaMediaPath[0], exportPath);
 				if (karaLyricsPath[0]) {
 					// Kara can have no lyrics file
-					await fs.copyFile(karaLyricsPath[0], resolve(exportDir, `${destBaseFile}${extname(kara.subfile)}`));
+					await fs.copyFile(
+						karaLyricsPath[0],
+						resolve(exportDir, `${destBaseFile}${extname(kara.lyrics_infos[0]?.filename)}`)
+					);
 				}
 				exportedResult.push({ ...kara, exportSuccessful: true });
 			} catch (err) {
