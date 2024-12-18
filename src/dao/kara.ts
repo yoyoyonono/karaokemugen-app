@@ -101,6 +101,9 @@ export async function selectAllKaras(params: KaraParams): Promise<DBKara[]> {
 	// This is normal behaviour without anyone.
 	let groupClauseEnd = '';
 	// Search mode to filter karas played or requested in a particular session
+	if (params.order === 'mediasize') {
+		orderClauses = 'mediasize, ';
+	}
 	if (params.order === 'history') {
 		orderClauses = 'lastplayed_at DESC NULLS LAST, ';
 	}
