@@ -104,6 +104,9 @@ export async function selectAllKaras(params: KaraParams): Promise<DBKara[]> {
 	if (params.order === 'history') {
 		orderClauses = 'lastplayed_at DESC NULLS LAST, ';
 	}
+	if (params.order === 'favorited') {
+		orderClauses = 'f.favorited_at DESC NULLS LAST, ';
+	}
 	if (params.order === 'sessionPlayed') {
 		orderClauses = groupClause = 'p.played_at, ';
 	}

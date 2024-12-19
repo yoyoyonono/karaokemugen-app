@@ -2,9 +2,10 @@
 
 export const sqlgetFavoritesMicro = (limitClause: string, offsetClause: string) => `
 SELECT
-  fk_kid AS kid
-  FROM favorites
-  WHERE fk_login = :username
+  fk_kid AS kid,
+  favorited_at
+FROM favorites
+WHERE fk_login = :username
 ${limitClause}
 ${offsetClause}
 `;
@@ -21,6 +22,6 @@ WHERE fk_login = $1;
 `;
 
 export const sqlinsertFavorites = `
-INSERT INTO favorites(fk_kid, fk_login)
-VALUES ($1, $2) ON CONFLICT DO NOTHING
+INSERT INTO favorites(fk_kid, favorited_at, fk_login)
+VALUES ($1, $2, $3) ON CONFLICT DO NOTHING
 `;

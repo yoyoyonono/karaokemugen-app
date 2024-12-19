@@ -7,7 +7,7 @@ import { ErrorKM } from '../lib/utils/error.js';
 import HTTP from '../lib/utils/http.js';
 import logger, { profile } from '../lib/utils/logger.js';
 import { emitWS } from '../lib/utils/ws.js';
-import { FavExport, FavExportContent } from '../types/favorites.js';
+import { FavExport, FavExportContent, FavoritesMicro } from '../types/favorites.js';
 import sentry from '../utils/sentry.js';
 import { getKaras } from './kara.js';
 import { getUser } from './user.js';
@@ -62,11 +62,13 @@ export async function fetchAndAddFavorites(username: string, token: string) {
 export async function manageFavoriteInInstanceBatch(
 	action: 'POST' | 'DELETE',
 	username: string,
-	kids: string[],
+	faves: FavoritesMicro[],
 	token: string
 ) {
 	try {
-		await Promise.all(kids.map(kid => manageFavoriteInInstance(action, username, kid, token)));
+		await Promise.all(
+			faves.map(fave => manageFavoriteInInstance(action, token, username, fave.kid, fave.favorited_at))
+		);
 	} catch (err) {
 		logger.error(`Failed to send favorites command ${action} to online favorites for user ${username}`);
 		sentry.error(err);
@@ -74,13 +76,18 @@ export async function manageFavoriteInInstanceBatch(
 	}
 }
 
-export async function addToFavorites(username: string, kids: string[], onlineToken?: string, updateRemote = true) {
+export async function addToFavorites(
+	username: string,
+	faves: FavoritesMicro[],
+	onlineToken?: string,
+	updateRemote = true
+) {
 	try {
 		profile('addToFavorites');
 		username = username.toLowerCase();
-		await insertFavorites(kids, username);
+		await insertFavorites(faves, username);
 		if (username.includes('@') && onlineToken && getConfig().Online.Users && updateRemote) {
-			await manageFavoriteInInstanceBatch('POST', username, kids, onlineToken);
+			await manageFavoriteInInstanceBatch('POST', username, faves, onlineToken);
 		}
 		emitWS('favoritesUpdated', username);
 	} catch (err) {
@@ -102,7 +109,9 @@ export async function convertToRemoteFavorites(username: string, token: string) 
 		username,
 		userFavorites: username,
 	});
-	const localFavorites = favorites.content.map(fav => fav.kid);
+	const localFavorites = favorites.content.map(f => {
+		return { kid: f.kid, favorited_at: f.favorited_at.toISOString() };
+	});
 	if (localFavorites.length > 0) {
 		await manageFavoriteInInstanceBatch('POST', username, localFavorites, token);
 	}
@@ -113,8 +122,11 @@ export async function removeFavorites(username: string, kids: string[], token: s
 		profile('deleteFavorites');
 		username = username.toLowerCase();
 		await deleteFavorites(kids, username);
+		const faves = kids.map(k => {
+			return { kid: k, favorited_at: null };
+		});
 		if (username.includes('@') && getConfig().Online.Users) {
-			manageFavoriteInInstanceBatch('DELETE', username, kids, token).catch(() => {});
+			manageFavoriteInInstanceBatch('DELETE', username, faves, token).catch(() => {});
 		}
 		emitWS('favoritesUpdated', username);
 	} catch (err) {
@@ -126,18 +138,29 @@ export async function removeFavorites(username: string, kids: string[], token: s
 	}
 }
 
-async function manageFavoriteInInstance(action: 'POST' | 'DELETE', username: string, kid: string, token: string) {
+async function manageFavoriteInInstance(
+	action: 'POST' | 'DELETE',
+	token: string,
+	username: string,
+	kid: string,
+	favorited_at?: string
+) {
 	// If OnlineUsers is disabled, we return early and do not try to update favorites online.
 	const conf = getConfig();
 	if (!conf.Online.Users) return true;
 	const instance = username.split('@')[1];
 	try {
-		return await HTTP(`${conf.Online.Secure ? 'https' : 'http'}://${instance}/api/favorites/${kid}`, {
-			method: action,
-			headers: {
-				authorization: token,
+		return await HTTP[action](
+			`${conf.Online.Secure ? 'https' : 'http'}://${instance}/api/favorites/${kid}`,
+			{
+				favorited_at,
 			},
-		});
+			{
+				headers: {
+					authorization: token,
+				},
+			}
+		);
 	} catch (err) {
 		logger.error(`Unable to ${action} favorite ${kid} on ${username}'s online account`, {
 			service,
@@ -196,11 +219,11 @@ export async function importFavorites(
 		if (emptyBefore) {
 			await truncateFavorites(username);
 		}
-		const favorites = favs.Favorites.map(f => f.kid);
+		const favorites = favs.Favorites;
 		const userFavorites = await getFavorites({ userFavorites: username });
 		// Removing favorites already added
 		const mappedUserFavorites = userFavorites.content.map(uf => uf.kid);
-		const favoritesToAdd = favorites.filter(f => !mappedUserFavorites.includes(f));
+		const favoritesToAdd = favorites.filter(f => !mappedUserFavorites.includes(f.kid));
 		if (favoritesToAdd.length > 0) await addToFavorites(username, favoritesToAdd, token, updateRemote);
 		emitWS('favoritesUpdated', username);
 	} catch (err) {

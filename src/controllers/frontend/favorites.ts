@@ -56,7 +56,15 @@ export default function favoritesController(router: SocketIOApp) {
 		});
 		if (!validationErrors) {
 			try {
-				return await addToFavorites(req.token.username, req.body?.kids, req.onlineAuthorization);
+				const date = new Date();
+				return await addToFavorites(
+					req.token.username,
+					req.body?.kids.map(k => {
+						return { kid: k, favorited_at: date.toISOString() };
+						new Date();
+					}),
+					req.onlineAuthorization
+				);
 			} catch (err) {
 				throw { code: err.code || 500, message: APIMessage(err.message) };
 			}

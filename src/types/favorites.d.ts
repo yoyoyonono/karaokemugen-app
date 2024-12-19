@@ -2,6 +2,7 @@ import { TagAndType } from '../lib/types/tag.js';
 
 interface FavExportContent {
 	kid: string;
+	favorited_at: string;
 }
 
 export interface FavExport {
@@ -21,6 +22,7 @@ export type PlaylistLimit = 'duration' | 'songs';
 
 export interface FavoritesMicro {
 	kid: string;
+	favorited_at: string;
 }
 
 export interface AutoMixParams {

@@ -78,6 +78,7 @@ SELECT
 		THEN FALSE
 		ELSE TRUE
   END) as flag_favorites,
+  f.favorited_at AS favorited_at,
   ak.repository as repository,
   ak.tid AS tid,
   array_remove(array_agg(DISTINCT pc.pk_plcid), null) AS public_plc_id,
@@ -156,7 +157,7 @@ ORDER BY ${orderClauses}
 	ak.songtypes_sortable DESC,
 	ak.songorder,
 	ak.languages_sortable,
-	parents, 
+	parents,
 	ak.titles_sortable
 ${limitClause}
 ${offsetClause}

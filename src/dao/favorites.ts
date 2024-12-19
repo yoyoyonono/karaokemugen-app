@@ -25,7 +25,7 @@ export function truncateFavorites(username: string) {
 	return db().query(sqlclearFavorites, [username]);
 }
 
-export function insertFavorites(karaList: string[], username: string) {
-	const karas = karaList.map(kara => [kara, username]);
+export function insertFavorites(karaList: FavoritesMicro[], username: string) {
+	const karas = karaList.map(kara => [kara.kid, kara.favorited_at, username]);
 	return transaction({ params: karas, sql: sqlinsertFavorites });
 }
