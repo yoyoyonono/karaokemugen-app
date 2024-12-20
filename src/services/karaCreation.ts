@@ -18,6 +18,7 @@ import { resolvedPath, resolvedPathRepos } from '../lib/utils/config.js';
 import { ErrorKM } from '../lib/utils/error.js';
 import { replaceExt, resolveFileInDirs, smartMove } from '../lib/utils/files.js';
 import logger, { profile } from '../lib/utils/logger.js';
+import { sortJSON } from '../lib/utils/objectHelpers.js';
 import Task from '../lib/utils/taskManager.js';
 import { adminToken } from '../utils/constants.js';
 import sentry from '../utils/sentry.js';
@@ -76,8 +77,8 @@ export async function editKara(editedKara: EditedKara, refresh = true) {
 			throw new ErrorKM('UNKNOWN_SONG', 404, false);
 		}
 		if (!kara.data.ignoreHooks) await applyKaraHooks(kara);
-		const { sanitizedFilename, songname } = await defineSongname(kara, oldKara);
-		kara.data.songname = songname;
+		const { sanitizedFilename } = await defineSongname(kara, oldKara);
+		kara.data.songname = sanitizedFilename;
 		const karaJsonFileOld = resolve(resolvedPathRepos('Karaokes', oldKara.repository)[0], oldKara.karafile);
 		const karaJsonFileDest = resolve(
 			resolvedPathRepos('Karaokes', kara.data.repository)[0],
@@ -192,6 +193,13 @@ export async function editKara(editedKara: EditedKara, refresh = true) {
 			}
 		}
 		await fs.unlink(karaJsonFileOld);
+
+		// Sort stuff inside kara JSON.
+
+		kara.data = sortJSON(kara.data);
+		kara.medias[0] = sortJSON(kara.medias[0]);
+		if (kara.medias[0].lyrics[0]) kara.medias[0].lyrics[0] = sortJSON(kara.medias[0].lyrics[0]);
+
 		await writeKara(karaJsonFileDest, kara);
 		await integrateKaraFile(karaJsonFileDest, kara, false, refresh);
 		checkDownloadStatus([kara.data.kid]);
@@ -242,8 +250,8 @@ export async function createKara(editedKara: EditedKara) {
 			}
 		}
 		if (!kara.data.ignoreHooks) await applyKaraHooks(kara);
-		const { sanitizedFilename, songname } = await defineSongname(kara);
-		kara.data.songname = songname;
+		const { sanitizedFilename } = await defineSongname(kara);
+		kara.data.songname = sanitizedFilename;
 		const karaJsonFileDest = resolve(
 			resolvedPathRepos('Karaokes', kara.data.repository)[0],
 			`${sanitizedFilename}.kara.json`
@@ -279,6 +287,12 @@ export async function createKara(editedKara: EditedKara) {
 		}
 		await smartMove(mediaPath, mediaDest, { overwrite: true });
 		kara.medias[0].filename = filenames.mediafile;
+
+		// Sort stuff inside kara JSON.
+
+		kara.data = sortJSON(kara.data);
+		kara.medias[0] = sortJSON(kara.medias[0]);
+		if (kara.medias[0].lyrics[0]) kara.medias[0].lyrics[0] = sortJSON(kara.medias[0].lyrics[0]);
 		await writeKara(karaJsonFileDest, kara);
 		await integrateKaraFile(karaJsonFileDest, kara, false, true);
 		checkDownloadStatus([kara.data.kid]);
