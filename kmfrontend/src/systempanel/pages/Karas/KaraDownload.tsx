@@ -41,6 +41,7 @@ interface KaraDownloadState {
 	tagFilter: string;
 	tags: DBTag[];
 	download_status: 'MISSING' | 'DOWNLOADING' | '';
+	order: 'mediasize' | 'requested' | 'recent' | '';
 	totalMediaSize: string;
 	tagOptions: any[];
 	preview: string;
@@ -66,6 +67,7 @@ class KaraDownload extends Component<unknown, KaraDownloadState> {
 			tags: [],
 			download_status: 'MISSING',
 			totalMediaSize: '',
+			order: '',
 			tagOptions: [],
 			preview: '',
 		};
@@ -150,6 +152,7 @@ class KaraDownload extends Component<unknown, KaraDownloadState> {
 					q: `${this.state.tagFilter}!m:${this.state.download_status}`,
 					from: pfrom,
 					size: psz,
+					order: this.state.order,
 				},
 				false,
 				300000
@@ -360,6 +363,41 @@ class KaraDownload extends Component<unknown, KaraDownloadState> {
 									}
 								>
 									{i18next.t('KARA.FILTER_NOT_DOWNLOADED')}
+								</Radio>
+							</Row>
+							<Row>
+								<label style={{ margin: '0.5em' }}>{i18next.t('KARA.ORDER_MEDIA')}</label>
+								<Radio
+									style={{ margin: '0.5em' }}
+									checked={this.state.order === ''}
+									onChange={() => this.setState({ order: '', currentPage: 0 }, this.getKaras)}
+								>
+									{i18next.t('KARA.ORDER_MEDIA_STANDARD')}
+								</Radio>
+								<Radio
+									style={{ margin: '0.5em' }}
+									checked={this.state.order === 'recent'}
+									onChange={() => this.setState({ order: 'recent', currentPage: 0 }, this.getKaras)}
+								>
+									{i18next.t('KARA.ORDER_MEDIA_NEW')}
+								</Radio>
+								<Radio
+									style={{ margin: '0.5em' }}
+									checked={this.state.order === 'requested'}
+									onChange={() =>
+										this.setState({ order: 'requested', currentPage: 0 }, this.getKaras)
+									}
+								>
+									{i18next.t('KARA.ORDER_MEDIA_POPULAR')}
+								</Radio>
+								<Radio
+									style={{ margin: '0.5em' }}
+									checked={this.state.order === 'mediasize'}
+									onChange={() =>
+										this.setState({ order: 'mediasize', currentPage: 0 }, this.getKaras)
+									}
+								>
+									{i18next.t('KARA.ORDER_MEDIA_MEDIASIZE')}
 								</Radio>
 							</Row>
 						</Col>
