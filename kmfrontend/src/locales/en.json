@@ -1113,6 +1113,7 @@
 		"ORDER_MEDIA_NEW": "New",
 		"ORDER_MEDIA_POPULAR": "Popular",
 		"ORDER_MEDIA_MEDIASIZE": "Mediasize",
+		"CHANGE_ORDER_DIRECTION": "Change the direction of the order",
 		"REPOSITORY": "Repository",
 		"COPY_SONG": "Copy song to another repository",
 		"VIDEO_PREVIEW": "Video preview",

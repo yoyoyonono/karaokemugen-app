@@ -1087,6 +1087,7 @@
 		"ORDER_MEDIA_NEW": "Nouveau",
 		"ORDER_MEDIA_POPULAR": "Populaire",
 		"ORDER_MEDIA_MEDIASIZE": "Taille de fichier",
+		"CHANGE_ORDER_DIRECTION": "Changer le sens de l'ordre",
 		"REPOSITORY": "Dépôt",
 		"COPY_SONG": "Copier la chanson vers un autre dépôt",
 		"VIDEO_PREVIEW": "Aperçu de la vidéo",

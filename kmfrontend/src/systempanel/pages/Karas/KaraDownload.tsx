@@ -3,10 +3,12 @@ import {
 	ClockCircleTwoTone,
 	DownloadOutlined,
 	InfoCircleTwoTone,
+	SortAscendingOutlined,
+	SortDescendingOutlined,
 	SyncOutlined,
 	WarningTwoTone,
 } from '@ant-design/icons';
-import { Button, Cascader, Col, Input, Layout, Modal, Radio, Row, Select, Table } from 'antd';
+import { Button, Cascader, Col, Input, Layout, Modal, Radio, Row, Select, Space, Table } from 'antd';
 import i18next from 'i18next';
 import prettyBytes from 'pretty-bytes';
 import { Component } from 'react';
@@ -30,6 +32,7 @@ import { tagTypes } from '../../../utils/tagTypes';
 import { getProtocolForOnline } from '../../../utils/tools';
 import Title from '../../components/Title';
 import { KaraList } from '../../../../../src/lib/types/kara';
+import Group from 'antd/es/input/Group';
 interface KaraDownloadState {
 	karas: DBKara[];
 	i18nTag: any;
@@ -42,6 +45,7 @@ interface KaraDownloadState {
 	tags: DBTag[];
 	download_status: 'MISSING' | 'DOWNLOADING' | '';
 	order: 'mediasize' | 'requested' | 'recent' | '';
+	direction: 'desc' | 'asc';
 	totalMediaSize: string;
 	tagOptions: any[];
 	preview: string;
@@ -68,6 +72,7 @@ class KaraDownload extends Component<unknown, KaraDownloadState> {
 			download_status: 'MISSING',
 			totalMediaSize: '',
 			order: '',
+			direction: 'asc',
 			tagOptions: [],
 			preview: '',
 		};
@@ -153,6 +158,7 @@ class KaraDownload extends Component<unknown, KaraDownloadState> {
 					from: pfrom,
 					size: psz,
 					order: this.state.order,
+					direction: this.state.direction,
 				},
 				false,
 				300000
@@ -367,38 +373,35 @@ class KaraDownload extends Component<unknown, KaraDownloadState> {
 							</Row>
 							<Row>
 								<label style={{ margin: '0.5em' }}>{i18next.t('KARA.ORDER_MEDIA')}</label>
-								<Radio
-									style={{ margin: '0.5em' }}
-									checked={this.state.order === ''}
-									onChange={() => this.setState({ order: '', currentPage: 0 }, this.getKaras)}
-								>
-									{i18next.t('KARA.ORDER_MEDIA_STANDARD')}
-								</Radio>
-								<Radio
-									style={{ margin: '0.5em' }}
-									checked={this.state.order === 'recent'}
-									onChange={() => this.setState({ order: 'recent', currentPage: 0 }, this.getKaras)}
-								>
-									{i18next.t('KARA.ORDER_MEDIA_NEW')}
-								</Radio>
-								<Radio
-									style={{ margin: '0.5em' }}
-									checked={this.state.order === 'requested'}
-									onChange={() =>
-										this.setState({ order: 'requested', currentPage: 0 }, this.getKaras)
-									}
-								>
-									{i18next.t('KARA.ORDER_MEDIA_POPULAR')}
-								</Radio>
-								<Radio
-									style={{ margin: '0.5em' }}
-									checked={this.state.order === 'mediasize'}
-									onChange={() =>
-										this.setState({ order: 'mediasize', currentPage: 0 }, this.getKaras)
-									}
-								>
-									{i18next.t('KARA.ORDER_MEDIA_MEDIASIZE')}
-								</Radio>
+								<Space.Compact>
+									<Select
+										defaultValue={''}
+										popupMatchSelectWidth={false}
+										onChange={(value: 'mediasize' | 'requested' | 'recent' | '') =>
+											this.setState({ order: value, currentPage: 0 }, this.getKaras)
+										}
+										options={[
+											{ value: '', label: i18next.t('KARA.ORDER_MEDIA_STANDARD') },
+											{ value: 'recent', label: i18next.t('KARA.ORDER_MEDIA_NEW') },
+											{ value: 'requested', label: i18next.t('KARA.ORDER_MEDIA_POPULAR') },
+											{ value: 'mediasize', label: i18next.t('KARA.ORDER_MEDIA_MEDIASIZE') },
+										]}
+									/>
+									<Button
+										onClick={() =>
+											this.setState({
+												direction: this.state.direction === 'asc' ? 'desc' : 'asc',
+											})
+										}
+										title={i18next.t('KARA.CHANGE_ORDER_DIRECTION')}
+									>
+										{this.state.direction === 'asc' ? (
+											<SortAscendingOutlined />
+										) : (
+											<SortDescendingOutlined />
+										)}
+									</Button>
+								</Space.Compact>
 							</Row>
 						</Col>
 						<Col flex={2}>
